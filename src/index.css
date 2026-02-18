@@ -1,0 +1,24 @@
+:root {
+  /* Fondo oscuro y texto principal según vuestra estética técnica */
+  --bg-dark: #0b0e14;
+  --text-main: #e6edf3;
+  --primary-neon: #00d4ff;
+
+  /* Colores para las Ramas de Investigación (Anexo III) */
+  --color-biologica: #22c55e;
+  /* Verde: Guerra Biológica (Gripe Aviar, Coronavirus) */
+  --color-logistica: #a855f7;
+  /* Morado: Operaciones y Logística (Inhibidor, Muros) */
+  --color-artilleria: #f97316;
+  /* Naranja: Artillería (Morteros, Misiles) */
+
+  --border-ui: #30363d;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
