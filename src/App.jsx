@@ -2,24 +2,24 @@ import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-rout
 import MapaAragon from './MapaAragon';
 // Layout base que mantiene el Header y Footer fijos en todas las páginas
 const MainLayout = () => (
-  <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
     {/* Header Base: Gestión de Sesión y Navegación */}
-    <header style={{ padding: '1rem', borderBottom: '1px solid var(--border-ui)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <header style={{ flexShrink: 0, padding: '1rem', borderBottom: '1px solid var(--border-ui)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <h1 style={{ color: 'var(--primary-neon)', margin: 0, fontSize: '1.5rem' }}>SOBERANIA</h1>
       <nav>
-        <Link to="/" style={{ color: 'white', marginRight: '1rem', textDecoration: 'none' }}>Login</Link>
-        <Link to="/lobby" style={{ color: 'white', textDecoration: 'none' }}>Lobby</Link>
+        <Link to="/" style={{ color: 'black', marginRight: '1rem', textDecoration: 'none' }}>Login</Link>
+        <Link to="/lobby" style={{ color: 'black', textDecoration: 'none' }}>Lobby</Link>
       </nav>
     </header>
 
     {/* Contenido dinámico que cambiará según la ruta */}
-    <main style={{ flex: 1, padding: '2rem' }}>
+    <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Outlet />
     </main>
 
     {/* Footer Base con información del sistema */}
-    <footer style={{ padding: '1rem', borderTop: '1px solid var(--border-ui)', textAlign: 'center', opacity: 0.6 }}>
-      <small>Soberania 2026 - Universidad de Zaragoza - Proyecto Software </small>
+    <footer style={{ flexShrink: 0, padding: '1rem', borderTop: '1px solid var(--border-ui)', textAlign: 'center', opacity: 0.6 }}>
+      <small>Soberania - Universidad de Zaragoza </small>
     </footer>
   </div>
 );
@@ -35,7 +35,7 @@ export default function App() {
           <Route path="lobby" element={<div>Listado de Partidas (Lobby)</div>} />
           {/* RF.12: Representación del Entorno (Mapa de Aragón) */}
           <Route path="partida/:id" element={
-            <div style={{ width: '100%', height: '80vh' }}>
+            <div style={{ flex: 1, width: '100%', height: '100%' }}>
               <MapaAragon />
             </div>
           } />

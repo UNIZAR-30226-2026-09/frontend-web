@@ -9,14 +9,13 @@ const ComarcaPath = ({ id, d, fill, hovered, setHovered }) => {
             id={id}
             d={d}
             fill={fill}
-            stroke={isHovered ? 'white' : 'var(--border-ui)'}
-            strokeWidth={isHovered ? 2 : 1}
-            vectorEffect="non-scaling-stroke"
+            stroke={isHovered ? 'blue' : 'var(--border-ui)'}
+            strokeWidth={isHovered ? 3 : 2}
+            vectorEffect="non-scaling-stroke" // se usa para que al ahcer zoom se mantenga la escala
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
             style={{
-                transition: 'all 0.2s ease',
-                cursor: 'pointer'
+                cursor: 'pointer' //para que al pasar por encima salga el pointer
             }}
         />
     );

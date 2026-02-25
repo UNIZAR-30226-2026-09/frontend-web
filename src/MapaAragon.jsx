@@ -19,7 +19,11 @@ const MapaAragon = (props) => {
     const gElement = select(gRef.current);
 
     const zoomBehavior = zoom()
-      .scaleExtent([0.5, 5])
+      .scaleExtent([1, 5]) // Cambiado el mínimo de 0.5 a 1 para no alejar de más
+      .translateExtent([
+        [-400, -250], // Límite Arriba-Izquierda igual que viewBox 
+        [50, 300]     // Límite Abajo-Derecha igual que viewBox (-400+450, -250+550)
+      ])
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
       });
@@ -37,7 +41,6 @@ const MapaAragon = (props) => {
       style={{ width: '100%', height: '100%', cursor: 'grab' }}
     >
       <g ref={gRef}>
-        {/* MAGIA: Bucle que pinta las 33 comarcas automáticamente */}
         {COMARCAS_SVG_DATA.map((comarca) => (
           <ComarcaPath
             key={comarca.id}  // React exige una key única al usar map()
