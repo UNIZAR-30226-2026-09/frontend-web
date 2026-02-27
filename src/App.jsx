@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-router-dom';
-import MapaAragon from './MapaAragon';
+import Tablero from './Tablero';
+import { Table } from 'lucide-react';
 // Layout base que mantiene el Header y Footer fijos en todas las páginas
 const MainLayout = () => (
   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -36,7 +37,7 @@ export default function App() {
           {/* RF.12: Representación del Entorno (Mapa de Aragón) */}
           <Route path="partida/:id" element={
             <div style={{ flex: 1, width: '100%', height: '100%' }}>
-              <MapaAragon />
+              <Tablero />
             </div>
           } />
           {/* RF.05: Perfil y Estadísticas */}
