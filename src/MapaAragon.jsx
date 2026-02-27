@@ -5,6 +5,7 @@ import { zoom } from 'd3-zoom';
 
 // Importamos nuestras nuevas piezas modulares
 import ComarcaPath from './components/ComarcaPath';
+import FlechaAtaque from './components/FlechaAtaque';
 import { COMARCAS_SVG_DATA } from './data/comarcasSvg';
 
 const MapaAragon = (props) => {
@@ -57,6 +58,7 @@ const MapaAragon = (props) => {
             style={{ pointerEvents: 'none' }}
           />
         )}
+        <FlechaAtaque />
       </g>
     </svg>
   );
