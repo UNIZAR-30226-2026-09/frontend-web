@@ -10,7 +10,7 @@
             "bonus_troops": 6,
             "comarcas": [
                 "cinco_villas",
-                "jacetania",
+                "la_jacetania",
                 "alto_gallego",
                 "sobrarbe",
                 "hoya_de_huesca"
@@ -20,7 +20,7 @@
             "name": "Estepas y Condados",
             "bonus_troops": 6,
             "comarcas": [
-                "ribagorza",
+                "la_ribagorza",
                 "somontano_de_barbastro",
                 "cinca_medio",
                 "la_litera",
@@ -32,7 +32,7 @@
             "name": "Alto Ebro",
             "bonus_troops": 7,
             "comarcas": [
-                "tarazona_y_el_moncayo",
+                "tarazona_y_moncayo",
                 "campo_de_borja",
                 "ribera_alta_del_ebro",
                 "zaragoza",
@@ -76,8 +76,8 @@
         }
     },
     "comarcas": {
-        "jacetania": {
-            "name": "Jacetania",
+        "la_jacetania": {
+            "name": "la_jacetania",
             "region_id": "frontera_pirenaica",
             "adjacent_to": [
                 "alto_gallego",
@@ -88,7 +88,7 @@
             "name": "Alto Gallego",
             "region_id": "frontera_pirenaica",
             "adjacent_to": [
-                "jacetania",
+                "la_jacetania",
                 "hoya_de_huesca",
                 "sobrarbe",
                 "somontano_de_barbastro"
@@ -100,14 +100,14 @@
             "adjacent_to": [
                 "alto_gallego",
                 "somontano_de_barbastro",
-                "ribagorza"
+                "la_ribagorza"
             ]
         },
         "hoya_de_huesca": {
             "name": "Hoya de Huesca",
             "region_id": "frontera_pirenaica",
             "adjacent_to": [
-                "jacetania",
+                "la_jacetania",
                 "alto_gallego",
                 "cinco_villas",
                 "somontano_de_barbastro",
@@ -124,8 +124,8 @@
                 "campo_de_borja"
             ]
         },
-        "ribagorza": {
-            "name": "Ribagorza",
+        "la_ribagorza": {
+            "name": "la_ribagorza",
             "region_id": "estepas_y_condados",
             "adjacent_to": [
                 "sobrarbe",
@@ -143,7 +143,7 @@
                 "litera",
                 "cinca_medio",
                 "monegros",
-                "ribagorza"
+                "la_ribagorza"
             ]
         },
         "cinca_medio": {
@@ -160,7 +160,7 @@
             "name": "Litera",
             "region_id": "estepas_y_condados",
             "adjacent_to": [
-                "ribagorza",
+                "la_ribagorza",
                 "somontano_de_barbastro",
                 "cinca_medio",
                 "bajo_cinca"
@@ -187,7 +187,7 @@
                 "bajo_aragon_caspe"
             ]
         },
-        "tarazona_y_el_moncayo": {
+        "tarazona_y_moncayo": {
             "name": "Tarazona y el Moncayo",
             "region_id": "alto_ebro",
             "adjacent_to": [
@@ -200,7 +200,7 @@
             "region_id": "alto_ebro",
             "adjacent_to": [
                 "cinco_villas",
-                "tarazona_y_el_moncayo",
+                "tarazona_y_moncayo",
                 "aranda",
                 "ribera_alta_del_ebro",
                 "valdejalon"
@@ -233,7 +233,7 @@
             "name": "Aranda",
             "region_id": "alto_ebro",
             "adjacent_to": [
-                "tarazona_y_el_moncayo",
+                "tarazona_y_moncayo",
                 "campo_de_borja",
                 "valdejalon",
                 "comunidad_de_calatayud"
