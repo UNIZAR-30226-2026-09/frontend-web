@@ -72,6 +72,19 @@ const Tablero = (props) => {
       style={{ width: '100%', height: '100%', cursor: 'grab' }}
     >
       <g ref={gRef}>
+
+        <image
+          href="/fondo_mesa.jpeg"
+          // Tendrás que ajustar estos 4 números para que el mapa de Aragón encaje justo dentro del pentágono.
+          // Como el viewBox de tu colega mide 450x550, he hecho la imagen más grande para que lo abarque.
+          x="-550"
+          y="-350"
+          width="750"
+          height="750"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ pointerEvents: 'none' }} // SÚPER IMPORTANTE: Para que no te bloquee los clics del mapa
+        />
+
         {sortedComarcas.map((comarca) => {
           const rawName = comarca.name || comarca.id;
           const words = rawName.toUpperCase().split(rawName.includes(' ') ? ' ' : '_');

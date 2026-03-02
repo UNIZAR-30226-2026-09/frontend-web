@@ -22,8 +22,9 @@ const ComarcaPath = ({ id, d, fill, hovered, setHovered }) => {
             id={id}
             d={d}
             fill={currentColor}
+            fillOpacity={0.55} // 55% de opacidad para que la textura de la madera se vea a través del color 
             // Ponemos borde blanco si le pasas el ratón o si está seleccionada
-            stroke={isHovered ? 'white' : 'var(--border-ui, #ccc)'}
+            stroke={isHovered || isSelected ? 'white' : 'rgba(0,0,0,0.3)'}
             strokeWidth={isHovered || isSelected ? 3 : 1}
             vectorEffect="non-scaling-stroke" // se usa para que al hacer zoom se mantenga la escala
             onMouseEnter={() => setHovered(id)}
