@@ -1,29 +1,45 @@
-import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
 import Tablero from './pantallas/Tablero';
-import { Table } from 'lucide-react';
+import CabeceraJuego from './components/CabeceraJuego';
 // Layout base que mantiene el Header y Footer fijos en todas las páginas
-const MainLayout = () => (
-  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-    {/* Header Base: Gestión de Sesión y Navegación */}
-    <header style={{ flexShrink: 0, padding: '1rem', borderBottom: '1px solid var(--border-ui)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <h1 style={{ color: 'var(--primary-neon)', margin: 0, fontSize: '1.5rem' }}>SOBERANIA</h1>
-      <nav>
-        <Link to="/" style={{ color: 'black', marginRight: '1rem', textDecoration: 'none' }}>Login</Link>
-        <Link to="/lobby" style={{ color: 'black', textDecoration: 'none' }}>Lobby</Link>
-      </nav>
-    </header>
+const MainLayout = () => {
+  const location = useLocation();
+  const isGameScreen = location.pathname.startsWith('/partida');
 
-    {/* Contenido dinámico que cambiará según la ruta */}
-    <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <Outlet />
-    </main>
+  if (isGameScreen) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <CabeceraJuego />
+        <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
-    {/* Footer Base con información del sistema */}
-    <footer style={{ flexShrink: 0, padding: '1rem', borderTop: '1px solid var(--border-ui)', textAlign: 'center', opacity: 0.6 }}>
-      <small>Soberania - Universidad de Zaragoza </small>
-    </footer>
-  </div>
-);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {/* Header Base: Gestión de Sesión y Navegación */}
+      <header style={{ flexShrink: 0, padding: '1rem', borderBottom: '1px solid var(--border-ui)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ color: 'var(--primary-neon)', margin: 0, fontSize: '1.5rem' }}>SOBERANIA</h1>
+        <nav>
+          <Link to="/" style={{ color: 'black', marginRight: '1rem', textDecoration: 'none' }}>Login</Link>
+          <Link to="/lobby" style={{ color: 'black', textDecoration: 'none' }}>Lobby</Link>
+        </nav>
+      </header>
+
+      {/* Contenido dinámico que cambiará según la ruta */}
+      <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Outlet />
+      </main>
+
+      {/* Footer Base con información del sistema */}
+      <footer style={{ flexShrink: 0, padding: '1rem', borderTop: '1px solid var(--border-ui)', textAlign: 'center', opacity: 0.6 }}>
+        <small>Soberania - Universidad de Zaragoza </small>
+      </footer>
+    </div>
+  );
+};
 
 export default function App() {
   return (

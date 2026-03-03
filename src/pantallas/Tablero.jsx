@@ -102,7 +102,7 @@ const Tablero = (props) => {
         <g ref={gRef}>
 
           <image
-            href="/fondo_mesa.jpeg"
+            href="/Tablero.png"
             x="-550"
             y="-350"
             width="750"
