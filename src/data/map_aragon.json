@@ -167,7 +167,7 @@
             ]
         },
         "monegros": {
-            "name": "Los Monegros",
+            "name": "Monegros",
             "region_id": "estepas_y_condados",
             "adjacent_to": [
                 "hoya_de_huesca",

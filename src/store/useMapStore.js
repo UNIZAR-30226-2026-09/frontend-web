@@ -2,33 +2,25 @@
 import { create } from 'zustand';
 
 export const useMapStore = create((set) => ({
-    // Guardará los IDs: [0] = Origen (Atacante, azul), [1] = Destino (Defensor, rojo)
     selectedComarcas: [],
 
     toggleSelection: (id) => set((state) => {
         const isSelected = state.selectedComarcas.includes(id);
 
-        // Si la comarca ya estaba seleccionada
-        if (isSelected) {
-            // Si haces clic en el atacante, cancelamos todo el ataque
-            if (state.selectedComarcas[0] === id) {
+        if (isSelected) { // Si la comarca ya estaba seleccionada
+            if (state.selectedComarcas[0] === id) { // Si hacemos clic en el atacante (índice 0), deseleccionamos todo
                 return { selectedComarcas: [] };
             }
-            // Si haces clic en el defensor, solo quitamos el defensor
-            else {
+            else { // Si hacemos clic en el defensor (índice 1), lo quitamos
                 return { selectedComarcas: [state.selectedComarcas[0]] };
             }
         }
 
-        // Si no estaba seleccionada y tenemos menos de 2, la añadimos.
-        if (state.selectedComarcas.length < 2) {
+        if (state.selectedComarcas.length < 2) { // Si NO estaba seleccionada y hay menos de 2, la añadimos ("Atacante" o "Defensor")
             return { selectedComarcas: [...state.selectedComarcas, id] };
         }
-
-        // Si ya hay 2 seleccionadas y pinchas una nueva, cambiamos el destino (el 2º elemento)
         return { selectedComarcas: [state.selectedComarcas[0], id] };
     }),
 
-    // Función para limpiar todo (botón de "Cancelar" o al terminar un ataque)
     clearSelection: () => set({ selectedComarcas: [] }),
 }));

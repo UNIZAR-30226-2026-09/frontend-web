@@ -3,9 +3,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
 import { useMapStore } from './store/useMapStore';
+import { useGameStore } from './store/gameStore';
 
 import ComarcaPath from './components/ComarcaPath';
-import FlechaAtaque from './components/FlechaAtaque';
 import { COMARCAS_SVG_DATA } from './data/comarcasSvg';
 import mapData from './data/map_aragon.json';
 
@@ -16,6 +16,24 @@ const Tablero = (props) => {
   const gRef = useRef(null);
 
   const selectedComarcas = useMapStore((state) => state.selectedComarcas);
+
+  const inicializarJuego = useGameStore((state) => state.inicializarJuego);
+  const setFase = useGameStore((state) => state.setFase);
+
+  useEffect(() => {
+    const rawData = Object.entries(mapData.comarcas).map(([key, value]) => ({
+      id: key,
+      nombre: value.name,
+      adyacentes: value.adjacent_to,
+    }));
+
+    inicializarJuego(rawData);
+    setFase('ATAQUE_NORMAL');
+  }, [inicializarJuego, setFase]);
+
+  const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
+  const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
+  const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
 
   const comarcasCompletas = useMemo(() => {
     return COMARCAS_SVG_DATA.map((svgItem) => {
@@ -31,8 +49,9 @@ const Tablero = (props) => {
   }, []);
 
   const sortedComarcas = [...comarcasCompletas].sort((a, b) => {
-    const aSelected = selectedComarcas.includes(a.id);
-    const bSelected = selectedComarcas.includes(b.id);
+    const aSelected = origenSeleccionado === a.id || destinoSeleccionado === a.id || comarcasResaltadas.includes(a.id);
+    const bSelected = origenSeleccionado === b.id || destinoSeleccionado === b.id || comarcasResaltadas.includes(b.id);
+
     const aHovered = hovered === a.id;
     const bHovered = hovered === b.id;
 
@@ -119,7 +138,6 @@ const Tablero = (props) => {
             </g>
           );
         })}
-        <FlechaAtaque />
       </g>
     </svg>
   );

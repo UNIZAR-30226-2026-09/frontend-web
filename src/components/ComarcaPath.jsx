@@ -1,22 +1,29 @@
 // src/components/ComarcaPath.jsx
 import React from 'react';
-import { useMapStore } from '../store/useMapStore';
+import { useGameStore } from '../store/gameStore';
 
 const ComarcaPath = ({ id, d, fill, hovered, setHovered }) => {
     const isHovered = hovered === id;
 
-    // Usamos useMapStore para obtener los datos de la store
-    const selectedComarcas = useMapStore((state) => state.selectedComarcas);
-    const toggleSelection = useMapStore((state) => state.toggleSelection);
+    // Usamos useGameStore para obtener los datos de la FSM
+    const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
+    const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
+    const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
+    const manejarClickComarca = useGameStore((state) => state.manejarClickComarca);
 
-    const isSelected = selectedComarcas.includes(id);
-    const isOrigin = selectedComarcas[0] === id; // El primero que pinchamos
-    const isDestination = selectedComarcas[1] === id; // El segundo que pinchamos
+    const isOrigin = origenSeleccionado === id;
+    const isDestination = destinoSeleccionado === id;
+    const isHighlighted = comarcasResaltadas.includes(id);
+
+    // Necesario para que el tablero la considere seleccionada visualmente
+    const isSelected = isOrigin || isDestination || isHighlighted;
 
     // Decidimos de qué color pintarlo
     let currentColor = fill; // Por defecto, el color base
     if (isOrigin) currentColor = '#3b82f6'; // Azul (Atacante)
-    if (isDestination) currentColor = '#ef4444'; // Rojo (Defensor)
+    else if (isDestination) currentColor = '#ef4444'; // Rojo (Defensor)
+    else if (isHighlighted) currentColor = '#eab308'; // Amarillo (Objetivos Válidos / BFS)
+
     return (
         <path
             id={id}
@@ -29,7 +36,7 @@ const ComarcaPath = ({ id, d, fill, hovered, setHovered }) => {
             vectorEffect="non-scaling-stroke" // se usa para que al hacer zoom se mantenga la escala
             onMouseEnter={() => setHovered(id)}
             onMouseLeave={() => setHovered(null)}
-            onClick={() => toggleSelection(id)}
+            onClick={() => manejarClickComarca(id)}
             style={{
                 cursor: 'pointer', //para que al pasar por encima salga el pointer
                 transition: 'all 0.2s ease-in-out' // para que la transición sea suave
