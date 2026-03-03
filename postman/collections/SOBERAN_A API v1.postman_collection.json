@@ -1,0 +1,238 @@
+{
+  "info": {
+    "_postman_id": "bfb9c712-0451-4434-b3ac-cb91a5e930c6",
+    "name": "SOBERANÍA API v1",
+    "description": "Colección oficial de endpoints REST para el juego Soberanía.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Usuarios y Auth",
+      "item": [
+        {
+          "name": "Registrar Usuario",
+          "id": "d9757e4b-16fe-4d45-91fb-0073f6ed65c7",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"nick_aragon\",\n    \"email\": \"nick@soberania.es\",\n    \"password\": \"calvo1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "registro"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Obtener Token)",
+          "id": "b1675e19-e9b8-4d66-b8f9-5eb63a5d0037",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "nick_aragon",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "calvo1234",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver Mi Perfil",
+          "id": "790b636e-01d0-4215-85b4-11cc71c4a441",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "usuarios",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "a4bfa02b-92f5-4f86-9be6-3731cc520281"
+    },
+    {
+      "name": "2. Mapa",
+      "item": [
+        {
+          "name": "Obtener Mapa Inicial",
+          "id": "9ff14336-88ff-4391-bfdb-099ef07edd20",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mapa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "mapa"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "3253f6d3-6ae0-4a17-af8f-57426504ffe6"
+    },
+    {
+      "name": "3. Partidas y Amigos",
+      "item": [
+        {
+          "name": "Crear Partida",
+          "id": "682b5f46-54ea-4841-9783-6f6abbfa7c84",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config_max_players\": 4,\n    \"config_visibility\": \"publica\",\n    \"config_timer_seconds\": 60\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/partidas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "partidas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Solicitar Amistad",
+          "id": "185d228b-5027-450a-8857-b3e02e22bc61",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_2\": \"roldi_goat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/amigos/solicitar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "amigos",
+                "solicitar"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "329d5247-3806-4771-9148-594d4411ad65"
+    }
+  ],
+  "variable": [
+    {
+      "id": "b2edd7fc-a9ee-4f06-bb5b-730c3bca20cc",
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "id": "b7bdb443-1a67-4474-91d3-47976905f69c",
+      "key": "token",
+      "value": "AQUI_PEGA_TU_TOKEN_JWT",
+      "type": "string"
+    }
+  ]
+}
