@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link, Outlet } from 'react-router-dom';
-import Tablero from './Tablero';
+import Tablero from './pantallas/Tablero';
 import { Table } from 'lucide-react';
 // Layout base que mantiene el Header y Footer fijos en todas las páginas
 const MainLayout = () => (

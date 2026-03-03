@@ -7,11 +7,22 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // ESTADO INICIAL (inicializar todo)
     grafoGlobal: null,
     faseActual: 'DESPLIEGUE',
+    modoVista: 'COMARCAS',
     origenSeleccionado: null,
     destinoSeleccionado: null,
     comarcasResaltadas: [],
 
     // ACCIONES
+
+    toggleModoVista: () => set((state) => ({
+        modoVista: state.modoVista === 'COMARCAS' ? 'REGIONES' : 'COMARCAS'
+    })),
+
+    limpiarSeleccion: () => set({
+        origenSeleccionado: null,
+        destinoSeleccionado: null,
+        comarcasResaltadas: []
+    }),
 
     inicializarJuego: (rawData: ComarcaDTO[]) => {
         try {
@@ -110,7 +121,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
                 // 4. Clic fuera del rango válido
                 if (estado.origenSeleccionado && !estado.comarcasResaltadas.includes(comarcaId)) {
-                    console.warn(`Comarca ${comarcaId} fuera de rango.`);
+                    set({
+                        origenSeleccionado: null,
+                        destinoSeleccionado: null,
+                        comarcasResaltadas: []
+                    });
+                    console.log(`Clic fuera de rango. Selección limpiada.`);
                 }
 
                 break;
