@@ -1,10 +1,24 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
+import { useAuthStore } from './store/useAuthStore'
 import Tablero from './pantallas/Tablero';
 import CabeceraJuego from './components/CabeceraJuego';
+import Login from './pantallas/Login';
+import Lobby from './pantallas/Lobby';
+
 // Layout base que mantiene el Header y Footer fijos en todas las páginas
 const MainLayout = () => {
   const location = useLocation();
   const isGameScreen = location.pathname.startsWith('/partida');
+  const isFullScreenMode = location.pathname === '/' || location.pathname === '/lobby';
+
+  if (isFullScreenMode) {
+    return (
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+        <Outlet />
+      </div>
+    );
+  }
 
   if (isGameScreen) {
     return (
@@ -29,7 +43,7 @@ const MainLayout = () => {
       </header>
 
       {/* Contenido dinámico que cambiará según la ruta */}
-      <main style={{ flex: 1, padding: '1rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Outlet />
       </main>
 
@@ -42,14 +56,20 @@ const MainLayout = () => {
 };
 
 export default function App() {
+  const checkSession = useAuthStore((state) => state.checkSession);
+
+  // Esto se ejecuta al abrir la aplicación (solamente una vez)
+  useEffect(() => {
+    checkSession();
+  }, []);
   return (
     <Router>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           {/* RF.01/RF.02: Gestión de Usuarios */}
-          <Route index element={<div>Pantalla de Acceso (Login/Registro)</div>} />
+          <Route index element={<Login />} />
           {/* RF.07: Gestión de Partidas */}
-          <Route path="lobby" element={<div>Listado de Partidas (Lobby)</div>} />
+          <Route path="lobby" element={<Lobby />} />
           {/* RF.12: Representación del Entorno (Mapa de Aragón) */}
           <Route path="partida/:id" element={
             <div style={{ flex: 1, width: '100%', height: '100%' }}>
