@@ -5,7 +5,10 @@ import { zoom } from 'd3-zoom';
 import { useGameStore } from '../store/gameStore';
 
 import ComarcaPath from '../components/ComarcaPath';
+import FichaTropas from '../components/FichaTropas';
 import BotonVistaRegiones from '../components/BotonVistaRegiones';
+import ControlDespliegue from '../components/ControlDespliegue';
+import AnimacionRefuerzos from '../components/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA } from '../data/comarcasSvg';
 import mapData from '../data/map_aragon.json';
 
@@ -34,6 +37,7 @@ const Tablero = (props) => {
   const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
   const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
   const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
+  const tropas = useGameStore((state) => state.tropas);
 
   const comarcasCompletas = useMemo(() => {
     return COMARCAS_SVG_DATA.map((svgItem) => {
@@ -48,6 +52,13 @@ const Tablero = (props) => {
     });
   }, []);
 
+  /**
+   * super hack visual.
+   * un sort() que reordena todo el array de dom elements cada vez que cambia el estado
+   * para escupir al final (arriba del todo en el SVG-Z-index) lo que esté seleccionado
+   * o hovereado. evita que el stroke blanco se corte o que una comarca chiquita quede
+   * tapada por una provincia gorda.
+   */
   const sortedComarcas = [...comarcasCompletas].sort((a, b) => {
     const aSelected = origenSeleccionado === a.id || destinoSeleccionado === a.id || comarcasResaltadas.includes(a.id);
     const bSelected = origenSeleccionado === b.id || destinoSeleccionado === b.id || comarcasResaltadas.includes(b.id);
@@ -68,21 +79,24 @@ const Tablero = (props) => {
     const gElement = select(gRef.current);
 
     const zoomBehavior = zoom()
-      .scaleExtent([1, 5]) // Cambiado el mínimo de 0.5 a 1 para no alejar de más
+      .scaleExtent([1, 5]) // que no te deje hacer zoom out de más
       .translateExtent([
-        [-400, -250], // Límite Arriba-Izquierda 
-        [50, 300]     // Límite Abajo-Derecha 
+        [-400, -250], // tope arriba a la izquierda
+        [50, 300]     // tope abajo a la derecha
       ])
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
         setZoomScale(evento.transform.k);
       });
 
-    // Deshabilita doble click
+    // quitamos lo del doble click porque molesta al jugar rápido
     svgElement.call(zoomBehavior).on("dblclick.zoom", null);
   }, []);
 
-  // Manejador del click en el fondo para limpiar la selección
+  /**
+   * esto salva la UX general. cuando fallas el click en el mapa en vez de dar a una 
+   * provincia y clicas "al agua", ejecutamos limpiarSeleccion() del state manager global.
+   */
   const handleFondoClick = (e) => {
     if (e.target.tagName === 'svg' || e.target.tagName === 'image' || e.target.tagName === 'rect') {
       limpiarSeleccion();
@@ -108,47 +122,43 @@ const Tablero = (props) => {
             width="750"
             height="750"
             preserveAspectRatio="xMidYMid slice"
-            style={{ pointerEvents: 'auto', cursor: 'default' }} // Habilitado eventos para poder clicar fuera, y cursor normal
+            style={{ pointerEvents: 'auto', cursor: 'default' }} // para que reconozca el clic si fallas a la comarca
           />
 
+          {/* PRIMER BUCLE: dibujamos las formas del terreno primero para que queden abajo */}
+          {sortedComarcas.map((comarca) => (
+            <ComarcaPath
+              key={`path-${comarca.id}`}
+              id={comarca.id}
+              d={comarca.d}
+              fill={comarca.fill}
+              regionId={comarca.region_id}
+              hovered={hovered}
+              setHovered={setHovered}
+            />
+          ))}
+
+          {/* SEGUNDO BUCLE: ponemos los carteles encima para que no se tapen */}
           {sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
-            const words = rawName.toUpperCase().split(rawName.includes(' ') ? ' ' : '_');
-            const lineHeight = 4.5;
-            const startY = comarca.centro[1] - ((words.length - 1) * lineHeight) / 2;
+            const cantidadTropas = tropas[comarca.id] || 0; // por si alguna colapsa y está vacía
 
             return (
-              <g key={comarca.id}>
-                <ComarcaPath
-                  id={comarca.id}
-                  d={comarca.d}
-                  fill={comarca.fill}
-                  regionId={comarca.region_id}
-                  hovered={hovered}
-                  setHovered={setHovered}
-                />
-                {zoomScale > 1.75 && (
-                  <text
-                    x={comarca.centro[0]}
-                    y={startY}
-                    textAnchor="middle"
-                    alignmentBaseline="middle"
-                    className="comarca-lod-text"
-                    style={{ fontSize: '5px', fill: 'black', pointerEvents: 'none' }}
-                  >
-                    {words.map((word, index) => (
-                      <tspan x={comarca.centro[0]} dy={index === 0 ? 0 : lineHeight} key={index}>
-                        {word}
-                      </tspan>
-                    ))}
-                  </text>
-                )}
-              </g>
+              <FichaTropas
+                key={`ficha-${comarca.id}`}
+                cx={comarca.centro[0]}
+                cy={comarca.centro[1]}
+                tropas={cantidadTropas}
+                nombreComarca={rawName}
+                zoomScale={zoomScale}
+              />
             );
           })}
         </g>
       </svg>
       <BotonVistaRegiones />
+      <ControlDespliegue />
+      <AnimacionRefuerzos />
     </div>
   );
 };

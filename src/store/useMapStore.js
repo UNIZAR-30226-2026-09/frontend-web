@@ -7,16 +7,16 @@ export const useMapStore = create((set) => ({
     toggleSelection: (id) => set((state) => {
         const isSelected = state.selectedComarcas.includes(id);
 
-        if (isSelected) { // Si la comarca ya estaba seleccionada
-            if (state.selectedComarcas[0] === id) { // Si hacemos clic en el atacante (índice 0), deseleccionamos todo
+        if (isSelected) { // si ya estaba pinchada...
+            if (state.selectedComarcas[0] === id) { // si el origen de repente clica en sí mismo de nuevo, cancelamos la jugada
                 return { selectedComarcas: [] };
             }
-            else { // Si hacemos clic en el defensor (índice 1), lo quitamos
+            else { // si hacemos click en el pobre defensor ya elegido, lo quitamos de la diana
                 return { selectedComarcas: [state.selectedComarcas[0]] };
             }
         }
 
-        if (state.selectedComarcas.length < 2) { // Si NO estaba seleccionada y hay menos de 2, la añadimos ("Atacante" o "Defensor")
+        if (state.selectedComarcas.length < 2) { // si tenemos hueco libre en el array la metemos para ser origen o destino
             return { selectedComarcas: [...state.selectedComarcas, id] };
         }
         return { selectedComarcas: [state.selectedComarcas[0], id] };
