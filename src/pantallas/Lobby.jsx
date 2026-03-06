@@ -24,10 +24,10 @@ const Lobby = () => {
     };
 
     return (
-        // CONTENEDOR EXTERIOR: Fondo negro, centra el mapa
+        // contenedor padre súper grande con fondo negro para centrar todo el tinglado
         <div style={{ width: '100%', height: '100%', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
 
-      // EL LIENZO MAGICO 16:9
+      // bloque principal que fuerza la pantalla a formato panorámico 16:9
             <div style={{
                 position: 'relative',
                 width: '100%',
@@ -39,7 +39,7 @@ const Lobby = () => {
                 overflow: 'hidden'
             }}>
 
-                {/* === BOTÓN EN LA PLACA (ARRIBA AL CENTRO) === */}
+                // el botón transparente encima del dibujo de la placa
                 <button
                     onClick={handleCrearPartida}
                     style={{
@@ -47,9 +47,9 @@ const Lobby = () => {
                         top: '4.5%',      // Distancia desde arriba
                         left: '50%',      // Centrado horizontalmente
                         transform: 'translateX(-50%)',
-                        width: '18%',     // Ancho de la placa de latón
-                        height: '7%',     // Alto de la placa
-                        background: 'transparent', // Transparente para que se vea el latón
+                        width: '18%',     // a ojo para que cuadre con el dibujo
+                        height: '7%',     // igual que el ancho
+                        background: 'transparent', // lo vaciamos para que se vea la placa por debajo
                         color: '#1a1a1a',
                         fontWeight: 'bold',
                         fontSize: '1vw',  // El texto crece o encoge con la pantalla
@@ -66,35 +66,35 @@ const Lobby = () => {
                     Crear Operación
                 </button>
 
-                {/* === LISTA DE PARTIDAS EN EL PERGAMINO (IZQUIERDA) === */}
+                // cuadro de scroll invisible por encima del dibujo del pergamino
                 <div style={{
                     position: 'absolute',
-                    top: '28%',       // Distancia desde arriba para librar la chincheta
-                    left: '4%',       // Distancia desde la izquierda
-                    width: '18%',     // Ancho exacto del pergamino
-                    height: '60%',    // Alto exacto del pergamino
+                    top: '28%',       // lo bajamos un poco para no tapar la chincheta del dibujo
+                    left: '4%',       // ajustado a ojo
+                    width: '18%',     // clavamos el ancho con el dibujo
+                    height: '60%',    // igual que el ancho
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.5rem',
                     padding: '0.5rem',
-                    overflowY: 'auto', // Scroll si hay muchas partidas
+                    overflowY: 'auto', // por si nos llenan los lobbys
                 }}>
-                    {/* Título manuscrito del pergamino */}
+                    // el titular centrado de la hoja
                     <h3 style={{ margin: '0 0 0.5rem 0', color: '#3e2723', textAlign: 'center', fontFamily: 'serif', borderBottom: '1px solid #3e2723', paddingBottom: '0.2rem', fontSize: '1.2vw' }}>
                         Órdenes Activas
                     </h3>
 
-                    {/* Tarjetas de partidas adaptadas al estilo papel */}
+                    // cada partida es un recuadro casi transparente tipo tinta
                     {partidas.map((partida) => (
                         <div key={partida.id} style={{
-                            background: 'rgba(0, 0, 0, 0.05)', // Casi transparente
+                            background: 'rgba(0, 0, 0, 0.05)', // oscurecemos un pelín para separar y ya
                             border: '1px solid rgba(0, 0, 0, 0.2)',
                             borderRadius: '2px',
                             padding: '0.5rem',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '0.3rem',
-                            color: '#1a1a1a' // Texto oscuro como tinta
+                            color: '#1a1a1a' // lo dejamos negro oscuro simulando tinta de pluma
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 'bold', fontSize: '0.85vw', fontFamily: 'serif' }}>{partida.nombre}</span>
@@ -107,7 +107,7 @@ const Lobby = () => {
                                     onClick={() => handleUnirse(partida.id)}
                                     style={{
                                         padding: '0.2rem 0.5rem',
-                                        background: partida.jugadores === partida.maxJugadores ? 'transparent' : '#8b0000', // Rojo sangre si puedes entrar
+                                        background: partida.jugadores === partida.maxJugadores ? 'transparent' : '#8b0000', // granate para llamar la atencion
                                         color: partida.jugadores === partida.maxJugadores ? '#888' : 'white',
                                         border: partida.jugadores === partida.maxJugadores ? '1px solid #888' : 'none',
                                         borderRadius: '2px',
@@ -123,7 +123,7 @@ const Lobby = () => {
                     ))}
                 </div>
 
-                {/* IDENTIFICACIÓN DE USUARIO (Abajo a la derecha) */}
+                // caja temporal pa ver que el usuario viajo bien desde el login
                 <div style={{
                     position: 'absolute',
                     bottom: '3%',

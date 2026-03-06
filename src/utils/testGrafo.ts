@@ -1,5 +1,5 @@
-// Archivo de tests generados con la IA para su rapida comprobacion
-// Promt: Genera un archivo de test para comprobar la validez del json del mapa y su algoritmo BFS
+// archivo rápido para comprobar que no la hemos liado con el json
+// lo montamos deprisa y corriendo para ver si el bfs tiraba bien
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,12 +8,12 @@ import { construirGrafoComarcas, calcularComarcasEnRango } from './graphUtils.ts
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Leer JSON
+// pillamos el mapa gordo
 const jsonPath = path.join(__dirname, '../data/map_aragon.json');
 const rawFile = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 
-// El JSON local tiene un objeto 'comarcas' donde la clave es el ID, 
-// y las propiedades son 'name' y 'adjacent_to'. Lo adaptamos a ComarcaDTO[]
+// acá apañamos el formato viejo en inglés del json a los dtos que entiende el zustand
+// (típicamente cambiar nombres y dejarlo listo)
 const rawData = Object.entries(rawFile.comarcas).map(([key, value]: [string, any]) => ({
     id: key,
     nombre: value.name,
@@ -34,17 +34,17 @@ try {
     console.log('\n🛡️ El código defensivo ha validado perfectamente todo el JSON (No hay asimetrías ni fantasmas).');
 
     // ---------------------------------------------------------
-    // PRUEBA DEL ALGORITMO BFS
+    // DANDOLE CAÑA AL ALGORITMO BFS
     // ---------------------------------------------------------
     console.log('\n⚔️  Iniciando simulación de alcance BFS...');
-    const origen = 'zaragoza'; // Usamos Zaragoza como ejemplo central
+    const origen = 'zaragoza'; // pillamos zaragoza porque pilla por el medio y prueba bien
 
     console.log(`\nTropas estacionadas en: [${grafo.get(origen)?.nombre}]`);
 
-    // Probamos diferentes rangos tácticos
+    // vamos metiendo rango a ver hasta donde engancha
     for (let rango = 0; rango <= 3; rango++) {
         const alcanzables = calcularComarcasEnRango(grafo, origen, rango);
-        // Mapeamos los IDs a nombres legibles para la consola
+        // esto es solo pa que por consola salgan nombres legibles en vez del string id raro
         const nombresAlcanzables = Array.from(alcanzables).map(id => grafo.get(id)?.nombre);
 
         console.log(`\n▶ Rango ${rango} salto(s):`);
