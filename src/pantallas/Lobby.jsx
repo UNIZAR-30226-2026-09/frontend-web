@@ -87,7 +87,7 @@ const Lobby = () => {
                     // cada partida es un recuadro casi transparente tipo tinta
                     {partidas.map((partida) => (
                         <div key={partida.id} style={{
-                            background: 'rgba(0, 0, 0, 0.05)', // oscurecemos un pelín para separar y ya
+                            background: 'rgba(0, 0, 0, 0.05)', // oscurecemos un poco para separar y ya
                             border: '1px solid rgba(0, 0, 0, 0.2)',
                             borderRadius: '2px',
                             padding: '0.5rem',

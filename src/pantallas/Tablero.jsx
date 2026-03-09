@@ -116,7 +116,7 @@ const Tablero = (props) => {
         <g ref={gRef}>
 
           <image
-            href="/Tablero.png"
+            href="/file.svg"
             x="-550"
             y="-350"
             width="750"
