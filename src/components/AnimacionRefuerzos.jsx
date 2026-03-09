@@ -18,7 +18,7 @@ const AnimacionRefuerzos = () => {
     useEffect(() => {
         if (mostrarAnimacionRefuerzos) {
             setVisible(true);
-            // quitamos el cartelico a los 3 segundos pa que no moleste
+            // quitamos el cartelico a los 3 segundos para que no moleste
             const timer = setTimeout(() => {
                 setVisible(false);
                 setTimeout(cerrarAnimacionRefuerzos, 500); // nos esperamos medio segundo a que acabe el difuminado del css

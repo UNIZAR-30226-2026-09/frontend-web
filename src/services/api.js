@@ -1,41 +1,30 @@
-// src/store/useAuthStore.js
-import { create } from 'zustand';
+// src/services/api.js (o src/config/api.js)
 
-export const useAuthStore = create((set) => ({
-    user: null,       // Datos del usuario (nombre, email...)
-    token: null,      // JWT
-    isAuthenticated: false,
+// Pillamos la URL de las variables de entorno de Vite
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-    // Función para cuando el login es correcto
-    login: (userData, jwtToken) => {
-        // Guardamos el token 
-        localStorage.setItem('soberania_token', jwtToken);
+// Función helper para no repetir código en cada petición (fetch)
+export const fetchApi = async (endpoint, options = {}) => {
+    const url = `${API_URL}${endpoint}`;
+    const token = localStorage.getItem('soberania_token');
 
-        set({
-            user: userData,
-            token: jwtToken,
-            isAuthenticated: true,
-        });
-    },
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
 
-    // Función para cerrar sesión
-    logout: () => {
-        localStorage.removeItem('soberania_token');
-        set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-        });
-    },
-
-    // Función para guardar el estado de si estaba logueado el usuario, así
-    // si cierra pestaña o F5, no lo expulsa de la partida porque se pondría
-    // isAuthenticated: false otra vez
-    checkSession: () => {
-        const savedToken = localStorage.getItem('soberania_token'); // Lee el token
-        if (savedToken) {
-            // Aquí más adelante haremos un fetch al backend para validar si el token no ha caducado
-            set({ token: savedToken, isAuthenticated: true });
-        }
+    // Si tenemos token de sesión, lo mandamos en la cabecera
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`; // Asegúrate de que tu back use este formato
     }
-}));
+
+    const response = await fetch(url, { ...options, headers });
+
+    // Si la respuesta no es OK (ej: 401, 500...), lanzamos error para cazarlo en el componente
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+    }
+
+    return response.json();
+};

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { fetchApi } from '../services/api';
 
 const Login = () => {
     const [username, setUsername] = useState(''); // Cambiado a Usuario
@@ -14,21 +15,48 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        console.log(`Petición de ${isRegistering ? 'Registro' : 'Login'} -> Usuario: ${username}`);
-
         try {
-            // Simulación de respuesta del servidor
-            const mockUserData = { nombre: username, rol: 'jugador' };
-            const mockToken = 'simulacion_de_jwt_super_seguro';
+            // Dependiendo de si estamos registrando o logueando, usamos una ruta u otra
+            const endpoint = isRegistering ? '/v1/usuarios/registro' : '/v1/usuarios/login';
 
-            login(mockUserData, mockToken);
-            navigate('/lobby');
+            // FastAPI con OAuth2PasswordRequestForm espera 'username' y 'password' en vez de JSON
+            const payload = new URLSearchParams({
+                username: username,
+                password: password
+            });
+
+            // Si es registro, a lo mejor el backend espera JSON, 
+            // pero el error de login pide form-data. Vamos a probar mandándolo como form
+            const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+            const data = await fetchApi(endpoint, {
+                method: 'POST',
+                headers: headers,
+                body: payload.toString()
+            });
+
+            console.log(`¡Respuesta del back para ${isRegistering ? 'registro' : 'login'}!`, data);
+
+            // Si el backend devuelve un token tras loguear (o tras registrar)
+            // En FastAPI con OAuth2 suele llamarse 'access_token'
+            const jwtToken = data.access_token || data.token;
+            if (jwtToken) {
+                // Guardamos en Zustand
+                login(data.usuario || { nombre_usuario: username }, jwtToken);
+                // Vamos al lobby
+                navigate('/lobby');
+            } else if (isRegistering) {
+                // Si el registro no te loguea automáticamente, cambiamos el formulario a login
+                alert("¡Reclutamiento exitoso! Ahora entra al campo (inicia sesión).");
+                setIsRegistering(false);
+            }
 
         } catch (error) {
-            console.error("Error:", error);
-            alert("Error en la autenticación");
+            console.error("Uf, algo falló:", error.message);
+            alert(error.message); // Mostramos el error del backend
         }
     };
+
 
     return (
         <div style={{
