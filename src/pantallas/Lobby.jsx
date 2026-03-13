@@ -155,7 +155,6 @@ const Lobby = () => {
                     ))}
                 </div>
 
-                {/* caja temporal   para ver que el usuario viajo bien desde el login */}
                 <div style={{
                     position: 'absolute',
                     bottom: '3%',
@@ -167,7 +166,7 @@ const Lobby = () => {
                     color: 'black',
                     fontSize: '0.9vw'
                 }}>
-                    ID RECLUTA: {user ? (user.nombre || user.nombre_usuario || 'DESCONOCIDO').toUpperCase() : 'DESCONOCIDO'}
+                    ID RECLUTA: {user ? (user.nombre || user.nombre_usuario || user.username || 'DESCONOCIDO').toUpperCase() : 'DESCONOCIDO'}
                 </div>
 
             </div>
