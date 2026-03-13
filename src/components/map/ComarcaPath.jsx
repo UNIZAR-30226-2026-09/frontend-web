@@ -1,7 +1,7 @@
 // src/components/ComarcaPath.jsx
 import React from 'react';
-import { useGameStore } from '../store/gameStore';
-import { obtenerColorRegion } from '../utils/colorUtils';
+import { useGameStore } from '../../store/gameStore';
+import { obtenerColorRegion } from '../../utils/colorUtils';
 
 const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     const isHovered = hovered === id;

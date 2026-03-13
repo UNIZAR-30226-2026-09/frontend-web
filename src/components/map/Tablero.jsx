@@ -2,15 +2,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore } from '../../store/gameStore';
 
-import ComarcaPath from '../components/ComarcaPath';
-import FichaTropas from '../components/FichaTropas';
-import BotonVistaRegiones from '../components/BotonVistaRegiones';
-import ControlDespliegue from '../components/ControlDespliegue';
-import AnimacionRefuerzos from '../components/AnimacionRefuerzos';
-import { COMARCAS_SVG_DATA } from '../data/comarcasSvg';
-import mapData from '../data/map_aragon.json';
+import ComarcaPath from './ComarcaPath';
+import FichaTropas from './FichaTropas';
+import BotonVistaRegiones from '../ui/BotonVistaRegiones';
+import ControlDespliegue from '../hud/ControlDespliegue';
+import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
+import { COMARCAS_SVG_DATA } from '../../data/comarcasSvg';
+import mapData from '../../data/map_aragon.json';
 
 const Tablero = (props) => {
   const [hovered, setHovered] = useState(null);
