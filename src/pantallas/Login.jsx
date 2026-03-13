@@ -5,8 +5,11 @@ import { useAuthStore } from '../store/useAuthStore';
 import { fetchApi } from '../services/api';
 
 const Login = () => {
-    const [username, setUsername] = useState(''); // Cambiado a Usuario
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [confirmEmail, setConfirmEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isRegistering, setIsRegistering] = useState(false);
 
     const login = useAuthStore((state) => state.login);
@@ -15,30 +18,49 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (isRegistering) {
+            if (email !== confirmEmail) {
+                alert("Los correos electrónicos no coinciden.");
+                return;
+            }
+            if (password !== confirmPassword) {
+                alert("Las contraseñas no coinciden.");
+                return;
+            }
+        }
+
         try {
             // Dependiendo de si estamos registrando o logueando, usamos una ruta u otra
             const endpoint = isRegistering ? '/v1/usuarios/registro' : '/v1/usuarios/login';
 
-            // FastAPI con OAuth2PasswordRequestForm espera 'username' y 'password' en vez de JSON
-            const payload = new URLSearchParams({
-                username: username,
-                password: password
-            });
+            let payload;
+            let headers;
 
-            // Si es registro, a lo mejor el backend espera JSON, 
-            // pero el error de login pide form-data. Vamos a probar mandándolo como form
-            const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            if (isRegistering) {
+                payload = JSON.stringify({
+                    username: username,
+                    nombre_usuario: username,
+                    email: email,
+                    password: password
+                });
+                headers = { 'Content-Type': 'application/json' };
+            } else {
+                payload = new URLSearchParams({
+                    username: username,
+                    password: password
+                }).toString();
+                headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            }
 
             const data = await fetchApi(endpoint, {
                 method: 'POST',
                 headers: headers,
-                body: payload.toString()
+                body: payload
             });
 
             console.log(`¡Respuesta del back para ${isRegistering ? 'registro' : 'login'}!`, data);
 
             // Si el backend devuelve un token tras loguear (o tras registrar)
-            // En FastAPI con OAuth2 suele llamarse 'access_token'
             const jwtToken = data.access_token || data.token;
             if (jwtToken) {
                 // Guardamos en Zustand
@@ -106,6 +128,32 @@ const Login = () => {
                     />
                 </div>
 
+                {isRegistering && (
+                    <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: 'white' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Confirmar Email</label>
+                            <input
+                                type="email"
+                                value={confirmEmail}
+                                onChange={(e) => setConfirmEmail(e.target.value)}
+                                required
+                                style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: 'white' }}
+                            />
+                        </div>
+                    </>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Contraseña</label>
                     <input
@@ -116,6 +164,19 @@ const Login = () => {
                         style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: 'white' }}
                     />
                 </div>
+
+                {isRegistering && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.9rem', color: '#ccc' }}>Confirmar Contraseña</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: 'white' }}
+                        />
+                    </div>
+                )}
 
                 <button
                     type="submit"
