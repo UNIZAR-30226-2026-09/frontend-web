@@ -1,7 +1,7 @@
 import React from 'react';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore } from '../../store/gameStore';
 import './ControlDespliegue.css';
-import mapData from '../data/map_aragon.json';
+import mapData from '../../data/map_aragon.json';
 
 const ControlDespliegue = () => {
     const comarcaDespliegue = useGameStore((state) => state.comarcaDespliegue);

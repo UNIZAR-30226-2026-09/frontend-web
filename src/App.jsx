@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/useAuthStore'
-import Tablero from './pantallas/Tablero';
-import CabeceraJuego from './components/CabeceraJuego';
+import PantallaJuego from './pantallas/PantallaJuego';
 import Login from './pantallas/Login';
 import Lobby from './pantallas/Lobby';
 
@@ -23,7 +22,6 @@ const MainLayout = () => {
   if (isGameScreen) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        <CabeceraJuego />
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           <Outlet />
         </main>
@@ -73,7 +71,7 @@ export default function App() {
           {/* RF.12: Representación del Entorno (Mapa de Aragón) */}
           <Route path="partida/:id" element={
             <div style={{ flex: 1, width: '100%', height: '100%' }}>
-              <Tablero />
+              <PantallaJuego />
             </div>
           } />
           {/* RF.05: Perfil y Estadísticas */}

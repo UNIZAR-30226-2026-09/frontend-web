@@ -6,6 +6,12 @@ import { useAuthStore } from '../store/useAuthStore';
 const Lobby = () => {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
+    const logout = useAuthStore((state) => state.logout);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     const [partidas, setPartidas] = useState([
         { id: '101', nombre: 'PRUEBA1', jugadores: 1, maxJugadores: 2, estado: 'Esperando rival' },
@@ -27,7 +33,7 @@ const Lobby = () => {
         // contenedor padre súper grande con fondo negro para centrar todo el tinglado
         <div style={{ width: '100%', height: '100%', backgroundColor: '#0a0a0a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
 
-      // bloque principal que fuerza la pantalla a formato panorámico 16:9
+            {/* bloque principal que fuerza la pantalla a formato panorámico 16:9 */}
             <div style={{
                 position: 'relative',
                 width: '100%',
@@ -38,6 +44,32 @@ const Lobby = () => {
                 backgroundSize: '100% 100%',
                 overflow: 'hidden'
             }}>
+
+                {/* Botón de Cerrar Sesión arriba a la izquierda */}
+                <button
+                    onClick={handleLogout}
+                    style={{
+                        position: 'absolute',
+                        top: '4%',
+                        left: '4%',
+                        padding: '0.6rem 1.2rem',
+                        background: 'rgba(139, 0, 0, 0.8)', // Un granate similar al de "Unirse"
+                        color: 'white',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.9vw',
+                        textTransform: 'uppercase',
+                        zIndex: 10,
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                        transition: 'transform 0.2s',
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    Abandonar Campo
+                </button>
 
                 {/* el botón transparente encima del dibujo de la placa */}
                 <button
@@ -135,7 +167,7 @@ const Lobby = () => {
                     color: 'black',
                     fontSize: '0.9vw'
                 }}>
-                    ID RECLUTA: {user ? user.nombre.toUpperCase() : 'DESCONOCIDO'}
+                    ID RECLUTA: {user ? (user.nombre || user.nombre_usuario || 'DESCONOCIDO').toUpperCase() : 'DESCONOCIDO'}
                 </div>
 
             </div>
