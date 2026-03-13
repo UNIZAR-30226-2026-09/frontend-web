@@ -39,7 +39,7 @@ const Lobby = () => {
                 overflow: 'hidden'
             }}>
 
-                // el botón transparente encima del dibujo de la placa
+                {/* el botón transparente encima del dibujo de la placa */}
                 <button
                     onClick={handleCrearPartida}
                     style={{
@@ -66,7 +66,7 @@ const Lobby = () => {
                     Crear Operación
                 </button>
 
-                // cuadro de scroll invisible por encima del dibujo del pergamino
+                {/* cuadro de scroll invisible por encima del dibujo del pergamino */}
                 <div style={{
                     position: 'absolute',
                     top: '28%',       // lo bajamos un poco para no tapar la chincheta del dibujo
@@ -79,12 +79,12 @@ const Lobby = () => {
                     padding: '0.5rem',
                     overflowY: 'auto', // por si nos llenan los lobbys
                 }}>
-                    // el titular centrado de la hoja
+                    {/* el titular centrado de la hoja */}
                     <h3 style={{ margin: '0 0 0.5rem 0', color: '#3e2723', textAlign: 'center', fontFamily: 'serif', borderBottom: '1px solid #3e2723', paddingBottom: '0.2rem', fontSize: '1.2vw' }}>
                         Órdenes Activas
                     </h3>
 
-                    // cada partida es un recuadro casi transparente tipo tinta
+                    {/* cada partida es un recuadro casi transparente tipo tinta */}
                     {partidas.map((partida) => (
                         <div key={partida.id} style={{
                             background: 'rgba(0, 0, 0, 0.05)', // oscurecemos un poco para separar y ya
@@ -123,7 +123,7 @@ const Lobby = () => {
                     ))}
                 </div>
 
-                // caja temporal pa ver que el usuario viajo bien desde el login
+                {/* caja temporal   para ver que el usuario viajo bien desde el login */}
                 <div style={{
                     position: 'absolute',
                     bottom: '3%',
