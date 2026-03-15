@@ -38,6 +38,8 @@ const Tablero = (props) => {
   const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
   const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
   const tropas = useGameStore((state) => state.tropas);
+  const propietarios = useGameStore((state) => state.propietarios);
+  const coloresJugadores = useGameStore((state) => state.coloresJugadores);
 
   const comarcasCompletas = useMemo(() => {
     return COMARCAS_SVG_DATA.map((svgItem) => {
@@ -142,6 +144,9 @@ const Tablero = (props) => {
           {sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0; // por si alguna colapsa y está vacía
+            
+            const dueño = propietarios ? propietarios[comarca.id] : null;
+            const colorActual = dueño && coloresJugadores && coloresJugadores[dueño] ? coloresJugadores[dueño] : "#555555";
 
             return (
               <FichaTropas
@@ -151,6 +156,7 @@ const Tablero = (props) => {
                 tropas={cantidadTropas}
                 nombreComarca={rawName}
                 zoomScale={zoomScale}
+                colorFondo={colorActual}
               />
             );
           })}

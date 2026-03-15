@@ -1,17 +1,19 @@
 .cabecera-juego {
-    height: 65px;
-    background-color: rgba(30, 30, 30, 0.85);
-    backdrop-filter: blur(4px);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    color: #f0f0f0;
-    border-bottom: 2px solid #b8860b;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 15px 20px;
+  pointer-events: none; /* Let clicks pass through empty areas */
+  z-index: 1000;
+  font-family: 'system-ui', sans-serif;
+}
+
+.cabecera-juego > * {
+  pointer-events: auto; /* Re-enable clicks for actual HUD elements */
 }
 
 .zona-izquierda {
@@ -46,10 +48,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background-color: rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(15, 15, 15, 0.95));
     padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid rgba(184, 134, 11, 0.4);
+    border-radius: 8px;
+    border: 1px solid #b8860b;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
 }
 
 .icono-recurso {
@@ -67,30 +70,44 @@
 }
 
 .zona-centro {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-    flex: 1;
-    justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
 }
 
-.fase-actual-texto {
-    font-size: 1.2rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #e0e0e0;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+.fase-poligono {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(to bottom, rgba(40, 40, 40, 0.95), rgba(20, 20, 20, 0.95));
+  padding: 10px 45px 15px 45px;
+  clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+  position: relative;
+  /* El borde global ahora se hace con drop-shadow via inline style de react */
+}
+
+/* LEFT: indicator (keep them tight and no wrap) */
+.fase-texto {
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0px 2px 2px rgba(0, 0, 0, 0.8);
 }
 
 .btn-siguiente-fase {
     background: linear-gradient(to bottom, #8b6508, #5c4305);
     color: #fff;
     border: 1px solid #d4af37;
-    padding: 8px 24px;
+    padding: 4px 12px;
     border-radius: 4px;
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
@@ -134,8 +151,70 @@
 }
 
 .zona-derecha {
-    flex: 1;
+    position: relative;
     display: flex;
     justify-content: flex-end;
-    align-items: center;
+    align-items: flex-start;
+}
+
+.btn-menu {
+  background: linear-gradient(135deg, rgba(30, 30, 30, 0.95), rgba(15, 15, 15, 0.95));
+  border: 1px solid #b8860b;
+  color: #ffd700;
+  font-size: 24px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+.btn-menu:hover {
+  background: linear-gradient(135deg, rgba(40, 40, 40, 0.95), rgba(20, 20, 20, 0.95));
+  transform: scale(1.05);
+}
+
+.menu-desplegable {
+  position: absolute;
+  top: 55px;
+  right: 0;
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid #b8860b;
+  border-radius: 8px;
+  padding: 8px 0;
+  min-width: 180px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+}
+
+.btn-menu-item {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 12px 20px;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.btn-menu-item:hover {
+  background: rgba(184, 134, 11, 0.2);
+  color: #ffd700;
+}
+
+.btn-rendirse {
+  color: #ff6b6b;
+}
+
+.btn-rendirse:hover {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff8787;
 }

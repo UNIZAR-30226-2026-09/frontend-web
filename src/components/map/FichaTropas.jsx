@@ -1,22 +1,21 @@
 import React from 'react';
 
-const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale }) => {
+const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo }) => {
 
     // calculamos la escala al revés: si el usuario hace mucho zoom, encogemos la ficha
     // así la cosa se lee bien siempre pero no nos cubre todo el css del mapa
-    // le clavamos un math.max para que pare de achicarse y no desaparezca
-    const escalaInversa = Math.max(0.4, 1 / (zoomScale * 0.75));
+    const escalaInversa = Math.max(0.4, 1 / (zoomScale * 0.75)); //math.max para que no se vuelva muy pequeño
 
     return (
         <g
             pointerEvents="none"
             transform={`translate(${cx}, ${cy}) scale(${escalaInversa}) translate(${-cx}, ${-cy})`}
         >
-            {/* el nombre bajadito para que no pise al icono de la tropa */}
+            {/* el nombre mas abajo para que no tape al numero de tropas */}
             {zoomScale > 1.75 && (
                 <text
                     x={cx}
-                    y={cy + 22} /* lo tiramos un poco para abajo para que el ojo descanse */
+                    y={cy + 22}
                     textAnchor="middle"
                     fontWeight="bold"
                     fill="#ffffff"
@@ -31,7 +30,7 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale }) => {
                         pointerEvents: 'none'
                     }}
                 >
-                    {/* chapucilla rápida para partir nombres muy largos en un par de líneas */}
+                    {/* para que se divida en 2 los nombres */}
                     {(() => {
                         const partes = nombreComarca.split(nombreComarca.includes(' ') ? ' ' : '_');
                         let lineas = [];
@@ -51,7 +50,7 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale }) => {
                                 key={i}
                                 x={cx}
                                 dy={i === 0 ? 0 : 10}
-                                fontSize="8.5px" // letra un pelín más enana por si el string se alarga mucho
+                                fontSize="8.5px"
                             >
                                 {linea}
                             </tspan>
@@ -60,29 +59,31 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale }) => {
                 </text>
             )}
 
-            {/* el círculo oscurito donde se pone el número de tropas. levantado de na' */}
+            {/* circulo donde se pone el numero de tropas */}
             <circle
                 cx={cx}
                 cy={cy - 4}
-                r={13} // de 14 bajó a 13 para darle algo de respiro visual
-                fill="rgba(30, 30, 30, 0.9)"
-                stroke="#b8860b"
+                r={13}
+                fill={colorFondo || "rgba(30, 30, 30, 0.9)"}
+                stroke="#ffffffff" // borde del numero de tropas -- cambiar color!!
                 strokeWidth="1.5"
                 filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.6))"
             />
 
-            {/* el dígito gigante en tol centro del círculo */}
+            {/* el umero de tropas */}
             <text
                 x={cx}
                 y={cy - 4}
                 textAnchor="middle"
-                dominantBaseline="central" /* magia negra para centrar en vertical clavado */
+                dominantBaseline="central"
                 fontSize="13px"
                 fontWeight="900"
-                fill="#ffd700" /* doradito para conjuntar el stroke de fuera */
+                fill="#ffffff"
+                stroke="rgba(0,0,0,0.8)"
+                strokeWidth="0.5"
+                paintOrder="stroke fill"
                 style={{
                     fontFamily: 'system-ui, sans-serif',
-                    textShadow: '1px 1px 1px rgba(0,0,0,0.9)'
                 }}
             >
                 {tropas}

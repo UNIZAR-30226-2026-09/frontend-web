@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import './CabeceraJuego.css';
 
@@ -21,7 +21,8 @@ const CabeceraJuego = () => {
         faseActual,
         avanzarFase,
         tropas,
-        propietarios
+        propietarios,
+        coloresJugadores
     } = useGameStore();
 
     // sumamos las tropas que guardamos de sobra con las que ya están repartidas por ahí
@@ -40,9 +41,28 @@ const CabeceraJuego = () => {
 
     // no dejamos que pase el turno si todavía tiene tropas sin colocar en la mochila
     const isSiguienteBloqueado = isFaseDespliegue && tropasDisponibles > 0;
+    const turnPlayerColor = coloresJugadores && coloresJugadores['jugador1'] ? coloresJugadores['jugador1'] : '#b8860b'; // TODO: leer el jugador en turno actual real
+
+    const [menuAbierto, setMenuAbierto] = useState(false);
+
+    const toggleMenu = () => {
+        setMenuAbierto(!menuAbierto);
+    };
+
+    const handleRendirse = () => {
+        console.log("Rendirse");
+        setMenuAbierto(false);
+    };
+
+    const handleVolverSala = () => {
+        console.log("Volver a la Sala");
+        setMenuAbierto(false);
+    };
 
     return (
-        <header className="cabecera-juego">
+        <header
+            className="cabecera-juego"
+        >
             <div className="zona-izquierda">
                 <div className="indicador" title="Dinero">
                     <img src="/public/moneda.png" alt="Moneda" className="icono-recurso" />
@@ -55,27 +75,43 @@ const CabeceraJuego = () => {
             </div>
 
             <div className="zona-centro">
-                <div className="fase-actual-texto">
-                    {formatearFase(faseActual)}
-                </div>
-                <button
-                    className={`btn-siguiente-fase ${isUltimaFase ? 'btn-finalizar-turno' : ''} ${isSiguienteBloqueado ? 'btn-bloqueado' : ''}`}
-                    onClick={avanzarFase}
-                    disabled={isSiguienteBloqueado}
-                    title={isSiguienteBloqueado ? "Despliega todas tus tropas antes de avanzar" : ""}
+                <div
+                    style={{
+                        clipPath: 'polygon(0 0, 100% 0, 90% 100%, 10% 100%)',
+                        background: turnPlayerColor,
+                        padding: '0px 3px 3px 3px', /* grosor del borde */
+                        display: 'inline-block',
+                    }}
                 >
-                    {isUltimaFase ? "Finalizar Turno" : "Siguiente Fase"}
-                </button>
+                    <div className="fase-poligono">
+                        <span className="fase-texto" style={{ color: turnPlayerColor }}>{formatearFase(faseActual)}</span>
+                        <button
+                            className={`btn-siguiente-fase ${isUltimaFase ? 'btn-finalizar-turno' : ''} ${isSiguienteBloqueado ? 'btn-bloqueado' : ''}`}
+                            onClick={avanzarFase}
+                            disabled={isSiguienteBloqueado}
+                            title={isSiguienteBloqueado ? "Despliega todas tus tropas antes de avanzar" : ""}
+                        >
+                            {isUltimaFase ? "NUEVO TURNO" : "AVANZAR"}
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="zona-derecha">
-                <button
-                    className="btn-ajustes"
-                    onClick={() => console.log("Volver al lobby")}
-                    title="Ajustes / Salir"
-                >
-                    <img src="/public/ajustes.png" alt="Ajustes" />
+                <button className="btn-menu" onClick={toggleMenu}>
+                    ≡
                 </button>
+
+                {menuAbierto && (
+                    <div className="menu-desplegable">
+                        <button className="btn-menu-item btn-rendirse" onClick={handleRendirse}>
+                            Rendirse
+                        </button>
+                        <button className="btn-menu-item" onClick={handleVolverSala}>
+                            Volver a la Sala
+                        </button>
+                    </div>
+                )}
             </div>
         </header>
     );
