@@ -1,0 +1,147 @@
+.control-despliegue-container {
+  position: absolute;
+  top: 140px;
+  left: 20px;
+  background-color: var(--color-ui-bg-secondary);
+  backdrop-filter: blur(4px);
+  border: 2px solid var(--color-border-bronze);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) 20px;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 250px;
+}
+
+.control-despliegue-header {
+  margin: 0;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--color-border-gold);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+  text-align: center;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.3);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.despliegue-global-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--color-text-primary);
+  padding-bottom: 10px;
+  border-bottom: 2px dashed rgba(240, 240, 245, 0.2);
+}
+
+.refuerzos-pendientes-num {
+  font-size: 24px;
+  color: var(--color-state-success);
+  text-shadow: 0 0 8px rgba(56, 142, 60, 0.6);
+}
+
+.refuerzos-pendientes-num.agotados {
+  color: var(--color-state-danger);
+  text-shadow: none;
+}
+
+.despliegue-hint {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-top: 5px;
+}
+
+.despliegue-box-activa {
+  display: flex;
+  flex-direction: column;
+}
+
+.control-despliegue-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.despliegue-input-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--color-border-bronze);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.despliegue-btn-math {
+  background: var(--color-ui-bg-primary);
+  color: var(--color-text-primary);
+  border: none;
+  padding: var(--spacing-sm) 12px;
+  font-size: var(--font-size-md);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.despliegue-btn-math:hover:not(:disabled) {
+  background: var(--color-border-bronze);
+}
+
+.despliegue-btn-math:disabled {
+  color: var(--color-border-bronze);
+  cursor: not-allowed;
+}
+
+.despliegue-input {
+  width: 50px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: bold;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.despliegue-input::-webkit-outer-spin-button,
+.despliegue-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.despliegue-btn-confirmar {
+  background-color: var(--color-state-success);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-state-success);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.despliegue-btn-confirmar:hover:not(:disabled) {
+  background-color: var(--color-state-success);
+  filter: brightness(1.1);
+  box-shadow: 0 0 8px rgba(56, 142, 60, 0.6);
+}
+
+.despliegue-btn-confirmar:disabled {
+  background-color: var(--color-ui-bg-primary);
+  border-color: var(--color-state-disabled);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}

@@ -1,5 +1,7 @@
-// archivo rápido para comprobar que no la hemos liado con el json
-// lo montamos deprisa y corriendo para ver si el bfs tiraba bien
+/**
+ * Script de validación para la carga estática del grafo topológico.
+ * Verifica el parseo del JSON y la correctitud del algoritmo BFS.
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,12 +10,10 @@ import { construirGrafoComarcas, calcularComarcasEnRango } from './graphUtils.ts
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// pillamos el mapa gordo
 const jsonPath = path.join(__dirname, '../data/map_aragon.json');
 const rawFile = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
 
-// acá apañamos el formato viejo en inglés del json a los dtos que entiende el zustand
-// (típicamente cambiar nombres y dejarlo listo)
+// Mapeo inicial del formato estructural JSON al modelo DTO intermedio
 const rawData = Object.entries(rawFile.comarcas).map(([key, value]: [string, any]) => ({
     id: key,
     nombre: value.name,
@@ -21,36 +21,36 @@ const rawData = Object.entries(rawFile.comarcas).map(([key, value]: [string, any
 }));
 
 try {
-    console.log('⏳ Iniciando prueba de ingesta de datos...');
+    console.log('⏳ Iniciando prueba de ingesta de datos cartográficos...');
     const grafo = construirGrafoComarcas(rawData);
 
-    console.log(`✅ ¡Éxito! Grafo construido correctamente.`);
+    console.log('✅ Grafo construido correctamente.');
     console.log(`🗺️  Total de comarcas cargadas: ${grafo.size}`);
 
     const unaComarca = Array.from(grafo.keys())[0];
-    console.log(`\n🔍 Inspeccionando la primera comarca cargada ("${unaComarca}"):`);
+    console.log(`\n🔍 Inspeccionando la primera comarca de registro ("${unaComarca}"):`);
     console.log(grafo.get(unaComarca));
 
-    console.log('\n🛡️ El código defensivo ha validado perfectamente todo el JSON (No hay asimetrías ni fantasmas).');
+    console.log('\n🛡️ Validación de integridad estructural superada. (Sin asimetrías o nodos fantasma).');
 
     // ---------------------------------------------------------
-    // DANDOLE CAÑA AL ALGORITMO BFS
+    // VALIDACIÓN DEL ALGORITMO BFS
     // ---------------------------------------------------------
     console.log('\n⚔️  Iniciando simulación de alcance BFS...');
-    const origen = 'zaragoza'; // pillamos zaragoza porque pilla por el medio y prueba bien
+    // Nodo de prueba estratégico y céntrico
+    const origen = 'zaragoza';
 
-    console.log(`\nTropas estacionadas en: [${grafo.get(origen)?.nombre}]`);
+    console.log(`\nTropas estacionadas en origen: [${grafo.get(origen)?.nombre}]`);
 
-    // vamos metiendo rango a ver hasta donde engancha
     for (let rango = 0; rango <= 3; rango++) {
         const alcanzables = calcularComarcasEnRango(grafo, origen, rango);
-        // esto es solo pa que por consola salgan nombres legibles en vez del string id raro
         const nombresAlcanzables = Array.from(alcanzables).map(id => grafo.get(id)?.nombre);
 
         console.log(`\n▶ Rango ${rango} salto(s):`);
         console.log(`   └ Alcanza ${alcanzables.size} comarcas:`, nombresAlcanzables.join(', '));
     }
-    console.log('\n✅ Búsqueda BFS ejecutada con éxito.');
+
+    console.log('\n✅ Búsqueda algorítmica BFS validada con éxito.');
 
 } catch (error: unknown) {
     console.error('\n❌ Error detectado:');

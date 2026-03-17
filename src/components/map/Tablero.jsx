@@ -1,4 +1,3 @@
-// src/Tablero.jsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
 import { zoom } from 'd3-zoom';
@@ -12,6 +11,12 @@ import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA } from '../../data/comarcasSvg';
 import mapData from '../../data/map_aragon.json';
 
+/**
+ * Lienzo principal del juego que renderiza el mapa SVG, el zoom interactivo y sus marcadores de tropas.
+ *
+ * @param {Object} props
+ * @returns {JSX.Element} El contenedor DOM con el SVG interactivo.
+ */
 const Tablero = (props) => {
   const [hovered, setHovered] = useState(null);
   const [zoomScale, setZoomScale] = useState(1);
@@ -20,7 +25,6 @@ const Tablero = (props) => {
 
   const inicializarJuego = useGameStore((state) => state.inicializarJuego);
   const setFase = useGameStore((state) => state.setFase);
-
   const limpiarSeleccion = useGameStore((state) => state.limpiarSeleccion);
 
   useEffect(() => {
@@ -55,11 +59,9 @@ const Tablero = (props) => {
   }, []);
 
   /**
-   * super hack visual.
-   * un sort() que reordena todo el array de dom elements cada vez que cambia el estado
-   * para escupir al final (arriba del todo en el SVG-Z-index) lo que esté seleccionado
-   * o hovereado. evita que el stroke blanco se corte o que una comarca chiquita quede
-   * tapada por una provincia gorda.
+   * Ordena las comarcas para dibujarlas al final del DOM SVG y que queden visualmente superpuestas.
+   * Se da prioridad a la comarca bajo el ratón, y luego a las que estén resaltadas por acciones tácticas.
+   * Esto previene el clásico bug de SVGs donde los bordes resaltados se esconden bajo provincias vecinas.
    */
   const sortedComarcas = [...comarcasCompletas].sort((a, b) => {
     const aSelected = origenSeleccionado === a.id || destinoSeleccionado === a.id || comarcasResaltadas.includes(a.id);
@@ -68,11 +70,22 @@ const Tablero = (props) => {
     const aHovered = hovered === a.id;
     const bHovered = hovered === b.id;
 
-    const aScore = aHovered ? 2 : (aSelected ? 1 : 0);
-    const bScore = bHovered ? 2 : (bSelected ? 1 : 0);
+    let aScore = 0;
+    if (aHovered) {
+      aScore = 2;
+    } else if (aSelected) {
+      aScore = 1;
+    }
+
+    let bScore = 0;
+    if (bHovered) {
+      bScore = 2;
+    } else if (bSelected) {
+      bScore = 1;
+    }
+
     return aScore - bScore;
   });
-
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
@@ -81,23 +94,24 @@ const Tablero = (props) => {
     const gElement = select(gRef.current);
 
     const zoomBehavior = zoom()
-      .scaleExtent([1, 5]) // que no te deje hacer zoom out de más
+      .scaleExtent([1, 5])
       .translateExtent([
-        [-400, -250], // tope arriba a la izquierda
-        [50, 300]     // tope abajo a la derecha
+        [-400, -250],
+        [50, 300]
       ])
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
         setZoomScale(evento.transform.k);
       });
 
-    // quitamos lo del doble click porque molesta al jugar rápido
-    svgElement.call(zoomBehavior).on("dblclick.zoom", null);
+    // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
+    svgElement.call(zoomBehavior).on('dblclick.zoom', null);
   }, []);
 
   /**
-   * esto salva la UX general. cuando fallas el click en el mapa en vez de dar a una 
-   * provincia y clicas "al agua", ejecutamos limpiarSeleccion() del state manager global.
+   * Deselecciona cualquier provincia activa si el jugador hace clic al vacío del mapa.
+   * Comprueba que el origen del clic sea el fondo estructural (rect, image, svg) y no un trazado.
+   * @param {Event} e
    */
   const handleFondoClick = (e) => {
     if (e.target.tagName === 'svg' || e.target.tagName === 'image' || e.target.tagName === 'rect') {
@@ -110,10 +124,7 @@ const Tablero = (props) => {
       position: 'relative',
       width: '100%',
       height: '100%',
-      backgroundImage: 'url(/file.svg)',
-      backgroundSize: '100% 100%',
-      backgroundPosition: 'center',
-      backgroundColor: '#111'
+      backgroundColor: 'var(--color-map-ocean)'
     }}>
       <svg
         ref={svgRef}
@@ -124,17 +135,24 @@ const Tablero = (props) => {
         style={{ width: '100%', height: '100%', cursor: 'grab' }}
       >
         <g ref={gRef}>
-
           <rect
             x="-2000"
             y="-2000"
             width="4000"
             height="4000"
             fill="transparent"
-            style={{ pointerEvents: 'auto', cursor: 'default' }} // para que reconozca el clic si fallas a la comarca
+            style={{ pointerEvents: 'auto', cursor: 'default' }}
           />
 
-          {/* PRIMER BUCLE: dibujamos las formas del terreno primero para que queden abajo */}
+          <image
+            href="/file.svg"
+            x="-400"
+            y="-250"
+            width="550"
+            height="400"
+            preserveAspectRatio="none"
+          />
+
           {sortedComarcas.map((comarca) => (
             <ComarcaPath
               key={`path-${comarca.id}`}
@@ -147,13 +165,15 @@ const Tablero = (props) => {
             />
           ))}
 
-          {/* SEGUNDO BUCLE: ponemos los carteles encima para que no se tapen */}
           {sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
-            const cantidadTropas = tropas[comarca.id] || 0; // por si alguna colapsa y está vacía
-
+            const cantidadTropas = tropas[comarca.id] || 0;
             const dueño = propietarios ? propietarios[comarca.id] : null;
-            const colorActual = dueño && coloresJugadores && coloresJugadores[dueño] ? coloresJugadores[dueño] : "#555555";
+
+            let colorActual = 'var(--color-state-disabled)';
+            if (dueño && coloresJugadores && coloresJugadores[dueño]) {
+              colorActual = coloresJugadores[dueño];
+            }
 
             return (
               <FichaTropas

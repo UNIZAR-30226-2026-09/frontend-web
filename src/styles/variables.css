@@ -1,0 +1,67 @@
+/* ==============================================================
+   VARIABLES GLOBALES DE DISEÑO - SOBERANÍA
+   ============================================================== */
+:root {
+    /* --- UI BASE --- */
+    --color-ui-bg-primary: #1a1a24;
+    --color-ui-bg-secondary: #252530;
+    --color-ui-panel-overlay: rgba(26, 26, 36, 0.85);
+    /* Fondos modales/HUD */
+
+    --color-border-gold: #c5a059;
+    --color-border-bronze: #8c6d3f;
+
+    --color-text-primary: #f0f0f5;
+    --color-text-secondary: #a0a0b0;
+
+    /* --- ESTADOS DE UI --- */
+    --color-state-success: #388e3c;
+    --color-state-danger: #d32f2f;
+    --color-state-disabled: #616161;
+
+    /* --- COLORES DE FACCIÓN / JUGADORES --- */
+    --color-jugador-1: #2b5b84;
+    /* Azul naval */
+    --color-jugador-2: #8b2525;
+    /* Rojo carmesí */
+    --color-jugador-3: #3a6b35;
+    /* Verde oliva */
+    --color-jugador-4: #b89947;
+    /* Amarillo ocre */
+
+    /* --- MAPA --- */
+    --color-map-land-neutral: #d4c4a8;
+    --color-map-ocean: #111118;
+    --color-map-select-origin: #e6b800;
+    --color-map-select-target: #e63946;
+
+    /* --- TIPOGRAFÍA --- */
+    /* Reemplaza con tus fuentes importadas de Google Fonts si es necesario */
+    --font-family-base: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+    --font-family-title: 'Cinzel', 'Playfair Display', serif;
+
+    --font-size-sm: 0.875rem;
+    /* ~14px */
+    --font-size-md: 1rem;
+    /* ~16px */
+    --font-size-lg: 1.25rem;
+    /* ~20px */
+    --font-size-xl: 1.5rem;
+    /* ~24px */
+
+    /* --- ESPACIADOS Y BORDES --- */
+    --spacing-xs: 0.25rem;
+    /* ~4px */
+    --spacing-sm: 0.5rem;
+    /* ~8px */
+    --spacing-md: 1rem;
+    /* ~16px */
+    --spacing-lg: 1.5rem;
+    /* ~24px */
+    --spacing-xl: 2rem;
+    /* ~32px */
+
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+}

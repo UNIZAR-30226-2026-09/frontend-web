@@ -1,0 +1,71 @@
+/* ==========================================================================
+   Overlay Modal de Animación de Refuerzos
+   ========================================================================== */
+.animacion-refuerzos-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 5000;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.animacion-refuerzos-overlay.visible {
+  opacity: 1;
+}
+
+.animacion-refuerzos-modal {
+  background: var(--color-ui-panel-overlay);
+  border: 3px solid var(--color-border-gold);
+  border-radius: var(--radius-lg);
+  padding: 40px 60px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(197, 160, 89, 0.4);
+  transform: scale(0.8);
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+}
+
+.animacion-refuerzos-overlay.visible .animacion-refuerzos-modal {
+  transform: scale(1);
+}
+
+.animacion-refuerzos-modal h2 {
+  margin: 0 0 15px 0;
+  font-size: var(--font-size-xl);
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.refuerzos-numero {
+  font-size: 80px;
+  font-weight: 900;
+  color: var(--color-border-gold);
+  text-shadow: 0 2px 10px rgba(197, 160, 89, 0.5), 2px 4px 6px rgba(0, 0, 0, 0.8);
+  margin: 10px 0;
+  line-height: 1;
+}
+
+.animacion-refuerzos-modal p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  margin: 10px 0 25px 0;
+}
+
+.refuerzos-instrucciones {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-bronze);
+}

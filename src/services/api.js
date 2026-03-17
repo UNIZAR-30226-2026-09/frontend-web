@@ -1,9 +1,17 @@
-// src/services/api.js (o src/config/api.js)
+// src/services/api.js
 
-// Pillamos la URL de las variables de entorno de Vite
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-// Función helper para no repetir código en cada petición (fetch)
+/**
+ * Envoltorio base para realizar peticiones HTTP al servidor.
+ * Centraliza la inyección del token de autorización (JWT) y el manejo unificado de errores,
+ * evitando así tener que repetir la misma lógica fetch en cada componente o capa de datos.
+ *
+ * @param {string} endpoint - La ruta a consultar (ej. '/v1/usuarios/login').
+ * @param {RequestInit} [options={}] - Objeto de configuración nativo de fetch (method, body, etc.).
+ * @returns {Promise<any>} Promesa que resuelve con la respuesta parseada de JSON.
+ * @throws {Error} Lanza error con el mensaje del backend si la respuesta HTTP no es OK (ej. 401, 500).
+ */
 export const fetchApi = async (endpoint, options = {}) => {
     const url = `${API_URL}${endpoint}`;
     const token = localStorage.getItem('soberania_token');
@@ -13,14 +21,12 @@ export const fetchApi = async (endpoint, options = {}) => {
         ...options.headers,
     };
 
-    // Si tenemos token de sesión, lo mandamos en la cabecera
     if (token) {
-        headers['Authorization'] = `Bearer ${token}`; // Asegúrate de que tu back use este formato
+        headers['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, { ...options, headers });
 
-    // Si la respuesta no es OK (ej: 401, 500...), lanzamos error para cazarlo en el componente
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Error HTTP: ${response.status}`);

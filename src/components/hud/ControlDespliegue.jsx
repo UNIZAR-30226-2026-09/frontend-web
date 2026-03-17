@@ -1,8 +1,12 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
-import './ControlDespliegue.css';
+import '../../styles/ControlDespliegue.css';
 import mapData from '../../data/map_aragon.json';
 
+/**
+ * Panel para asignar tropas de refuerzo a un territorio.
+ * @returns {JSX.Element|null} El control de despliegue.
+ */
 const ControlDespliegue = () => {
     const comarcaDespliegue = useGameStore((state) => state.comarcaDespliegue);
     const tropasAAsignar = useGameStore((state) => state.tropasAAsignar);
@@ -12,10 +16,15 @@ const ControlDespliegue = () => {
     const faseActual = useGameStore((state) => state.faseActual);
 
     if (faseActual !== 'DESPLIEGUE') {
-        return null; // lo escondemos si no estamos en el turno de poner los refuerzos
+        // Ocultar si no es fase de despliegue
+        return null;
     }
 
-    const nombreComarca = comarcaDespliegue ? (mapData.comarcas[comarcaDespliegue]?.name || comarcaDespliegue) : '';
+    // Obtener nombre de la comarca
+    let nombreComarca = '';
+    if (comarcaDespliegue) {
+        nombreComarca = mapData.comarcas[comarcaDespliegue]?.name || comarcaDespliegue;
+    }
 
     const handleValidChange = (e) => {
         let val = parseInt(e.target.value, 10);
@@ -37,59 +46,71 @@ const ControlDespliegue = () => {
         }
     };
 
+    let clasesPendientes = 'refuerzos-pendientes-num';
+    if (tropasDisponibles === 0) {
+        clasesPendientes += ' agotados';
+    }
+
+    let hintUI = null;
+    if (!comarcaDespliegue && tropasDisponibles > 0) {
+        hintUI = <div className="despliegue-hint">Selecciona un territorio azul para desplegar</div>;
+    }
+
+    let controlesUI = null;
+    if (comarcaDespliegue) {
+        controlesUI = (
+            <div className="despliegue-box-activa">
+                <h3 className="control-despliegue-header">Desplegar en {nombreComarca}</h3>
+
+                <div className="control-despliegue-body">
+                    <div className="despliegue-input-group">
+                        <button
+                            className="despliegue-btn-math"
+                            onClick={decrementar}
+                            disabled={tropasAAsignar <= 0}
+                        >
+                            -
+                        </button>
+                        <input
+                            type="number"
+                            className="despliegue-input"
+                            value={tropasAAsignar}
+                            onChange={handleValidChange}
+                            min="0"
+                            max={tropasDisponibles}
+                        />
+                        <button
+                            className="despliegue-btn-math"
+                            onClick={incrementar}
+                            disabled={tropasAAsignar >= tropasDisponibles}
+                        >
+                            +
+                        </button>
+                    </div>
+
+                    <button
+                        className="despliegue-btn-confirmar"
+                        onClick={confirmarDespliegue}
+                        disabled={tropasAAsignar === 0}
+                    >
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="control-despliegue-container">
             <div className="despliegue-global-info">
                 <span>Refuerzos Pendientes:</span>
-                <span className={`refuerzos-pendientes-num ${tropasDisponibles === 0 ? 'agotados' : ''}`}>
+                <span className={clasesPendientes}>
                     {tropasDisponibles}
                 </span>
             </div>
 
-            {!comarcaDespliegue && tropasDisponibles > 0 && (
-                <div className="despliegue-hint">Selecciona un territorio azul para desplegar</div>
-            )}
-
-            {comarcaDespliegue && (
-                <div className="despliegue-box-activa">
-                    <h3 className="control-despliegue-header">Desplegar en {nombreComarca}</h3>
-
-                    <div className="control-despliegue-body">
-                        <div className="despliegue-input-group">
-                            <button
-                                className="despliegue-btn-math"
-                                onClick={decrementar}
-                                disabled={tropasAAsignar <= 0}
-                            >
-                                -
-                            </button>
-                            <input
-                                type="number"
-                                className="despliegue-input"
-                                value={tropasAAsignar}
-                                onChange={handleValidChange}
-                                min="0"
-                                max={tropasDisponibles}
-                            />
-                            <button
-                                className="despliegue-btn-math"
-                                onClick={incrementar}
-                                disabled={tropasAAsignar >= tropasDisponibles}
-                            >
-                                +
-                            </button>
-                        </div>
-
-                        <button
-                            className="despliegue-btn-confirmar"
-                            onClick={confirmarDespliegue}
-                            disabled={tropasAAsignar === 0}
-                        >
-                            Confirmar
-                        </button>
-                    </div>
-                </div>
-            )}
+            {hintUI}
+            {controlesUI}
         </div>
     );
 };

@@ -1,102 +1,103 @@
 import { ComarcaDTO, GrafoSoberania, NodoComarca } from '../types/mapa.types';
 
 /**
- * coge el json en bruto y monta el mapa validando que las conexiones cuadren.
- * es una pieza super obligatoria del diseño del software para hacer check-sanity y
- * comprobar que el grafo es bidireccional y robusto.
- * @param {Array} rawData los datos que vienen del backend o del json local
- * @returns {Map} el diccionario del grafo ya montado listo para usar con los algoritmos
+ * Procesa el conjunto de datos cartográficos crudos y construye un grafo bidireccional,
+ * validando la integridad referencial y las simetrías entre entidades a nivel estructural.
+ *
+ * @param {ComarcaDTO[]} rawData - Colección de nodos obtenidos de las transferencias de red o JSON embebidos.
+ * @returns {GrafoSoberania} Estructura de mapa transitable en memoria para los algoritmos.
+ * @throws {Error} Si detecta dependencias circulares, identificadores duplicados o asimetría en las aristas.
  */
 export function construirGrafoComarcas(rawData: ComarcaDTO[]): GrafoSoberania {
-    const grafo: GrafoSoberania = new Map();
+  const grafo: GrafoSoberania = new Map();
 
-    for (const dto of rawData) {
-        if (grafo.has(dto.id)) { // aseguramos que no se cuelen dos comarcas con la misma id
-            throw new Error(`Integridad fallida: ID de comarca duplicado (${dto.id}).`);
-        }
-
-        const nodo: NodoComarca = {
-            id: dto.id,
-            nombre: dto.nombre,
-            adyacentes: [...dto.adyacentes], // hacemos copia honda para no pisar el original sin querer
-        };
-
-        grafo.set(dto.id, nodo);
+  for (const dto of rawData) {
+    if (grafo.has(dto.id)) {
+      throw new Error(`Integridad fallida: ID de comarca duplicado (${dto.id}).`);
     }
 
-    // pasamos el control de calidad cruzando datos
-    for (const [id, nodo] of grafo) {
-        for (const adyacenteId of nodo.adyacentes) {
-            if (!grafo.has(adyacenteId)) { // comprobamos que la comarca vecina existe de verdad
-                throw new Error(
-                    `Grafo inválido: [${nodo.nombre}] apunta a [${adyacenteId}] inexistente.`
-                );
-            }
+    const nodo: NodoComarca = {
+      id: dto.id,
+      nombre: dto.nombre,
+      adyacentes: [...dto.adyacentes],
+    };
 
-            const vecino = grafo.get(adyacenteId)!;
-            if (!vecino.adyacentes.includes(id)) { // revisamos que las carreteras entre comarcas sean de doble sentido
-                throw new Error(
-                    `Grafo asimetrico entre [${nodo.nombre}] y [${vecino.nombre}].`
-                );
-            }
+    grafo.set(dto.id, nodo);
+  }
 
-            if (id === adyacenteId) { // evitamos que una comarca haga frontera consigo misma
-                throw new Error(
-                    `Auto-referencia no valida: [${nodo.nombre}].`
-                );
-            }
-        }
+  // Validación de calidad cruzando datos para evitar grafos corruptos
+  for (const [id, nodo] of grafo) {
+    for (const adyacenteId of nodo.adyacentes) {
+      if (!grafo.has(adyacenteId)) {
+        throw new Error(
+          `Grafo inválido: [${nodo.nombre}] apunta a [${adyacenteId}] inexistente.`
+        );
+      }
+
+      const vecino = grafo.get(adyacenteId)!;
+      if (!vecino.adyacentes.includes(id)) {
+        throw new Error(
+          `Grafo asimétrico entre [${nodo.nombre}] y [${vecino.nombre}].`
+        );
+      }
+
+      if (id === adyacenteId) {
+        throw new Error(
+          `Auto-referencia no válida: [${nodo.nombre}].`
+        );
+      }
     }
+  }
 
-    return grafo;
+  return grafo;
 }
 
 /**
- * algoritmo típico de bfs para ver hasta dónde llegamos desde una comarca inicial.
- * básicamente implementa teoría de grafos pura con una cola de tipo LIFO para explorar
- * el array de vecinos hasta llegar al nivel máximo de profundidad pautado (rango).
- * super útil para calcular alcances, o pathfinding simplote más adelante.
+ * Implementación de Búsqueda en Anchura (BFS) para determinar la topología
+ * de alcance permisible partiendo de un origen, según el límite de movilidad del estado del juego.
  * 
- * @param {Map} grafo el mapa bidireccional que inicializamos antes en el backend
- * @param {string} origenId desde dónde empezamos (id de la comarca, string feo en lowercase)
- * @param {number} rangoMaximo la cantidad de saltos por arista que permitimos antes de parar
- * @returns {Set} un set de javascript plano (sin orden) de todas las IDs accesibles
+ * @param {GrafoSoberania} grafo - Mapa estructurado de nodos y aristas validadas.
+ * @param {string} origenId - Identificador del nodo raíz de exploración.
+ * @param {number} rangoMaximo - Nivel máximo de profundidad permitido para las fronteras topológicas.
+ * @returns {Set<string>} Conjunto único conteniendo los identificadores de todos los nodos alcanzables.
+ * @throws {Error} Si el origen proporcionado no existe en el grafo actual.
  */
 export function calcularComarcasEnRango(
-    grafo: GrafoSoberania,
-    origenId: string,
-    rangoMaximo: number
+  grafo: GrafoSoberania,
+  origenId: string,
+  rangoMaximo: number
 ): Set<string> {
-    if (!grafo.has(origenId)) {
-        throw new Error(`El origen (${origenId}) no existe en el grafo.`);
-    }
+  if (!grafo.has(origenId)) {
+    throw new Error(`El origen (${origenId}) no existe en el grafo.`);
+  }
 
-    const visitados = new Set<string>();
-    visitados.add(origenId);
+  const visitados = new Set<string>();
+  visitados.add(origenId);
 
-    if (rangoMaximo === 0) {
-        return visitados;
-    }
-
-    const cola: [string, number][] = [[origenId, 0]];
-
-    while (cola.length > 0) {
-        const [idActual, distanciaAcumulada] = cola.shift()!;
-        const nodoActual = grafo.get(idActual)!;
-
-        for (const vecinoId of nodoActual.adyacentes) {
-            if (!visitados.has(vecinoId)) {
-                visitados.add(vecinoId);
-                const nuevaDistancia = distanciaAcumulada + 1;
-
-                if (nuevaDistancia < rangoMaximo) {
-                    cola.push([vecinoId, nuevaDistancia]);
-                }
-            }
-        }
-    }
-
-    visitados.delete(origenId); // borramos el origen porque no nos podemos atacar a nosotros mismos
-
+  if (rangoMaximo === 0) {
     return visitados;
+  }
+
+  const cola: [string, number][] = [[origenId, 0]];
+
+  while (cola.length > 0) {
+    const [idActual, distanciaAcumulada] = cola.shift()!;
+    const nodoActual = grafo.get(idActual)!;
+
+    for (const vecinoId of nodoActual.adyacentes) {
+      if (!visitados.has(vecinoId)) {
+        visitados.add(vecinoId);
+        const nuevaDistancia = distanciaAcumulada + 1;
+
+        if (nuevaDistancia < rangoMaximo) {
+          cola.push([vecinoId, nuevaDistancia]);
+        }
+      }
+    }
+  }
+
+  // Se excluye el nodo de origen del conjunto resultante
+  visitados.delete(origenId);
+
+  return visitados;
 }
