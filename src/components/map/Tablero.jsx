@@ -106,7 +106,15 @@ const Tablero = (props) => {
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      backgroundImage: 'url(/file.svg)',
+      backgroundSize: '100% 100%',
+      backgroundPosition: 'center',
+      backgroundColor: '#111'
+    }}>
       <svg
         ref={svgRef}
         xmlns="http://www.w3.org/2000/svg"
@@ -117,13 +125,12 @@ const Tablero = (props) => {
       >
         <g ref={gRef}>
 
-          <image
-            href="/file.svg"
-            x="-550"
-            y="-350"
-            width="750"
-            height="750"
-            preserveAspectRatio="xMidYMid slice"
+          <rect
+            x="-2000"
+            y="-2000"
+            width="4000"
+            height="4000"
+            fill="transparent"
             style={{ pointerEvents: 'auto', cursor: 'default' }} // para que reconozca el clic si fallas a la comarca
           />
 
@@ -144,7 +151,7 @@ const Tablero = (props) => {
           {sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0; // por si alguna colapsa y está vacía
-            
+
             const dueño = propietarios ? propietarios[comarca.id] : null;
             const colorActual = dueño && coloresJugadores && coloresJugadores[dueño] ? coloresJugadores[dueño] : "#555555";
 

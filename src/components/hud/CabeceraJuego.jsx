@@ -98,7 +98,7 @@ const CabeceraJuego = () => {
             </div>
 
             <div className="zona-derecha">
-                <button className="btn-menu" onClick={toggleMenu}>
+                <button className="btn-menu" onClick={toggleMenu} style={{ display: 'flex', flexDirection: 'column', gap: '5px', backgroundColor: 'rgba(0,0,0,0.8)', border: '2px solid #e0c097', borderRadius: '4px', cursor: 'pointer', padding: '10px', marginRight: '3rem' }}>
                     ≡
                 </button>
 
