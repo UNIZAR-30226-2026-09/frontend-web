@@ -43,6 +43,9 @@ export interface EstadoJuego {
     // Almacena los identificadores de comarcas a destacar visualmente (alcance)
     comarcasResaltadas: string[];
 
+    // Región bajo el puntero del jugador (modo REGIONES)
+    regionHover: string | null;
+
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.
      * @param {import('./mapa.types').ComarcaDTO[]} rawData JSON de entrada bruto.
@@ -98,6 +101,13 @@ export interface EstadoJuego {
      * Elimina cualquier bloque de origen/destino y resetea las superposiciones visuales del radio.
      */
     limpiarSeleccion: () => void;
+
+    /**
+     * Actualiza la región que el jugador tiene actualmente bajo el puntero del ratón,
+     * o la limpia cuando el cursor sale del mapa.
+     * @param {string | null} regionId Identificador de la región o null para limpiar.
+     */
+    setRegionHover: (regionId: string | null) => void;
 
     /**
      * Conmuta la fase actual procesando secuencialmente el bucle de eventos del juego.

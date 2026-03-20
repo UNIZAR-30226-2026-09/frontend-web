@@ -23,6 +23,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     origenSeleccionado: null,
     destinoSeleccionado: null,
     comarcasResaltadas: [],
+    regionHover: null,
     comarcaDespliegue: null,
     tropasAAsignar: 0,
     mostrarAnimacionRefuerzos: false,
@@ -36,6 +37,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     toggleModoVista: () => set((state) => ({
         modoVista: state.modoVista === 'COMARCAS' ? 'REGIONES' : 'COMARCAS'
     })),
+
+    /**
+     * Registra la región bajo el cursor del jugador para mostrar el panel de estadísticas.
+     * @param {string | null} regionId - ID de la región activa, o null para limpiarla.
+     */
+    setRegionHover: (regionId: string | null) => set({ regionHover: regionId }),
 
     /**
      * Limpia cualquier selección activa de tropas o comarcas para evitar cruces impredecibles

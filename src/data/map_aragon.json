@@ -77,7 +77,7 @@
     },
     "comarcas": {
         "la_jacetania": {
-            "name": "la_jacetania",
+            "name": "La Jacetania",
             "region_id": "frontera_pirenaica",
             "adjacent_to": [
                 "alto_gallego",
@@ -125,7 +125,7 @@
             ]
         },
         "la_ribagorza": {
-            "name": "la_ribagorza",
+            "name": "La Ribagorza",
             "region_id": "estepas_y_condados",
             "adjacent_to": [
                 "sobrarbe",

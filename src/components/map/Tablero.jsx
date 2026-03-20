@@ -11,11 +11,61 @@ import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA } from '../../data/comarcasSvg';
 import mapData from '../../data/map_aragon.json';
 
+// Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
+const JUGADOR_LOCAL = 'jugador1';
+
+/**
+ * Agrupa las comarcas por región, calcula el dominio del jugador local
+ * y devuelve las coordenadas del centro geográfico de cada región para
+ * pintar la etiqueta SVG directamente sobre el mapa.
+ *
+ * @param {Array}  comarcasCompletas - Comarcas con campos SVG + datos del mapa (centro, region_id).
+ * @param {Object} propietarios      - Mapa comarca → jugador propietario.
+ * @returns {Array<{ id, centroX, centroY, nombreCorto, textoStats }>}
+ */
+const calcularInfoRegiones = (comarcasCompletas, propietarios) => {
+  // Agrupamos las comarcas por region_id en un mapa auxiliar
+  const mapaRegiones = {};
+
+  comarcasCompletas.forEach((comarca) => {
+    const regionId = comarca.region_id;
+
+    if (!regionId) return;
+
+    if (!mapaRegiones[regionId]) {
+      mapaRegiones[regionId] = { comarcas: [], totalX: 0, totalY: 0 };
+    }
+
+    mapaRegiones[regionId].comarcas.push(comarca.id);
+    mapaRegiones[regionId].totalX += comarca.centro[0];
+    mapaRegiones[regionId].totalY += comarca.centro[1];
+  });
+
+  // Convertimos el mapa en un array con el texto final de la etiqueta
+  return Object.entries(mapaRegiones).map(([regionId, datos]) => {
+    const { comarcas, totalX, totalY } = datos;
+    const total        = comarcas.length;
+    const poseeJugador = comarcas.filter((id) => propietarios[id] === JUGADOR_LOCAL).length;
+    const porcentaje   = total > 0 ? Math.round((poseeJugador / total) * 100) : 0;
+
+    const regionInfo = mapData.regions[regionId];
+    const nombreCorto = regionInfo ? regionInfo.name : regionId;
+
+    return {
+      id:          regionId,
+      centroX:     totalX / total,
+      centroY:     totalY / total,
+      nombreCorto,
+      textoStats:  `${porcentaje}% (${poseeJugador}/${total})`,
+    };
+  });
+};
+
 /**
  * Lienzo principal del juego que renderiza el mapa SVG, el zoom interactivo y sus marcadores de tropas.
  *
  * @param {Object} props
- * @returns {JSX.Element} El contenedor DOM con el SVG interactivo.
+ * @returns {JSX.Element} El contenedor principal del mapa de juego.
  */
 const Tablero = (props) => {
   const [hovered, setHovered] = useState(null);
@@ -35,7 +85,7 @@ const Tablero = (props) => {
     }));
 
     inicializarJuego(rawData);
-    setFase('ATAQUE_NORMAL');
+    setFase('DESPLIEGUE');
   }, [inicializarJuego, setFase]);
 
   const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
@@ -58,10 +108,54 @@ const Tablero = (props) => {
     });
   }, []);
 
+  const modoVista = useGameStore((state) => state.modoVista);
+
+  // En modo REGIONES las tropas no se muestran para no confundir la lectura del mapa
+  let mostrarTropas = true;
+  if (modoVista === 'REGIONES') {
+    mostrarTropas = false;
+  }
+
+  // En modo REGIONES calculamos y pintamos etiquetas SVG con el dominio por región.
+  // En modo COMARCAS esta variable es nula y no se renderiza nada extra.
+  let etiquetasRegiones = null;
+  if (modoVista === 'REGIONES') {
+    const infoRegiones = calcularInfoRegiones(comarcasCompletas, propietarios);
+
+    etiquetasRegiones = infoRegiones.map((region) => (
+      <text
+        key={`label-${region.id}`}
+        x={region.centroX}
+        y={region.centroY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontWeight="bold"
+        fill="var(--color-text-primary)"
+        stroke="var(--color-ui-bg-primary)"
+        strokeWidth="2.5"
+        paintOrder="stroke fill"
+        pointerEvents="none"
+        style={{
+          fontFamily: 'var(--font-family-base)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}
+      >
+        {/* Línea 1: nombre de la región */}
+        <tspan x={region.centroX} dy="0" fontSize="11px">
+          {region.nombreCorto}
+        </tspan>
+        {/* Línea 2: porcentaje y ratio */}
+        <tspan x={region.centroX} dy="1.3em" fontSize="9.5px">
+          {region.textoStats}
+        </tspan>
+      </text>
+    ));
+  }
+
   /**
    * Ordena las comarcas para dibujarlas al final del DOM SVG y que queden visualmente superpuestas.
    * Se da prioridad a la comarca bajo el ratón, y luego a las que estén resaltadas por acciones tácticas.
-   * Esto previene el clásico bug de SVGs donde los bordes resaltados se esconden bajo provincias vecinas.
    */
   const sortedComarcas = [...comarcasCompletas].sort((a, b) => {
     const aSelected = origenSeleccionado === a.id || destinoSeleccionado === a.id || comarcasResaltadas.includes(a.id);
@@ -110,7 +204,6 @@ const Tablero = (props) => {
 
   /**
    * Deselecciona cualquier provincia activa si el jugador hace clic al vacío del mapa.
-   * Comprueba que el origen del clic sea el fondo estructural (rect, image, svg) y no un trazado.
    * @param {Event} e
    */
   const handleFondoClick = (e) => {
@@ -121,15 +214,19 @@ const Tablero = (props) => {
 
   return (
     <div style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      overflow: 'hidden',
       backgroundColor: 'var(--color-map-ocean)'
     }}>
       <svg
         ref={svgRef}
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="-400 -250 450 550"
+        viewBox="-400 -360 450 660"
+        preserveAspectRatio="xMidYMid meet"
         {...props}
         onClick={handleFondoClick}
         style={{ width: '100%', height: '100%', cursor: 'grab' }}
@@ -146,10 +243,10 @@ const Tablero = (props) => {
 
           <image
             href="/file.svg"
-            x="-400"
-            y="-250"
-            width="550"
-            height="400"
+            x="-900"
+            y="-350"
+            width="1450"
+            height="950"
             preserveAspectRatio="none"
           />
 
@@ -165,7 +262,7 @@ const Tablero = (props) => {
             />
           ))}
 
-          {sortedComarcas.map((comarca) => {
+          {mostrarTropas && sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0;
             const dueño = propietarios ? propietarios[comarca.id] : null;
@@ -187,6 +284,8 @@ const Tablero = (props) => {
               />
             );
           })}
+
+          {etiquetasRegiones}
         </g>
       </svg>
       <BotonVistaRegiones />

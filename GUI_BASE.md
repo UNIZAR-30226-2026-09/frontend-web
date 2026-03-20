@@ -40,7 +40,7 @@ Todos los colores están diseñados para tener un alto contraste visual y cumpli
 * Peligro / Ataque / Error: `#D32F2F` (Rojo sangre oscuro).
 * Deshabilitado / Inactivo: `#616161` (Gris medio, bajo contraste para indicar inactividad).
 
-### Colores de Facción / Jugadores
+### Colores Jugadores
 Se prohíben los colores primarios saturados. Usaremos tonos "desgastados" y bélicos:
 * Jugador 1 (Azul Naval): `#2B5B84`
 * Jugador 2 (Rojo Carmesí): `#8B2525`

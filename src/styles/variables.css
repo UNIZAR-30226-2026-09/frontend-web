@@ -19,7 +19,7 @@
     --color-state-danger: #d32f2f;
     --color-state-disabled: #616161;
 
-    /* --- COLORES DE FACCIÓN / JUGADORES --- */
+    /* --- COLORES JUGADORES --- */
     --color-jugador-1: #2b5b84;
     /* Azul naval */
     --color-jugador-2: #8b2525;
@@ -36,7 +36,6 @@
     --color-map-select-target: #e63946;
 
     /* --- TIPOGRAFÍA --- */
-    /* Reemplaza con tus fuentes importadas de Google Fonts si es necesario */
     --font-family-base: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
     --font-family-title: 'Cinzel', 'Playfair Display', serif;
 
@@ -64,4 +63,27 @@
     --radius-sm: 0.25rem;
     --radius-md: 0.5rem;
     --radius-lg: 1rem;
+
+    /* --- REGIONES DEL MAPA --- */
+    /* Colores base (territorios de otros jugadores) */
+    --color-region-pirineos: #5c4a8a;
+    /* Frontera Pirenaica — violeta montaña */
+    --color-region-estepas: #7a8c3f;
+    /* Estepas y Condados — verde musgo */
+    --color-region-ebro: #2e7d8c;
+    /* Alto Ebro          — azul pizarra */
+    --color-region-campos: #9c5e20;
+    /* Campos de Serranía — naranja tierra */
+    --color-region-valles: #5d8a6e;
+    /* Valles del Matarrana — verde bosque */
+    --color-region-sierras: #7a4040;
+    /* Sierras del Sur    — rojo arcilla */
+
+    /* Colores fuertes (territorios del jugador local) */
+    --color-region-pirineos-fuerte: #9b7fe8;
+    --color-region-estepas-fuerte: #bdd460;
+    --color-region-ebro-fuerte: #4ac8dc;
+    --color-region-campos-fuerte: #f59c45;
+    --color-region-valles-fuerte: #8de0b0;
+    --color-region-sierras-fuerte: #d46f6f;
 }
