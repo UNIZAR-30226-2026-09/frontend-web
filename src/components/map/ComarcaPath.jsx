@@ -23,6 +23,9 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     const faseActual           = useGameStore((state) => state.faseActual);
     const propietarios         = useGameStore((state) => state.propietarios);
     const coloresJugadores     = useGameStore((state) => state.coloresJugadores);
+    const turnoActual          = useGameStore((state) => state.turnoActual);
+    const cantidadTropas       = useGameStore((state) => state.tropas[id] || 0);
+    const tropasDisponibles    = useGameStore((state) => state.tropasDisponibles);
 
     const isOrigin      = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
@@ -35,17 +38,17 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
      * @returns {{ color: string, opacidad: number }}
      */
     const obtenerEstiloComarca = () => {
+        const propietarioId = propietarios[id];
+        const colorBase = propietarioId && coloresJugadores[propietarioId] ? coloresJugadores[propietarioId] : null;
+        const colorVivo = colorBase ? colorBase.replace(')', '-vivo)') : 'var(--color-ui-bg-secondary)';
+
         // 1. Interacciones tácticas tienen prioridad absoluta
-        if (isOrigin) {
-            return { color: 'var(--color-map-select-origin)', opacidad: 1 };
-        }
-
         if (isDestination) {
-            return { color: 'var(--color-map-select-target)', opacidad: 1 };
+            return { color: 'var(--color-map-select-target)', opacidad: 1, isVivoState: true };
         }
 
-        if (isHighlighted) {
-            return { color: 'var(--color-ui-bg-secondary)', opacidad: 1 };
+        if (isOrigin || isHighlighted) {
+            return { color: colorVivo, opacidad: 1, isVivoState: true };
         }
 
         // 2. Modo de visualización por regiones
@@ -54,40 +57,55 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             const color        = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
             const opacidad     = 1;
-            return { color, opacidad };
+            return { color, opacidad, isVivoState: false };
         }
 
         // 3. Color del jugador propietario
-        const propietarioId = propietarios[id];
-        if (propietarioId && coloresJugadores[propietarioId]) {
-            return { color: coloresJugadores[propietarioId], opacidad: 1 };
+        if (colorBase) {
+            const esSuTurno = propietarioId === turnoActual;
+
+            if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) {
+                return { color: colorVivo, opacidad: 1, isVivoState: true };
+            }
+
+            if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) {
+                return { color: colorVivo, opacidad: 1, isVivoState: true };
+            }
+
+            return { color: colorBase, opacidad: 1, isVivoState: false };
         }
 
         // 4. Color neutral por defecto
-        return { color: 'var(--color-map-land-neutral)', opacidad: 1 };
+        return { color: 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: false };
     };
 
-    const { color: currentColor, opacidad: fillOpacity } = obtenerEstiloComarca();
+    const { color: currentColor, opacidad: fillOpacity, isVivoState } = obtenerEstiloComarca();
 
-    let strokeColor = '#d4af37'; // Golden border
-    if (isHovered || isSelected) {
-        strokeColor = 'var(--color-text-primary)';
-    }
-    if (modoVista === 'REGIONES' && !isHovered && !isSelected) {
-        // En modo regiones, el borde interior de la comarca usa el color fuerte de su continente (fino)
+    let strokeColor = 'var(--color-border-gold)'; // Base golden border
+    let strokeWidthSize = 1.5;
+
+    if (modoVista === 'REGIONES') {
         if (regionId) {
             strokeColor = obtenerColorFuerteRegion(regionId);
         } else {
             strokeColor = currentColor;
         }
-    }
-
-    let strokeWidthSize = 1;
-    if (isHovered || isSelected) {
-        strokeWidthSize = 3;
-    }
-    if (modoVista === 'REGIONES' && !isHovered && !isSelected) {
-        strokeWidthSize = 1;
+        
+        // Mantener hover selectivo en blanco original
+        if (isHovered || isSelected) {
+            strokeColor = 'var(--color-text-primary)';
+            strokeWidthSize = 3;
+        }
+    } else {
+        if (isOrigin) {
+            strokeColor = 'var(--color-text-primary)';
+        } else if (isHovered || isSelected || isVivoState) {
+            strokeColor = 'var(--color-border-gold-vivo)';
+        }
+        
+        if (isOrigin || isHovered || isSelected || isVivoState) {
+            strokeWidthSize = 3;
+        }
     }
 
     let cursorStyle = 'pointer';
@@ -131,7 +149,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             fillOpacity={fillOpacity}
             stroke={strokeColor}
             strokeWidth={strokeWidthSize}
-            vectorEffect="non-scaling-stroke"
+            clipPath={`url(#clip-comarca-${id})`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onClick={(e) => {

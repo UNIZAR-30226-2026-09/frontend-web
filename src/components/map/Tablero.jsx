@@ -94,6 +94,9 @@ const Tablero = (props) => {
   const tropas = useGameStore((state) => state.tropas);
   const propietarios = useGameStore((state) => state.propietarios);
   const coloresJugadores = useGameStore((state) => state.coloresJugadores);
+  const faseActual = useGameStore((state) => state.faseActual);
+  const turnoActual = useGameStore((state) => state.turnoActual);
+  const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
 
   const comarcasCompletas = useMemo(() => {
     return COMARCAS_SVG_DATA.map((svgItem) => {
@@ -265,11 +268,16 @@ const Tablero = (props) => {
             />
           ))}
 
-          {/* DEFINIMOS LAS MÁSCARAS DE RECORTE PARA LOS CONTINENTES PARA LOGRAR INNER STROKES */}
+          {/* DEFINIMOS LAS MÁSCARAS DE RECORTE PARA LOGRAR INNER STROKES */}
           <defs>
             {CONTINENTES_SVG_DATA.map((continente) => (
               <clipPath key={`clip-${continente.id}`} id={`clip-${continente.id}`}>
                 <path d={continente.d} />
+              </clipPath>
+            ))}
+            {comarcasCompletas.map((comarca) => (
+              <clipPath key={`clip-comarca-${comarca.id}`} id={`clip-comarca-${comarca.id}`}>
+                <path d={comarca.d} />
               </clipPath>
             ))}
           </defs>
@@ -279,7 +287,7 @@ const Tablero = (props) => {
             let strokeColor = 'var(--color-border-gold)';
             // Damos el doble de grosor. Al recortarlo con clipPath por su propia forma, 
             // desaparece el 50% exterior y se queda el 50% interior (simulando border-inside de 1.5)
-            let strokeWidth = 1.5 * 2; 
+            let strokeWidth = 1.5 * 2;
 
             if (modoVista === 'REGIONES') {
               strokeColor = `var(--color-region-${continente.id}-fuerte)`;
@@ -298,25 +306,49 @@ const Tablero = (props) => {
             );
           })}
 
-          {/* DIBUJAR SILUETA BLANCA ACTIVA SOBRE TODO LO DEMÁS */}
+          {/* DIBUJAR SILUETA ACTIVA SOBRE TODO LO DEMÁS */}
           {sortedComarcas.map((comarca) => {
-            const isOrigin      = origenSeleccionado === comarca.id;
+            const isOrigin = origenSeleccionado === comarca.id;
             const isDestination = destinoSeleccionado === comarca.id;
             const isHighlighted = comarcasResaltadas.includes(comarca.id);
-            const isSelected    = isOrigin || isDestination || isHighlighted;
-            const isHovered     = hovered === comarca.id;
+            const isSelected = isOrigin || isDestination || isHighlighted;
+            const isHovered = hovered === comarca.id;
 
-            if (!isHovered && !isSelected) return null;
+            const propietarioId = propietarios[comarca.id];
+            const esSuTurno = propietarioId === turnoActual;
+            const cantidadTropas = tropas[comarca.id] || 0;
+
+            let isVivoState = false;
+            if (modoVista !== 'REGIONES') {
+              if (isOrigin || isDestination || isHighlighted) isVivoState = true;
+              if (propietarioId) {
+                if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
+                if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) isVivoState = true;
+              }
+            }
+
+            if (modoVista === 'REGIONES') {
+              if (!isHovered && !isSelected) return null;
+            } else {
+              if (!isHovered && !isSelected && !isVivoState) return null;
+            }
+
+            let strokeColor = 'var(--color-border-gold-vivo)';
+            if (modoVista === 'REGIONES') {
+              strokeColor = 'var(--color-text-primary)';
+            } else if (isOrigin) {
+              strokeColor = 'var(--color-text-primary)';
+            }
 
             return (
               <path
                 key={`highlight-${comarca.id}`}
                 d={comarca.d}
                 fill="none"
-                stroke="var(--color-text-primary)"
+                stroke={strokeColor}
                 strokeWidth={3}
+                clipPath={`url(#clip-comarca-${comarca.id})`}
                 pointerEvents="none"
-                vectorEffect="non-scaling-stroke"
               />
             );
           })}
