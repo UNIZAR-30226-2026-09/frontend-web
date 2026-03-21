@@ -102,14 +102,6 @@ const CabeceraJuego = () => {
   return (
     <header className="cabecera-juego">
       <div className="zona-izquierda">
-        <div className="indicador" title="Dinero">
-          <img src="/public/moneda.png" alt="Moneda" className="icono-recurso" />
-          <span className="valor-recurso">{dinero}</span>
-        </div>
-        <div className="indicador" title="Tropas Totales (Disponibles + Tablero)">
-          <img src="/public/espadas.png" alt="Casco" className="icono-recurso" />
-          <span className="valor-recurso">{totalTropasJugador}</span>
-        </div>
       </div>
 
       <div className="zona-centro">

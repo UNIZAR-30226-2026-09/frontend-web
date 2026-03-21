@@ -8,7 +8,7 @@ import FichaTropas from './FichaTropas';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
 import ControlDespliegue from '../hud/ControlDespliegue';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
-import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA } from '../../data/comarcasSvg';
+import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 import mapData from '../../data/map_aragon.json';
 
 // Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
@@ -353,6 +353,38 @@ const Tablero = (props) => {
             );
           })}
 
+          {/* ── PUENTES ─────────────────────────────────────────────── */}
+          {PUENTES_SVG_DATA.map((puente) => (
+            <g key={puente.id} pointerEvents="none">
+              {/* Línea curva discontinua */}
+              <path
+                d={puente.d}
+                fill="none"
+                stroke="white"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                strokeLinecap="round"
+                opacity={0.85}
+              />
+              {/* Punto inicio */}
+              <circle
+                cx={puente.desde[0]}
+                cy={puente.desde[1]}
+                r={3.5}
+                fill="white"
+                opacity={0.9}
+              />
+              {/* Punto fin */}
+              <circle
+                cx={puente.hasta[0]}
+                cy={puente.hasta[1]}
+                r={3.5}
+                fill="white"
+                opacity={0.9}
+              />
+            </g>
+          ))}
+
           {mostrarTropas && sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0;
@@ -361,6 +393,36 @@ const Tablero = (props) => {
             let colorActual = 'var(--color-state-disabled)';
             if (dueño && coloresJugadores && coloresJugadores[dueño]) {
               colorActual = coloresJugadores[dueño];
+            }
+
+            const isOrigin = origenSeleccionado === comarca.id;
+            const isDestination = destinoSeleccionado === comarca.id;
+            const isHighlighted = comarcasResaltadas.includes(comarca.id);
+            const isSelected = isOrigin || isDestination || isHighlighted;
+            const isHovered = hovered === comarca.id;
+
+            const esSuTurno = dueño === turnoActual;
+
+            let isVivoState = false;
+            if (modoVista !== 'REGIONES') {
+              if (isSelected) isVivoState = true;
+              if (dueño) {
+                if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
+                if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) isVivoState = true;
+              }
+            }
+
+            let strokeFicha = 'var(--color-border-gold)';
+            if (modoVista === 'REGIONES') {
+              if (isHovered || isSelected) strokeFicha = 'var(--color-text-primary)';
+            } else {
+              if (isHovered || isSelected || isVivoState) {
+                if (isOrigin) {
+                  strokeFicha = 'var(--color-text-primary)';
+                } else {
+                  strokeFicha = 'var(--color-border-gold-vivo)';
+                }
+              }
             }
 
             return (
@@ -372,6 +434,7 @@ const Tablero = (props) => {
                 nombreComarca={rawName}
                 zoomScale={zoomScale}
                 colorFondo={colorActual}
+                strokeFondo={strokeFicha}
               />
             );
           })}

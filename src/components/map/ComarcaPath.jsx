@@ -40,7 +40,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     const obtenerEstiloComarca = () => {
         const propietarioId = propietarios[id];
         const colorBase = propietarioId && coloresJugadores[propietarioId] ? coloresJugadores[propietarioId] : null;
-        const colorVivo = colorBase ? colorBase.replace(')', '-vivo)') : 'var(--color-ui-bg-secondary)';
+        const colorApagado = colorBase ? colorBase.replace(')', '-apagado)') : 'var(--color-ui-bg-secondary)';
 
         // 1. Interacciones tácticas tienen prioridad absoluta
         if (isDestination) {
@@ -48,7 +48,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
         }
 
         if (isOrigin || isHighlighted) {
-            return { color: colorVivo, opacidad: 1, isVivoState: true };
+            return { color: colorBase, opacidad: 1, isVivoState: true };
         }
 
         // 2. Modo de visualización por regiones
@@ -65,14 +65,14 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             const esSuTurno = propietarioId === turnoActual;
 
             if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) {
-                return { color: colorVivo, opacidad: 1, isVivoState: true };
+                return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
             if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) {
-                return { color: colorVivo, opacidad: 1, isVivoState: true };
+                return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
-            return { color: colorBase, opacidad: 1, isVivoState: false };
+            return { color: colorApagado, opacidad: 1, isVivoState: false };
         }
 
         // 4. Color neutral por defecto

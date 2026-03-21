@@ -20,25 +20,25 @@
    --color-state-danger: #d32f2f;
    --color-state-disabled: #616161;
 
-   /* --- COLORES JUGADORES (Apagados / Base Original) --- */
-   --color-jugador-1: #A34A4A;
-   /* Rojo granate apagado */
-   --color-jugador-2: #4A8594;
-   /* Azul acero apagado */
-   --color-jugador-3: #858A59;
-   /* Verde oliva apagado */
-   --color-jugador-4: #C67C4E;
-   /* Naranja bronce apagado */
-
-   /* --- COLORES JUGADORES (Vivos / Interactivos) --- */
-   --color-jugador-1-vivo: #e02c2c;
+   /* --- COLORES JUGADORES (Base / Fuerte) --- */
+   --color-jugador-1: #E54545;
    /* Rojo carmesí brillante */
-   --color-jugador-2-vivo: #1cafd8;
+   --color-jugador-2: #33B1D4;
    /* Cian/Azul brillante */
-   --color-jugador-3-vivo: #45b610;
-   /* Verde esmeralda rico (Saturado pero oscuro) */
-   --color-jugador-4-vivo: #f5820f;
+   --color-jugador-3: #4CAE1E;
+   /* Verde esmeralda rico */
+   --color-jugador-4: #F08A24;
    /* Naranja intenso */
+
+   /* --- COLORES JUGADORES (Apagados / Territorios inactivos) --- */
+   --color-jugador-1-apagado: #A34A4A;
+   /* Rojo granate apagado */
+   --color-jugador-2-apagado: #4A8594;
+   /* Azul acero apagado */
+   --color-jugador-3-apagado: #858A59;
+   /* Verde oliva apagado */
+   --color-jugador-4-apagado: #C67C4E;
+   /* Naranja bronce apagado */
 
 
    /* --- MAPA --- */
