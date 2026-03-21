@@ -8,14 +8,35 @@
  */
 export const obtenerColorRegion = (regionId: string, esDelJugador: boolean): string => {
   const coloresBase: Record<string, string> = {
-    'frontera_pirenaica': 'var(--color-region-pirineos)',
-    'estepas_y_condados': 'var(--color-region-estepas)',
-    'alto_ebro':          'var(--color-region-ebro)',
-    'campos_serrania':    'var(--color-region-campos)',
-    'valles_matarrana':   'var(--color-region-valles)',
-    'sierras_sur':        'var(--color-region-sierras)',
+    'frontera_pirenaica': 'var(--color-region-pirineos-base)',
+    'estepas_y_condados': 'var(--color-region-estepas-base)',
+    'alto_ebro':          'var(--color-region-ebro-base)',
+    'campos_serrania':    'var(--color-region-campos-base)',
+    'valles_matarrana':   'var(--color-region-valles-base)',
+    'sierras_sur':        'var(--color-region-sierras-base)',
   };
 
+  const coloresMedios: Record<string, string> = {
+    'frontera_pirenaica': 'var(--color-region-pirineos-medio)',
+    'estepas_y_condados': 'var(--color-region-estepas-medio)',
+    'alto_ebro':          'var(--color-region-ebro-medio)',
+    'campos_serrania':    'var(--color-region-campos-medio)',
+    'valles_matarrana':   'var(--color-region-valles-medio)',
+    'sierras_sur':        'var(--color-region-sierras-medio)',
+  };
+
+  if (esDelJugador) {
+    const colorMedio = coloresMedios[regionId];
+    if (colorMedio) return colorMedio;
+  }
+
+  const colorBase = coloresBase[regionId];
+  if (colorBase) return colorBase;
+
+  return 'var(--color-ui-bg-secondary)';
+};
+
+export const obtenerColorFuerteRegion = (regionId: string): string => {
   const coloresFuertes: Record<string, string> = {
     'frontera_pirenaica': 'var(--color-region-pirineos-fuerte)',
     'estepas_y_condados': 'var(--color-region-estepas-fuerte)',
@@ -25,13 +46,6 @@ export const obtenerColorRegion = (regionId: string, esDelJugador: boolean): str
     'sierras_sur':        'var(--color-region-sierras-fuerte)',
   };
 
-  if (esDelJugador) {
-    const colorFuerte = coloresFuertes[regionId];
-    if (colorFuerte) return colorFuerte;
-  }
-
-  const colorBase = coloresBase[regionId];
-  if (colorBase) return colorBase;
-
-  return 'var(--color-ui-bg-secondary)';
+  const color = coloresFuertes[regionId];
+  return color ? color : 'var(--color-text-primary)';
 };

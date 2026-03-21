@@ -20,14 +20,17 @@
     --color-state-disabled: #616161;
 
     /* --- COLORES JUGADORES --- */
-    --color-jugador-1: #2b5b84;
-    /* Azul naval */
-    --color-jugador-2: #8b2525;
-    /* Rojo carmesí */
-    --color-jugador-3: #3a6b35;
-    /* Verde oliva */
-    --color-jugador-4: #b89947;
-    /* Amarillo ocre */
+    --color-jugador-1: #A34A4A;
+    --color-jugador-2: #4A8594;
+    --color-jugador-3: #858A59;
+    --color-jugador-4: #C67C4E;
+
+    /* --- 
+    --color-jugador-1: #951d21;
+    --color-jugador-2: #2b4a80;
+    --color-jugador-3: #b07732;
+    --color-jugador-4: #385a36; 
+    --- */
 
     /* --- MAPA --- */
     --color-map-land-neutral: #d4c4a8;
@@ -64,26 +67,40 @@
     --radius-md: 0.5rem;
     --radius-lg: 1rem;
 
-    /* --- REGIONES DEL MAPA --- */
-    /* Colores base (territorios de otros jugadores) */
-    --color-region-pirineos: #5c4a8a;
-    /* Frontera Pirenaica — violeta montaña */
-    --color-region-estepas: #7a8c3f;
-    /* Estepas y Condados — verde musgo */
-    --color-region-ebro: #2e7d8c;
-    /* Alto Ebro          — azul pizarra */
-    --color-region-campos: #9c5e20;
-    /* Campos de Serranía — naranja tierra */
-    --color-region-valles: #5d8a6e;
-    /* Valles del Matarrana — verde bosque */
-    --color-region-sierras: #7a4040;
-    /* Sierras del Sur    — rojo arcilla */
+    /* --- REGIONES DEL MAPA (Modo Continentes) --- */
+    /* Lógica de uso: 
+       - Base (Apagado): Relleno de territorios neutrales/enemigos
+       - Medio: Relleno de territorios propios
+       - Fuerte: Borde grueso de territorios propios (efecto resplandor)
+    */
 
-    /* Colores fuertes (territorios del jugador local) */
-    --color-region-pirineos-fuerte: #9b7fe8;
-    --color-region-estepas-fuerte: #bdd460;
-    --color-region-ebro-fuerte: #4ac8dc;
-    --color-region-campos-fuerte: #f59c45;
-    --color-region-valles-fuerte: #8de0b0;
-    --color-region-sierras-fuerte: #d46f6f;
+    /* 1. PIRINEOS (Morado) */
+    --color-region-pirineos-base:   #5a2e85; /* Relleno neutral */
+    --color-region-pirineos-medio:  #7517c2; /* Relleno propio */
+    --color-region-pirineos-fuerte: #8f00ff; /* Borde neón */
+
+    /* 2. ESTEPAS (Amarillo) */
+    --color-region-estepas-base:    #9e8d24; 
+    --color-region-estepas-medio:   #ceb512; 
+    --color-region-estepas-fuerte:  #ffdd00; 
+
+    /* 3. EBRO (Azul) */
+    --color-region-ebro-base:       #2b738f; 
+    --color-region-ebro-medio:      #1698c6; 
+    --color-region-ebro-fuerte:     #01befe; 
+
+    /* 4. CAMPOS (Naranja) */
+    --color-region-campos-base:     #9c5b21; 
+    --color-region-campos-medio:    #cd6c10; 
+    --color-region-campos-fuerte:   #ff7d00; 
+
+    /* 5. VALLES (Verde) */
+    --color-region-valles-base:     #68941b; 
+    --color-region-valles-medio:    #8ac90e; 
+    --color-region-valles-fuerte:   #adff02; 
+
+    /* 6. SIERRAS (Rosa) */
+    --color-region-sierras-base:    #8f1c4f; 
+    --color-region-sierras-medio:   #c70e5e; 
+    --color-region-sierras-fuerte:  #ff006d;
 }

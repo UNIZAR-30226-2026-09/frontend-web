@@ -8,7 +8,7 @@ import FichaTropas from './FichaTropas';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
 import ControlDespliegue from '../hud/ControlDespliegue';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
-import { COMARCAS_SVG_DATA } from '../../data/comarcasSvg';
+import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA } from '../../data/comarcasSvg';
 import mapData from '../../data/map_aragon.json';
 
 // Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
@@ -44,19 +44,19 @@ const calcularInfoRegiones = (comarcasCompletas, propietarios) => {
   // Convertimos el mapa en un array con el texto final de la etiqueta
   return Object.entries(mapaRegiones).map(([regionId, datos]) => {
     const { comarcas, totalX, totalY } = datos;
-    const total        = comarcas.length;
+    const total = comarcas.length;
     const poseeJugador = comarcas.filter((id) => propietarios[id] === JUGADOR_LOCAL).length;
-    const porcentaje   = total > 0 ? Math.round((poseeJugador / total) * 100) : 0;
+    const porcentaje = total > 0 ? Math.round((poseeJugador / total) * 100) : 0;
 
     const regionInfo = mapData.regions[regionId];
     const nombreCorto = regionInfo ? regionInfo.name : regionId;
 
     return {
-      id:          regionId,
-      centroX:     totalX / total,
-      centroY:     totalY / total,
+      id: regionId,
+      centroX: totalX / total,
+      centroY: totalY / total,
       nombreCorto,
-      textoStats:  `${porcentaje}% (${poseeJugador}/${total})`,
+      textoStats: `${porcentaje}% (${poseeJugador}/${total})`,
     };
   });
 };
@@ -241,14 +241,17 @@ const Tablero = (props) => {
             style={{ pointerEvents: 'auto', cursor: 'default' }}
           />
 
+
+          {/*imagen de fondo, ELIMINAR SI HAY LAG AL AMPLIAR*/}
           <image
-            href="/file.svg"
+            href="/fondoPrueba2.png"
             x="-900"
-            y="-350"
-            width="1450"
-            height="950"
-            preserveAspectRatio="none"
+            y="-390"
+            width="1440"
+            height="810"
+            preserveAspectRatio="xMidYMid slice"
           />
+
 
           {sortedComarcas.map((comarca) => (
             <ComarcaPath
@@ -261,6 +264,62 @@ const Tablero = (props) => {
               setHovered={setHovered}
             />
           ))}
+
+          {/* DEFINIMOS LAS MÁSCARAS DE RECORTE PARA LOS CONTINENTES PARA LOGRAR INNER STROKES */}
+          <defs>
+            {CONTINENTES_SVG_DATA.map((continente) => (
+              <clipPath key={`clip-${continente.id}`} id={`clip-${continente.id}`}>
+                <path d={continente.d} />
+              </clipPath>
+            ))}
+          </defs>
+
+          {/* DIBUJAR CONTORNOS DE LOS CONTINENTES POR ENCIMA DE TODO EL TABLERO */}
+          {CONTINENTES_SVG_DATA.map((continente) => {
+            let strokeColor = 'var(--color-border-gold)';
+            // Damos el doble de grosor. Al recortarlo con clipPath por su propia forma, 
+            // desaparece el 50% exterior y se queda el 50% interior (simulando border-inside de 1.5)
+            let strokeWidth = 1.5 * 2; 
+
+            if (modoVista === 'REGIONES') {
+              strokeColor = `var(--color-region-${continente.id}-fuerte)`;
+            }
+
+            return (
+              <path
+                key={`continente-${continente.id}`}
+                d={continente.d}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                clipPath={`url(#clip-${continente.id})`}
+                pointerEvents="none"
+              />
+            );
+          })}
+
+          {/* DIBUJAR SILUETA BLANCA ACTIVA SOBRE TODO LO DEMÁS */}
+          {sortedComarcas.map((comarca) => {
+            const isOrigin      = origenSeleccionado === comarca.id;
+            const isDestination = destinoSeleccionado === comarca.id;
+            const isHighlighted = comarcasResaltadas.includes(comarca.id);
+            const isSelected    = isOrigin || isDestination || isHighlighted;
+            const isHovered     = hovered === comarca.id;
+
+            if (!isHovered && !isSelected) return null;
+
+            return (
+              <path
+                key={`highlight-${comarca.id}`}
+                d={comarca.d}
+                fill="none"
+                stroke="var(--color-text-primary)"
+                strokeWidth={3}
+                pointerEvents="none"
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
 
           {mostrarTropas && sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;

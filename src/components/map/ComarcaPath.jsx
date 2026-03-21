@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
-import { obtenerColorRegion } from '../../utils/colorUtils';
+import { obtenerColorRegion, obtenerColorFuerteRegion } from '../../utils/colorUtils';
 
 // Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
 const JUGADOR_LOCAL = 'jugador1';
@@ -53,32 +53,30 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             const esDelJugador = propietarios[id] === JUGADOR_LOCAL;
             const color        = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
-            const opacidad     = esDelJugador ? 1 : 0.25;
+            const opacidad     = 1;
             return { color, opacidad };
         }
 
         // 3. Color del jugador propietario
         const propietarioId = propietarios[id];
         if (propietarioId && coloresJugadores[propietarioId]) {
-            return { color: coloresJugadores[propietarioId], opacidad: 0.75 };
+            return { color: coloresJugadores[propietarioId], opacidad: 1 };
         }
 
         // 4. Color neutral por defecto
-        return { color: 'var(--color-map-land-neutral)', opacidad: 0.75 };
+        return { color: 'var(--color-map-land-neutral)', opacidad: 1 };
     };
 
     const { color: currentColor, opacidad: fillOpacity } = obtenerEstiloComarca();
 
-    let strokeColor = 'rgba(0,0,0,0.3)';
+    let strokeColor = '#d4af37'; // Golden border
     if (isHovered || isSelected) {
         strokeColor = 'var(--color-text-primary)';
     }
     if (modoVista === 'REGIONES' && !isHovered && !isSelected) {
-        // Fusión visual: el borde imita el color de relleno para borrar la división interna.
-        // Las comarcas del jugador reciben un leve acento dorado para destacar su dominio.
-        const esDelJugador = propietarios[id] === JUGADOR_LOCAL;
-        if (esDelJugador) {
-            strokeColor = 'var(--color-border-gold)';
+        // En modo regiones, el borde interior de la comarca usa el color fuerte de su continente (fino)
+        if (regionId) {
+            strokeColor = obtenerColorFuerteRegion(regionId);
         } else {
             strokeColor = currentColor;
         }
@@ -89,7 +87,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
         strokeWidthSize = 3;
     }
     if (modoVista === 'REGIONES' && !isHovered && !isSelected) {
-        strokeWidthSize = 0.5;
+        strokeWidthSize = 1;
     }
 
     let cursorStyle = 'pointer';

@@ -11,6 +11,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     dinero: 0,
     tropasDisponibles: 0,
 
+    jugadorLocal: 'jugador1',
+    turnoActual: 'jugador1',
+    jugadores: ['jugador1', 'jugador2', 'jugador3', 'jugador4'],
+
     // Esto cambiará próximamente cuando se conecte con el estado real del backend
     tropas: {},
     propietarios: {},
@@ -332,5 +336,20 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             default:
                 console.warn(`Clic en comarca no implementado para la fase: ${estado.faseActual}`);
         }
+    },
+
+    getEstadisticasJugador: (jugadorId: string) => {
+        const estado = get();
+        let territorios = 0;
+        let tropas = 0;
+
+        Object.entries(estado.propietarios).forEach(([comarcaId, propietario]) => {
+            if (propietario === jugadorId) {
+                territorios++;
+                tropas += estado.tropas[comarcaId] || 0;
+            }
+        });
+
+        return { territorios, tropas };
     }
 }));

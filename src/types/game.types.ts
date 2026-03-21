@@ -25,6 +25,11 @@ export interface EstadoJuego {
     dinero: number;
     tropasDisponibles: number;
 
+    // Control de jugadores
+    jugadorLocal: string;
+    turnoActual: string;
+    jugadores: string[];
+
     // Colecciones principales de datos en tiempo real
     tropas: Record<string, number>;
     propietarios: Record<string, string>;
@@ -119,4 +124,11 @@ export interface EstadoJuego {
      * @param {string} comarcaId Clave identificadora del nodo presionado.
      */
     manejarClickComarca: (comarcaId: string) => void;
+
+    /**
+     * Obtiene el total de territorios y tropas de un jugador específico.
+     * @param {string} jugadorId Identificador del jugador.
+     * @returns {{ territorios: number, tropas: number }} Estadísticas del jugador.
+     */
+    getEstadisticasJugador: (jugadorId: string) => { territorios: number, tropas: number };
 }

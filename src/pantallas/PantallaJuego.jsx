@@ -1,4 +1,5 @@
 import CabeceraJuego from '../components/hud/CabeceraJuego';
+import { PlayerList } from '../components/hud/PlayerList';
 import Tablero from '../components/map/Tablero';
 
 /**
@@ -7,10 +8,11 @@ import Tablero from '../components/map/Tablero';
  */
 const PantallaJuego = () => {
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <CabeceraJuego />
             <Tablero />
-        </>
+            <PlayerList />
+        </div>
     );
 };
 
