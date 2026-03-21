@@ -131,4 +131,19 @@ export interface EstadoJuego {
      * @returns {{ territorios: number, tropas: number }} Estadísticas del jugador.
      */
     getEstadisticasJugador: (jugadorId: string) => { territorios: number, tropas: number };
+
+    // Estado de la conexión del socket en tiempo real
+    isSocketConnected: boolean;
+
+    /**
+     * Actualiza el estado de la conexión con el servidor de WebSockets.
+     * @param {boolean} status Estado actual de la conexión.
+     */
+    setSocketConnection: (status: boolean) => void;
+
+    /**
+     * Recibe y procesa los mensajes entrantes emitidos por el servidor a través del WebSocket.
+     * @param {any} mensaje Carga útil del mensaje recibido.
+     */
+    procesarMensajeSocket: (mensaje: any) => void;
 }

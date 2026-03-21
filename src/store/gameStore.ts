@@ -32,6 +32,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     tropasAAsignar: 0,
     mostrarAnimacionRefuerzos: false,
     refuerzosRecibidos: 0,
+    isSocketConnected: false,
 
     // ACCIONES
 
@@ -351,5 +352,16 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         });
 
         return { territorios, tropas };
+    },
+
+    // --- ACCIONES WEBSOCKET ---
+    setSocketConnection: (status: boolean) => {
+        set({ isSocketConnected: status });
+    },
+
+    procesarMensajeSocket: (mensaje: any) => {
+        console.log("📡 Mensaje WS recibido en Zustand:", mensaje);
+        // Aquí irá el switch gigante (Dispatcher) cuando el backend empiece a mandar ataques y turnos
+        // switch(mensaje.type) { case 'ACTUALIZAR_TROPAS': ... }
     }
 }));

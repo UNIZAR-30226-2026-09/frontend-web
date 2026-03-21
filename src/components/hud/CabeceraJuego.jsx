@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import '../../styles/CabeceraJuego.css';
+import { socketService } from '../../services/socketService';
 
 /**
  * Transforma el string interno del estado de la fase en un texto legible 

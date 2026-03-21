@@ -255,9 +255,9 @@ const Lobby = () => {
                     </div>
                 )}
 
-                <div style={{ position: 'absolute', bottom: '2%', right: '2%', background: 'var(--color-ui-panel-overlay)', padding: '0.5rem 1rem', border: '1px solid var(--color-border-bronze)', color: 'var(--color-text-primary)', fontFamily: 'monospace', fontSize: '0.9vw', borderRadius: '4px' }}>
+                {/*<div style={{ position: 'absolute', bottom: '2%', right: '2%', background: 'var(--color-ui-panel-overlay)', padding: '0.5rem 1rem', border: '1px solid var(--color-border-bronze)', color: 'var(--color-text-primary)', fontFamily: 'monospace', fontSize: '0.9vw', borderRadius: '4px' }}>
                     ID RECLUTA: {nombreRecluta}
-                </div>
+                </div>*/}
 
             </div>
         </div>

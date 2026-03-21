@@ -44,7 +44,7 @@ const MainLayout = () => {
           <nav style={{ display: 'flex', gap: '1.5rem', fontWeight: 'bold' }}>
             <Link to="/lobby" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', textTransform: 'uppercase', fontSize: '0.9rem' }}>Centro de Mando</Link>
             <Link to="/perfil" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', textTransform: 'uppercase', fontSize: '0.9rem' }}>Expediente</Link>
-            <Link to="/ranking" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', textTransform: 'uppercase', fontSize: '0.9rem' }}>Alto Mando</Link>
+            <Link to="/ranking" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none', textTransform: 'uppercase', fontSize: '0.9rem' }}>Ranking</Link>
           </nav>
         </div>
 
