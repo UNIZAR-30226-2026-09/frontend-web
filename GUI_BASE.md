@@ -28,30 +28,45 @@ Para mantener la uniformidad en el desarrollo frontend, aplicaremos estrictament
 Todos los colores están diseñados para tener un alto contraste visual y cumplir con los estándares de accesibilidad, manteniendo la estética Grand Strategy.
 
 ### UI Base
-* Fondo Principal: `#1A1A24` (Azul/Gris muy oscuro, evita el negro puro para reducir la fatiga visual).
-* Fondo Secundario (Paneles): `#252530` (Ligeramente más claro para crear profundidad).
-* Borde Principal (Dorado suave): `#C5A059`
-* Borde Secundario (Bronce): `#8C6D3F`
-* Texto Principal: `#F0F0F5` (Blanco roto para alto contraste).
-* Texto Secundario: `#A0A0B0` (Gris pálido para información menos relevante).
+* Fondo Principal (`--color-ui-bg-primary`): `#1A1A24` (Azul/Gris muy oscuro, evita el negro puro para reducir la fatiga visual).
+* Fondo Secundario (`--color-ui-bg-secondary`): `#252530` (Ligeramente más claro para crear profundidad).
+* Overlay Paneles/HUD (`--color-ui-panel-overlay`): `rgba(26, 26, 36, 0.85)` (Para modales y HUD semitransparentes).
+* Borde Dorado Suave (`--color-border-gold`): `#C5A059`
+* Borde Dorado Vivo (`--color-border-gold-vivo`): `#FFD13B` (Para resaltes activos y foco).
+* Borde Bronce (`--color-border-bronze`): `#8C6D3F`
+* Texto Principal (`--color-text-primary`): `#F0F0F5` (Blanco roto para alto contraste).
+* Texto Secundario (`--color-text-secondary`): `#A0A0B0` (Gris pálido para información menos relevante).
 
 ### Estados de UI
-* Éxito / Confirmación: `#388E3C` (Verde hoja/musgo, sobrio pero claro).
-* Peligro / Ataque / Error: `#D32F2F` (Rojo sangre oscuro).
-* Deshabilitado / Inactivo: `#616161` (Gris medio, bajo contraste para indicar inactividad).
+* Éxito / Confirmación (`--color-state-success`): `#388E3C` (Verde hoja/musgo, sobrio pero claro).
+* Peligro / Ataque / Error (`--color-state-danger`): `#D32F2F` (Rojo sangre oscuro).
+* Deshabilitado / Inactivo (`--color-state-disabled`): `#616161` (Gris medio, bajo contraste para indicar inactividad).
 
 ### Colores Jugadores
-Se prohíben los colores primarios saturados. Usaremos tonos "desgastados" y bélicos:
-* Jugador 1 (Azul Naval): `#2B5B84`
-* Jugador 2 (Rojo Carmesí): `#8B2525`
-* Jugador 3 (Verde Oliva): `#3A6B35`
-* Jugador 4 (Amarillo Ocre): `#B89947`
+Se usan tonos saturados y brillantes para máxima distinción en el mapa. Cada jugador tiene una variante **apagada** para territorios neutrales o de otros jugadores.
+
+| `--color-jugador-1` | `#E54545` (Rojo carmesí brillante) | `--color-jugador-1-apagado` | `#A34A4A` (Rojo granate) |
+| `--color-jugador-2` | `#33B1D4` (Cian/Azul brillante) | `--color-jugador-2-apagado` | `#4A8594` (Azul acero) |
+| `--color-jugador-3` | `#4CAE1E` (Verde esmeralda) | `--color-jugador-3-apagado` | `#858A59` (Verde oliva) |
+| `--color-jugador-4` | `#F08A24` (Naranja intenso) | `--color-jugador-4-apagado` | `#C67C4E` (Naranja bronce) |
 
 ### Mapa Interactivo
-* Tierra Neutral: `#D4C4A8` (Tono pergamino/arena apagado).
-* Océano / Fondo Vacío: `#111118` (Más oscuro que la UI para que el mapa resalte las facciones).
-* Selección Origen (Desde dónde atacas): `#E6B800` (Resalte dorado brillante).
-* Selección Destino (A dónde atacas): `#E63946` (Resalte rojo brillante).
+* Tierra Neutral (`--color-map-land-neutral`): `#D4C4A8` (Tono pergamino/arena apagado).
+* Océano / Fondo Vacío (`--color-map-ocean`): `#111118` (Más oscuro que la UI para que el mapa resalte las facciones).
+* Selección Origen (`--color-map-select-origin`): `#E6B800` (Resalte dorado brillante — desde dónde atacas).
+* Selección Destino (`--color-map-select-target`): `#E63946` (Resalte rojo brillante — a dónde atacas).
+
+### Regiones del Mapa (Modo Continentes)
+Cada región tiene tres variantes: **base** (territorios neutrales/enemigos), **medio** (territorios propios) y **fuerte** (borde de resplandor en territorios propios).
+
+| Región | Base | Medio | Fuerte |
+|---|---|---|---|
+| Pirineos (Morado) | `#5A2E85` | `#7517C2` | `#8F00FF` |
+| Estepas (Amarillo) | `#9E8D24` | `#CEB512` | `#FFDD00` |
+| Ebro (Azul) | `#2B738F` | `#1698C6` | `#01BEFE` |
+| Campos (Naranja) | `#9C5B21` | `#CD6C10` | `#FF7D00` |
+| Valles (Verde) | `#68941B` | `#8AC90E` | `#ADFF02` |
+| Sierras (Rosa) | `#8F1C4F` | `#C70E5E` | `#FF006D` |
 
 ### Uso Estricto de Variables CSS (Single Source of Truth)
 
