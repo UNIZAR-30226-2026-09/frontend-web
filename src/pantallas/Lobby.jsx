@@ -7,18 +7,17 @@ import { fetchApi } from '../services/api';
 import MenuCrearPartida from '../components/lobby/MenuCrearPartida';
 import SalaLobby from '../components/lobby/SalaLobby';
 import MenuUnirsePartida from '../components/lobby/MenuUnirsePartida';
+import PanelInteligencia from '../components/lobby/PanelInteligencia';
 import '../styles/Lobby.css';
 
 /**
- * Pantalla de vestíbulo principal.
- * Vista activa: 'mando' | 'operaciones' | 'crear' | 'sala' | 'unirse' | 'amigos'
- * @returns {JSX.Element}
+ * Pantalla principal del lobby (fullscreen, sin navbar).
+ * Tres botones en la mesa: Archivos de Inteligencia | Operaciones | Alianzas.
+ * Vista activa: 'mando' | 'inteligencia' | 'operaciones' | 'crear' | 'sala' | 'unirse' | 'amigos'
  */
 const Lobby = () => {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-
   const crearPartidaBackend = useGameStore((state) => state.crearPartidaBackend);
   const unirsePartidaBackend = useGameStore((state) => state.unirsePartidaBackend);
 
@@ -26,45 +25,25 @@ const Lobby = () => {
   const [cargandoRapida, setCargandoRapida] = useState(false);
   const [errorRapida, setErrorRapida] = useState(null);
 
+  // Datos mock de partidas de amigos (se sustituirán por llamada real)
   const [partidas] = useState([
     { id: '101', nombre: 'PRUEBA1', jugadores: 1, maxJugadores: 2, estado: 'Esperando rival' },
     { id: '102', nombre: 'PRUEBA2', jugadores: 2, maxJugadores: 2, estado: 'En curso' },
-    { id: '103', nombre: 'TEEEEEEEETE67', jugadores: 1, maxJugadores: 2, estado: 'Esperando rival' },
-    { id: '104', nombre: 'ALE ZARAGOZA ALE ALE', jugadores: 1, maxJugadores: 2, estado: 'Esperando rival' },
+    { id: '103', nombre: 'ALPHA_TEAM', jugadores: 1, maxJugadores: 4, estado: 'Esperando rival' },
   ]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const handleLogout = () => { logout(); navigate('/'); };
 
-  const handleUnirsePartidaLista = (idPartida) => {
-    navigate(`/partida/${idPartida}`);
-  };
-
-  /**
-   * Busca una partida pública en estado 'creando' y se une.
-   * Si no existe ninguna, crea una nueva (configuración por defecto).
-   */
+  /** Busca sala pública disponible o crea una nueva. */
   const handlePartidaRapida = async () => {
     setCargandoRapida(true);
     setErrorRapida(null);
-
     try {
       const listaPublicas = await fetchApi('/v1/partidas');
       const salaDisponible = listaPublicas.find((p) => p.estado === 'creando');
-
-      let resultado = null;
-
-      if (salaDisponible) {
-        resultado = await unirsePartidaBackend(salaDisponible.codigo_invitacion);
-      } else {
-        resultado = await crearPartidaBackend({
-          config_max_players: 4,
-          config_visibility: 'publica',
-          config_timer_seconds: 60
-        });
-      }
+      const resultado = salaDisponible
+        ? await unirsePartidaBackend(salaDisponible.codigo_invitacion)
+        : await crearPartidaBackend({ config_max_players: 4, config_visibility: 'publica', config_timer_seconds: 60 });
 
       if (resultado) {
         setVistaActual('sala');
@@ -73,7 +52,7 @@ const Lobby = () => {
       }
     } catch (error) {
       console.error('Error en partida rápida:', error);
-      setErrorRapida('Error de conexión. Comprueba el servidor.');
+      setErrorRapida('Error de conexión con el servidor.');
     } finally {
       setCargandoRapida(false);
     }
@@ -99,11 +78,6 @@ const Lobby = () => {
     height: '6vw'
   };
 
-  const fondoPantalla = vistaActual === 'amigos'
-    ? 'url(/cuaderno-partidas.png)'
-    : 'url(/mesa-mando.png)';
-
-  // Estilos inline de las tarjetas del submenu de operaciones
   const estiloTarjeta = {
     background: 'var(--color-map-land-neutral)',
     border: '2px solid var(--color-border-bronze)',
@@ -121,63 +95,59 @@ const Lobby = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-ui-bg-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--color-ui-bg-primary)' }}>
 
+      {/* Fondo de imagen */}
       <div style={{
         position: 'relative',
         width: '100%',
         height: '100%',
-        backgroundImage: fondoPantalla,
+        backgroundImage: 'url(/mesa-mando.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        overflow: 'hidden',
-        transition: 'background-image 0.5s ease-in-out'
+        overflow: 'hidden'
       }}>
 
-        <button
-          onClick={handleLogout}
-          style={{ position: 'absolute', top: '2%', left: '2%', padding: '0.6rem 1.2rem', background: 'var(--color-state-danger)', color: 'var(--color-text-primary)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9vw', textTransform: 'uppercase', zIndex: 10, transition: 'transform 0.2s' }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          Abandonar Campo
-        </button>
-
-        {/* Mesa de mando: vista raíz */}
         {vistaActual === 'mando' && (
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>
 
+            {/* IZQUIERDA: Archivos de Inteligencia */}
+            <button
+              onClick={() => setVistaActual('inteligencia')}
+              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '15%', width: '18%' }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
+            >
+              Archivos de Inteligencia
+            </button>
+
+            {/* CENTRO: Operaciones */}
             <button
               onClick={() => { setVistaActual('operaciones'); setErrorRapida(null); }}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '15%', width: '18%' }}
+              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '41%', width: '18%' }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
             >
               Operaciones
             </button>
 
+            {/* DERECHA: Alianzas */}
             <button
               onClick={() => setVistaActual('amigos')}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '41%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Partidas de Amigos
-            </button>
-
-            <button
-              onClick={() => alert('Sin implementar')}
               style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', right: '15%', width: '18%' }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
             >
-              Archivos De Inteligencia
+              Alianzas
             </button>
 
           </div>
         )}
 
-        {/* Submenu de Operaciones: 3 tarjetas */}
+        {vistaActual === 'inteligencia' && (
+          <PanelInteligencia onCerrar={() => setVistaActual('mando')} />
+        )}
+
         {vistaActual === 'operaciones' && (
           <div style={{
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
@@ -192,82 +162,55 @@ const Lobby = () => {
                 OPERACIONES
               </h2>
 
-              {errorRapida && (
-                <p className="lobby-error">⚠ {errorRapida}</p>
-              )}
+              {errorRapida && <p className="lobby-error">⚠ {errorRapida}</p>}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '1.5rem' }}>
 
-                {/* Tarjeta: Partida Rápida */}
                 <div
                   style={{ ...estiloTarjeta, opacity: cargandoRapida ? 0.6 : 1, cursor: cargandoRapida ? 'not-allowed' : 'pointer' }}
                   onClick={cargandoRapida ? undefined : handlePartidaRapida}
                   onMouseOver={(e) => { if (!cargandoRapida) e.currentTarget.style.transform = 'translateY(-10px)'; }}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>
-                    Partida Rápida
-                  </h3>
-                  <p style={{ flex: 1, fontSize: '0.9vw' }}>
-                    Despliegue inmediato. Busca una sala pública disponible y te une automáticamente. Si no hay, crea una nueva.
-                  </p>
-                  <button
-                    disabled={cargandoRapida}
-                    style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: cargandoRapida ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: cargandoRapida ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
-                  >
+                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Partida Rápida</h3>
+                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Busca una sala pública disponible y te une automáticamente. Si no hay, crea una nueva.</p>
+                  <button disabled={cargandoRapida} style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: cargandoRapida ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: cargandoRapida ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
                     {cargandoRapida ? 'Buscando...' : 'DESPLEGAR ➔'}
                   </button>
                 </div>
 
-                {/* Tarjeta: Crear Partida */}
                 <div
                   style={estiloTarjeta}
                   onClick={() => setVistaActual('crear')}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>
-                    Crear Partida
-                  </h3>
-                  <p style={{ flex: 1, fontSize: '0.9vw' }}>
-                    Establece una nueva sala de operaciones con tu configuración y genera un código para tus contrincantes.
-                  </p>
-                  <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    FUNDAR ➔
-                  </button>
+                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Crear Partida</h3>
+                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Establece una nueva sala con tu configuración y genera un código para tus contrincantes.</p>
+                  <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>FUNDAR ➔</button>
                 </div>
 
-                {/* Tarjeta: Unirse con Código */}
                 <div
                   style={estiloTarjeta}
                   onClick={() => setVistaActual('unirse')}
                   onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>
-                    Unirse con Código
-                  </h3>
-                  <p style={{ flex: 1, fontSize: '0.9vw' }}>
-                    Introduce el código de operaciones que te ha facilitado el comandante que fundó la sala.
-                  </p>
-                  <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    INFILTRARSE ➔
-                  </button>
+                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Unirse con Código</h3>
+                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Introduce el código de operaciones que te ha facilitado el comandante que fundó la sala.</p>
+                  <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>INFILTRARSE ➔</button>
                 </div>
 
               </div>
 
-              <button
-                className="lobby-boton-secundario"
-                onClick={() => setVistaActual('mando')}
-              >
+              <button className="lobby-boton-secundario" onClick={() => setVistaActual('mando')}>
                 CANCELAR ORDEN
               </button>
             </div>
           </div>
         )}
 
-        {/* Panel de configuración: crear partida */}
+        {/* CREAR PARTIDA */}
         {vistaActual === 'crear' && (
           <MenuCrearPartida
             onCreada={() => setVistaActual('sala')}
@@ -275,14 +218,12 @@ const Lobby = () => {
           />
         )}
 
-        {/* Sala de espera */}
+        {/* SALA DE ESPERA */}
         {vistaActual === 'sala' && (
-          <SalaLobby
-            onVolver={() => setVistaActual('mando')}
-          />
+          <SalaLobby onVolver={() => setVistaActual('mando')} />
         )}
 
-        {/* Unirse por código */}
+        {/* UNIRSE CON CÓDIGO */}
         {vistaActual === 'unirse' && (
           <MenuUnirsePartida
             onUnido={() => setVistaActual('sala')}
@@ -290,10 +231,9 @@ const Lobby = () => {
           />
         )}
 
-        {/* Partidas de amigos (mock por ahora) */}
+        {/* ALIANZAS (partidas de amigos — mock) */}
         {vistaActual === 'amigos' && (
           <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-
             <button
               onClick={() => setVistaActual('mando')}
               style={{ position: 'absolute', top: '2%', right: '2%', padding: '0.6rem 1.2rem', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9vw' }}
@@ -301,41 +241,25 @@ const Lobby = () => {
               ⬅ Volver a la Mesa
             </button>
 
-            <div style={{ width: '40%', height: '60%', display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '10%' }}>
+            <div style={{ width: '40%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <h2 style={{ color: 'var(--color-ui-bg-primary)', textAlign: 'center', fontFamily: 'var(--font-family-title)', borderBottom: '2px solid var(--color-ui-bg-primary)', paddingBottom: '0.5rem', margin: 0 }}>
-                Registro de Operaciones
+                Alianzas — Partidas de Amigos
               </h2>
-
-              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem', paddingRight: '1rem' }}>
-                {partidas.map((partida) => {
-                  const estaLlena = partida.jugadores === partida.maxJugadores;
-
-                  let colorFondoUnirse = 'var(--color-state-danger)';
-                  let colorTextoUnirse = 'var(--color-text-primary)';
-                  let bordeUnirse = 'none';
-                  let cursorUnirse = 'pointer';
-                  let textoBotonUnirse = 'UNIRSE';
-
-                  if (estaLlena) {
-                    colorFondoUnirse = 'transparent';
-                    colorTextoUnirse = 'var(--color-state-disabled)';
-                    bordeUnirse = '1px solid var(--color-state-disabled)';
-                    cursorUnirse = 'not-allowed';
-                    textoBotonUnirse = 'CERRADA';
-                  }
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                {partidas.map((p) => {
+                  const llena = p.jugadores === p.maxJugadores;
                   return (
-                    <div key={partida.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-ui-bg-secondary)', paddingBottom: '0.5rem' }}>
+                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-ui-bg-secondary)', paddingBottom: '0.5rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '1.2vw', color: 'var(--color-ui-bg-primary)', fontFamily: 'var(--font-family-title)' }}>{partida.nombre}</span>
-                        <span style={{ fontSize: '0.8vw', color: 'var(--color-ui-bg-secondary)', fontStyle: 'italic' }}>{partida.jugadores}/{partida.maxJugadores} Comandantes — {partida.estado}</span>
+                        <span style={{ fontWeight: 'bold', fontSize: '1.1vw', color: 'var(--color-ui-bg-primary)', fontFamily: 'var(--font-family-title)' }}>{p.nombre}</span>
+                        <span style={{ fontSize: '0.75vw', color: 'var(--color-ui-bg-secondary)', fontStyle: 'italic' }}>{p.jugadores}/{p.maxJugadores} — {p.estado}</span>
                       </div>
                       <button
-                        disabled={estaLlena}
-                        onClick={() => handleUnirsePartidaLista(partida.id)}
-                        style={{ padding: '0.4rem 1rem', background: colorFondoUnirse, color: colorTextoUnirse, border: bordeUnirse, cursor: cursorUnirse, fontWeight: 'bold', fontSize: '0.8vw' }}
+                        disabled={llena}
+                        onClick={() => navigate(`/partida/${p.id}`)}
+                        style={{ padding: '0.4rem 1rem', background: llena ? 'transparent' : 'var(--color-state-danger)', color: llena ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: llena ? '1px solid var(--color-state-disabled)' : 'none', cursor: llena ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8vw' }}
                       >
-                        {textoBotonUnirse}
+                        {llena ? 'CERRADA' : 'UNIRSE'}
                       </button>
                     </div>
                   );

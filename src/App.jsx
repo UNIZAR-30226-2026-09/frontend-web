@@ -16,8 +16,9 @@ const MainLayout = () => {
   const user = useAuthStore((state) => state.user);
   const isGameScreen = location.pathname.startsWith('/partida');
   const isLoginScreen = location.pathname === '/';
+  const isLobbyScreen = location.pathname.startsWith('/lobby');
 
-  if (isLoginScreen) {
+  if (isLoginScreen || isLobbyScreen) {
     return (
       <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
         <Outlet />
@@ -34,6 +35,7 @@ const MainLayout = () => {
       </div>
     );
   }
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
