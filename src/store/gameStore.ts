@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { EstadoJuego, FaseJuego } from '../types/game.types';
 import { calcularComarcasEnRango, construirGrafoComarcas } from '../utils/graphUtils';
 import { ComarcaDTO } from '../types/mapa.types';
+import { fetchApi } from '../services/api';
+import { useAuthStore } from './useAuthStore';
 
 export const useGameStore = create<EstadoJuego>((set, get) => ({
     // ESTADO INICIAL (inicializar todo)
@@ -14,6 +16,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     jugadorLocal: 'jugador1',
     turnoActual: 'jugador1',
     jugadores: ['jugador1', 'jugador2', 'jugador3', 'jugador4'],
+
+    // Sala activa (lobby): se rellena tras crear o unirse a una partida
+    salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+
+    // Jugadores actualmente en el lobby
+    jugadoresLobby: [],
 
     // Esto cambiará próximamente cuando se conecte con el estado real del backend
     tropas: {},
@@ -360,8 +368,119 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     },
 
     procesarMensajeSocket: (mensaje: any) => {
-        console.log("📡 Mensaje WS recibido en Zustand:", mensaje);
-        // Aquí irá el switch gigante (Dispatcher) cuando el backend empiece a mandar ataques y turnos
-        // switch(mensaje.type) { case 'ACTUALIZAR_TROPAS': ... }
+        console.log('📡 Mensaje WS recibido:', mensaje);
+
+        switch (mensaje.type) {
+            case 'JUGADOR_UNIDO': {
+                // Añade al nuevo jugador al array del lobby si no estaba ya
+                const nuevo = mensaje.data || mensaje.payload || mensaje;
+                const id = nuevo.usuario_id ?? nuevo.id ?? '';
+                set((state) => {
+                    const yaExiste = state.jugadoresLobby.some((j) => j.id === id);
+                    if (yaExiste) return state;
+                    return {
+                        jugadoresLobby: [
+                            ...state.jugadoresLobby,
+                            { id, username: nuevo.username ?? id, numeroJugador: nuevo.turno ?? state.jugadoresLobby.length + 1 }
+                        ]
+                    };
+                });
+                break;
+            }
+
+            case 'JUGADOR_SALIO': {
+                const saliente = mensaje.data || mensaje.payload || mensaje;
+                const idSaliente = saliente.usuario_id ?? saliente.id ?? '';
+                set((state) => ({
+                    jugadoresLobby: state.jugadoresLobby.filter((j) => j.id !== idSaliente)
+                }));
+                break;
+            }
+
+            case 'PARTIDA_INICIADA':
+                // El componente SalaLobby navegará al recibir este evento
+                set((state) => ({
+                    salaActiva: { ...state.salaActiva, estado: 'activa' }
+                }));
+                break;
+
+            default:
+                // Resto de mensajes de gameplay (ataques, tropas, etc.)
+                break;
+        }
+    },
+
+    /**
+     * Crea una nueva partida en el backend y guarda los datos en salaActiva.
+     * @param {object} [config] - Configuración opcional de la sala.
+     * @param {number} [config.config_max_players=4] - Máximo de jugadores (2-4).
+     * @param {string} [config.config_visibility='publica'] - Visibilidad: 'publica' | 'privada'.
+     * @param {number} [config.config_timer_seconds=60] - Segundos por turno.
+     * @returns {Promise<object|null>} El objeto PartidaRead del backend, o null si falla.
+     */
+    crearPartidaBackend: async (config = {}) => {
+        const payload = {
+            config_max_players: config.config_max_players ?? 4,
+            config_visibility: config.config_visibility ?? 'publica',
+            config_timer_seconds: config.config_timer_seconds ?? 60
+        };
+
+        try {
+            const data = await fetchApi('/v1/partidas', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            // El creador ocupa automáticamente el hueco 1
+            const authUser = useAuthStore.getState().user;
+            const creadorId = authUser?.username ?? authUser?.nombre_usuario ?? authUser?.nombre ?? 'unknown';
+
+            set({
+                salaActiva: {
+                    id: data.id,
+                    codigoInvitacion: data.codigo_invitacion,
+                    estado: data.estado,
+                    config_max_players: data.config_max_players
+                },
+                jugadoresLobby: [
+                    { id: creadorId, username: creadorId, numeroJugador: 1 }
+                ]
+            });
+
+            return data;
+        } catch (error) {
+            console.error('Error al crear la partida:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Une al usuario actual a una sala existente mediante su código de invitación.
+     * @param {string} codigo - Código alfanumérico proporcionado por el host.
+     * @returns {Promise<object|null>} Objeto JugadorPartidaRead del backend, o null si falla.
+     */
+    unirsePartidaBackend: async (codigo: string) => {
+        try {
+            const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
+                method: 'POST'
+            });
+
+            // El backend devuelve JugadorPartidaRead; guardamos lo relevante
+            set((state) => ({
+                salaActiva: {
+                    ...state.salaActiva,
+                    id: data.partida_id
+                },
+                jugadoresLobby: [
+                    ...state.jugadoresLobby,
+                    { id: data.usuario_id, username: data.usuario_id, numeroJugador: data.turno }
+                ]
+            }));
+
+            return data;
+        } catch (error) {
+            console.error('Error al unirse a la partida:', error);
+            return null;
+        }
     }
 }));

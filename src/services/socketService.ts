@@ -1,31 +1,59 @@
+// src/services/socketService.ts
 import { useGameStore } from '../store/gameStore';
+
+const WS_BASE_URL: string = (import.meta as any).env?.VITE_WS_URL ?? 'ws://localhost:8000';
 
 class SocketService {
     private socket: WebSocket | null = null;
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    private url: string;
+    private currentUrl: string = '';
 
-    // Configuración de reconexión
     private maxRetries = 5;
     private retryCount = 0;
-    private baseDelay = 1000; // 1 segundo inicial
+    private baseDelay = 1000;
 
-    constructor(url: string) {
-        this.url = url;
-    }
+    /** Conecta al WS global de la partida activa. */
+    public connect(url?: string) {
+        const targetUrl = url || `${WS_BASE_URL}/ws`;
 
-    public connect() {
-        // Si ya está conectado o conectándose, no hacemos nada
-        if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
+        // No reconectar si ya apuntamos al mismo socket abierto
+        if (
+            this.socket &&
+            this.currentUrl === targetUrl &&
+            (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
+        ) {
             return;
         }
 
-        console.log(`[WebSocket] Intentando conectar a ${this.url}...`);
-        this.socket = new WebSocket(this.url);
+        // Cerrar conexión anterior si la URL ha cambiado
+        if (this.socket) {
+            this.socket.onclose = null; // Evitar reconexión involuntaria
+            this.socket.close(1000, 'Reconectando a nueva sala');
+            this.socket = null;
+        }
+
+        this.currentUrl = targetUrl;
+        this.retryCount = 0;
+        this._openSocket();
+    }
+
+    /**
+     * Conecta al canal WebSocket de un lobby específico.
+     * @param {number|string} partidaId - ID de la partida.
+     * @param {string} token - JWT del usuario autenticado.
+     */
+    public connectToLobby(partidaId: number | string, token: string) {
+        const url = `${WS_BASE_URL}/ws/${partidaId}?token=${token}`;
+        this.connect(url);
+    }
+
+    private _openSocket() {
+        console.log(`[WebSocket] Conectando a ${this.currentUrl}...`);
+        this.socket = new WebSocket(this.currentUrl);
 
         this.socket.onopen = () => {
             console.log('[WebSocket] Conectado con éxito.');
-            this.retryCount = 0; // Reseteamos los intentos
+            this.retryCount = 0;
             useGameStore.getState().setSocketConnection(true);
         };
 
@@ -34,7 +62,7 @@ class SocketService {
                 const data = JSON.parse(event.data);
                 useGameStore.getState().procesarMensajeSocket(data);
             } catch (error) {
-                console.error('[WebSocket] Error al parsear el mensaje entrante:', error);
+                console.error('[WebSocket] Error al parsear el mensaje:', error);
             }
         };
 
@@ -42,31 +70,25 @@ class SocketService {
             console.warn('[WebSocket] Conexión cerrada. Código:', event.code);
             useGameStore.getState().setSocketConnection(false);
 
-            // Si no fue un cierre limpio (por ejemplo que se caiga el servidor), intentamos reconectar
             if (!event.wasClean) {
-                this.handleReconnect();
+                this._handleReconnect();
             }
         };
 
         this.socket.onerror = (error) => {
-            console.error('[WebSocket] Error de red detectado:', error);
-            this.socket?.close(); // Forzamos el cierre para activar el onclose y reconectar
+            console.error('[WebSocket] Error de red:', error);
+            this.socket?.close();
         };
     }
 
-    private handleReconnect() {
+    private _handleReconnect() {
         if (this.retryCount < this.maxRetries) {
             this.retryCount++;
-            // Backoff exponencial: 1s, 2s, 4s, 8s, 16s... hasta 10 segundos
             const delay = Math.min(this.baseDelay * Math.pow(2, this.retryCount - 1), 10000);
-
-            console.log(`[WebSocket] Intento de reconexión ${this.retryCount}/${this.maxRetries} en ${delay}ms...`);
-
-            this.reconnectTimer = setTimeout(() => {
-                this.connect();
-            }, delay);
+            console.log(`[WebSocket] Reconexión ${this.retryCount}/${this.maxRetries} en ${delay}ms...`);
+            this.reconnectTimer = setTimeout(() => this._openSocket(), delay);
         } else {
-            console.error('[WebSocket] Límite de intentos de reconexión superado. Conexión perdida.');
+            console.error('[WebSocket] Límite de reconexión superado.');
         }
     }
 
@@ -78,20 +100,22 @@ class SocketService {
 
         if (this.socket) {
             console.log('[WebSocket] Desconectando manualmente...');
-            this.socket.close(1000, "Desconexión intencionada");
+            this.socket.onclose = null;
+            this.socket.close(1000, 'Desconexión intencionada');
             this.socket = null;
         }
+
+        useGameStore.getState().setSocketConnection(false);
     }
 
-    // Método para enviar datos al backend
+    /** Envía un mensaje tipado al servidor. */
     public send(type: string, payload: any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            const message = JSON.stringify({ type, payload });
-            this.socket.send(message);
+            this.socket.send(JSON.stringify({ type, payload }));
         } else {
-            console.error('[WebSocket] No se puede enviar el mensaje, el socket no está abierto. Tipo:', type);
+            console.error('[WebSocket] Socket no disponible. Tipo:', type);
         }
     }
 }
 
-export const socketService = new SocketService('ws://localhost:8000/ws');
+export const socketService = new SocketService();

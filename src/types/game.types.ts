@@ -30,6 +30,17 @@ export interface EstadoJuego {
     turnoActual: string;
     jugadores: string[];
 
+    // Sala de lobby procedente del backend (tras crear o unirse a partida)
+    salaActiva: {
+        id: number | null;
+        codigoInvitacion: string | null;
+        estado: string | null;
+        config_max_players?: number | null;
+    };
+
+    // Jugadores presentes en el lobby de la sala activa
+    jugadoresLobby: { id: string; username: string; numeroJugador: number }[];
+
     // Colecciones principales de datos en tiempo real
     tropas: Record<string, number>;
     propietarios: Record<string, string>;
@@ -146,4 +157,22 @@ export interface EstadoJuego {
      * @param {any} mensaje Carga útil del mensaje recibido.
      */
     procesarMensajeSocket: (mensaje: any) => void;
+
+    /**
+     * Envía la configuración al backend para crear una nueva sala y persiste los datos en salaActiva.
+     * @param {object} [config] - Parámetros opcionales de configuración de la partida.
+     * @returns {Promise<object|null>} Objeto PartidaRead devuelto por el servidor, o null si hay error.
+     */
+    crearPartidaBackend: (config?: {
+        config_max_players?: number;
+        config_visibility?: 'publica' | 'privada';
+        config_timer_seconds?: number;
+    }) => Promise<any>;
+
+    /**
+     * Une al usuario a una sala existente usando su código de invitación.
+     * @param {string} codigo - Código alfanumérico de la sala.
+     * @returns {Promise<object|null>} Objeto JugadorPartidaRead del backend, o null si falla.
+     */
+    unirsePartidaBackend: (codigo: string) => Promise<any>;
 }
