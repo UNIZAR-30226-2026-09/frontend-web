@@ -39,7 +39,10 @@ export interface EstadoJuego {
     };
 
     // Jugadores presentes en el lobby de la sala activa
-    jugadoresLobby: { id: string; username: string; numeroJugador: number }[];
+    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string }[];
+
+    // true si este cliente creo la sala (HOST); false si se unio con codigo (GUEST)
+    esCreadorSala: boolean;
 
     // Colecciones principales de datos en tiempo real
     tropas: Record<string, number>;

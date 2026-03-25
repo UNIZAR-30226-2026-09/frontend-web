@@ -43,7 +43,18 @@ class SocketService {
      * @param {string} token - JWT del usuario autenticado.
      */
     public connectToLobby(partidaId: number | string, token: string) {
-        const url = `${WS_BASE_URL}/ws/${partidaId}?token=${token}`;
+        const url = `${WS_BASE_URL}/api/v1/ws/${partidaId}?token=${token}`;
+        this.connect(url);
+    }
+
+    /**
+     * Conecta al canal WebSocket de una partida/lobby usando el username como identificador.
+     * URL esperada por el backend: /ws/{id}/{username}
+     * @param {number|string} partidaId - ID de la partida.
+     * @param {string} username - Nombre de usuario del jugador autenticado.
+     */
+    public connectToPartida(partidaId: number | string, username: string) {
+        const url = `${WS_BASE_URL}/api/v1/ws/${partidaId}/${username}`;
         this.connect(url);
     }
 

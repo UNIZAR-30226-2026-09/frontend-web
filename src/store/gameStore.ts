@@ -23,6 +23,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // Jugadores actualmente en el lobby
     jugadoresLobby: [],
 
+    // true si este cliente creo la sala; false si se unio con codigo
+    esCreadorSala: false,
+
     // Esto cambiará próximamente cuando se conecte con el estado real del backend
     tropas: {},
     propietarios: {},
@@ -369,19 +372,22 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
     procesarMensajeSocket: (mensaje: any) => {
         console.log('📡 Mensaje WS recibido:', mensaje);
+        const tipo = mensaje.tipo_evento ?? mensaje.type ?? '';
 
-        switch (mensaje.type) {
+        switch (tipo) {
+            case 'NUEVO_JUGADOR':
             case 'JUGADOR_UNIDO': {
-                // Añade al nuevo jugador al array del lobby si no estaba ya
                 const nuevo = mensaje.data || mensaje.payload || mensaje;
-                const id = nuevo.usuario_id ?? nuevo.id ?? '';
+                const id = nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '';
+                const displayName = nuevo.username ?? nuevo.jugador ?? id;
+                const color = nuevo.color ?? '';
                 set((state) => {
-                    const yaExiste = state.jugadoresLobby.some((j) => j.id === id);
+                    const yaExiste = state.jugadoresLobby.some((j) => j.id === id || j.id === displayName);
                     if (yaExiste) return state;
                     return {
                         jugadoresLobby: [
                             ...state.jugadoresLobby,
-                            { id, username: nuevo.username ?? id, numeroJugador: nuevo.turno ?? state.jugadoresLobby.length + 1 }
+                            { id, username: displayName, numeroJugador: state.jugadoresLobby.length + 1, color }
                         ]
                     };
                 });
@@ -398,14 +404,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             }
 
             case 'PARTIDA_INICIADA':
-                // El componente SalaLobby navegará al recibir este evento
                 set((state) => ({
                     salaActiva: { ...state.salaActiva, estado: 'activa' }
                 }));
                 break;
 
             default:
-                // Resto de mensajes de gameplay (ataques, tropas, etc.)
                 break;
         }
     },
@@ -431,7 +435,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 body: JSON.stringify(payload)
             });
 
-            // El creador ocupa automáticamente el hueco 1
             const authUser = useAuthStore.getState().user;
             const creadorId = authUser?.username ?? authUser?.nombre_usuario ?? authUser?.nombre ?? 'unknown';
 
@@ -444,7 +447,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 },
                 jugadoresLobby: [
                     { id: creadorId, username: creadorId, numeroJugador: 1 }
-                ]
+                ],
+                esCreadorSala: true
             });
 
             return data;
@@ -461,20 +465,45 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      */
     unirsePartidaBackend: async (codigo: string) => {
         try {
-            const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
-                method: 'POST'
-            });
+            // 1. Unirse a la partida
+            const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, { method: 'POST' });
+            const authUser = useAuthStore.getState().user;
+            const jugadorLocal = authUser?.username ?? authUser?.nombre_usuario ?? authUser?.nombre ?? data.usuario_id;
 
-            // El backend devuelve JugadorPartidaRead; guardamos lo relevante
+            // 2. Obtener config de la sala (config_max_players) desde el listado publico
+            let configMaxPlayers = 4;
+            try {
+                const listaPartidas = await fetchApi('/v1/partidas');
+                const miPartida = listaPartidas.find((p: any) => p.id === data.partida_id);
+                if (miPartida) configMaxPlayers = miPartida.config_max_players;
+            } catch (_) {
+                // Si falla el segundo fetch, usamos turno como minimo (ej: turno=2 => min 2 slots)
+                configMaxPlayers = Math.max(2, data.turno);
+            }
+
+            // 3. Construir jugadoresLobby:
+            //    - Slot 1: placeholder para el host (no tenemos su nombre sin backend extra)
+            //    - Slot data.turno: el jugador que acaba de unirse (nosotros)
+            const jugadoresLobby: any[] = [];
+            for (let i = 1; i <= configMaxPlayers; i++) {
+                if (i === data.turno) {
+                    jugadoresLobby.push({ id: jugadorLocal, username: jugadorLocal, numeroJugador: i, color: data.color });
+                } else if (i < data.turno) {
+                    // Hay alguien antes que nosotros (el host u otros) — placeholder
+                    jugadoresLobby.push({ id: `slot_${i}`, username: `Comandante ${i}`, numeroJugador: i });
+                }
+                // Slots posteriores al nuestro: vacíos (sin entrada en array)
+            }
+
             set((state) => ({
                 salaActiva: {
                     ...state.salaActiva,
-                    id: data.partida_id
+                    id: data.partida_id,
+                    config_max_players: configMaxPlayers
                 },
-                jugadoresLobby: [
-                    ...state.jugadoresLobby,
-                    { id: data.usuario_id, username: data.usuario_id, numeroJugador: data.turno }
-                ]
+                jugadoresLobby,
+                jugadorLocal,
+                esCreadorSala: false
             }));
 
             return data;

@@ -1,9 +1,10 @@
 // src/components/lobby/SalaLobby.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useGameStore } from '../../store/gameStore';
 import { socketService } from '../../services/socketService';
+import { fetchApi } from '../../services/api';
 import '../../styles/Lobby.css';
 
 /**
@@ -18,22 +19,25 @@ const SalaLobby = ({ onVolver }) => {
   const salaActiva = useGameStore((state) => state.salaActiva);
   const jugadoresLobby = useGameStore((state) => state.jugadoresLobby);
 
+  const [empezando, setEmpezando] = useState(false);
+  const [errorEmpezar, setErrorEmpezar] = useState(null);
+
   const maxJugadores = salaActiva.config_max_players || 4;
   const codigo = salaActiva.codigoInvitacion || '—';
   const usernameLocal = user?.username || user?.nombre_usuario || user?.nombre || '';
-  const esHost = jugadoresLobby.length === 0 || jugadoresLobby[0]?.id === usernameLocal;
+  // esCreadorSala lo fija el store: true al crear, false al unirse
+  const esHost = useGameStore((state) => state.esCreadorSala);
 
-  // Conectar WS de la sala al montar y desconectar al salir
+  // Conectar WS de la sala al montar con la URL correcta: /ws/{id}/{username}
   useEffect(() => {
-    if (!salaActiva.id) return;
+    if (!salaActiva.id || !usernameLocal) return;
 
-    const token = localStorage.getItem('soberania_token') || '';
-    socketService.connectToLobby(salaActiva.id, token);
+    socketService.connectToPartida(salaActiva.id, usernameLocal);
 
     return () => {
       socketService.disconnect();
     };
-  }, [salaActiva.id]);
+  }, [salaActiva.id, usernameLocal]);
 
   // Navegar automáticamente cuando el backend notifica que la partida ha iniciado
   useEffect(() => {
@@ -43,12 +47,20 @@ const SalaLobby = ({ onVolver }) => {
   }, [salaActiva.estado, salaActiva.id, navigate]);
 
   const handleCopiarCodigo = () => {
-    navigator.clipboard.writeText(codigo).catch(() => {});
+    navigator.clipboard.writeText(codigo).catch(() => { });
   };
 
-  const handleEmpezar = () => {
-    if (salaActiva.id) {
-      navigate(`/partida/${salaActiva.id}`);
+  const handleEmpezar = async () => {
+    if (!salaActiva.id || empezando) return;
+    setEmpezando(true);
+    setErrorEmpezar(null);
+    try {
+      await fetchApi(`/v1/partidas/${salaActiva.id}/empezar`, { method: 'POST' });
+      // La navegación ocurre automáticamente via WS PARTIDA_INICIADA
+    } catch (err) {
+      setErrorEmpezar(err.message || 'No se puede iniciar la partida.');
+    } finally {
+      setEmpezando(false);
     }
   };
 
