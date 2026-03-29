@@ -5,10 +5,7 @@ import { GrafoSoberania } from './mapa.types';
  */
 export type FaseJuego =
     | 'DESPLIEGUE'
-    | 'INVESTIGACION'
-    | 'ATAQUE_NORMAL'
-    | 'MOVER_TROPAS'
-    | 'ATAQUE_ESPECIAL'
+    | 'ATAQUE_CONVENCIONAL'
     | 'FORTIFICACION';
 
 export type ModoVista = 'COMARCAS' | 'REGIONES';
@@ -39,7 +36,7 @@ export interface EstadoJuego {
     };
 
     // Jugadores presentes en el lobby de la sala activa
-    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string }[];
+    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string; esCreador?: boolean }[];
 
     // true si este cliente creo la sala (HOST); false si se unio con codigo (GUEST)
     esCreadorSala: boolean;
@@ -61,6 +58,14 @@ export interface EstadoJuego {
 
     // Almacena los identificadores de comarcas a destacar visualmente (alcance)
     comarcasResaltadas: string[];
+
+    // Tácticas y modales de juego
+    preparandoAtaque: boolean;
+    movimientoConquistaPendiente: boolean;
+    origenConquista: string | null;
+    destinoConquista: string | null;
+
+    preparandoFortificacion: boolean;
 
     // Región bajo el puntero del jugador (modo REGIONES)
     regionHover: string | null;

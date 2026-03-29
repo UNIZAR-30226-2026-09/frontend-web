@@ -72,9 +72,25 @@ const SalaLobby = ({ onVolver }) => {
   const huecos = Array.from({ length: maxJugadores }, (_, i) => {
     const jugador = jugadoresLobby[i];
     return jugador
-      ? { ocupado: true, nombre: jugador.username, numero: i + 1 }
-      : { ocupado: false, nombre: null, numero: i + 1 };
+      ? { ocupado: true, nombre: jugador.username, numero: i + 1, esCreador: jugador.esCreador }
+      : { ocupado: false, nombre: null, numero: i + 1, esCreador: false };
   });
+
+  const handleAbandonar = async () => {
+    if (salaActiva.id) {
+      try {
+        await fetchApi(`/v1/partidas/${salaActiva.id}/abandonar`, { method: 'POST' });
+      } catch (err) {
+        console.error("Error al abandonar la sala:", err);
+      }
+    }
+    useGameStore.setState({
+      salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+      jugadoresLobby: [],
+      esCreadorSala: false
+    });
+    onVolver();
+  };
 
   return (
     <div className="lobby-overlay">
@@ -112,9 +128,9 @@ const SalaLobby = ({ onVolver }) => {
                 <div className="lobby-jugador-slot">
                   <div className="lobby-jugador-numero">{hueco.numero}</div>
                   <span className="lobby-jugador-nombre">{hueco.nombre}</span>
-                  {hueco.numero === 1 && (
+                  {hueco.esCreador && (
                     <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-border-gold)', fontWeight: 'bold' }}>
-                      HOST
+                      ★ HOST
                     </span>
                   )}
                 </div>
@@ -152,7 +168,7 @@ const SalaLobby = ({ onVolver }) => {
             </button>
           )}
 
-          <button className="lobby-boton-secundario" onClick={onVolver}>
+          <button className="lobby-boton-secundario" onClick={handleAbandonar}>
             Abandonar
           </button>
         </div>

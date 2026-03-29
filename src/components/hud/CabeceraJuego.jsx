@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import '../../styles/CabeceraJuego.css';
-import { socketService } from '../../services/socketService';
 
 /**
  * Transforma el string interno del estado de la fase en un texto legible 
@@ -13,10 +12,7 @@ import { socketService } from '../../services/socketService';
 const formatearFase = (fase) => {
   const fasesMap = {
     'DESPLIEGUE': 'Fase de Despliegue',
-    'INVESTIGACION': 'Fase de Investigación',
-    'ATAQUE_NORMAL': 'Fase de Ataque',
-    'MOVER_TROPAS': 'Movimiento de Tropas',
-    'ATAQUE_ESPECIAL': 'Ataque Especial',
+    'ATAQUE_CONVENCIONAL': 'Fase de Ataque',
     'FORTIFICACION': 'Fase de Fortificación'
   };
   return fasesMap[fase] || fase;
@@ -37,29 +33,32 @@ const CabeceraJuego = () => {
     avanzarFase,
     tropas,
     propietarios,
-    coloresJugadores
+    coloresJugadores,
+    turnoActual,
+    jugadorLocal
   } = useGameStore();
 
   // Sumamos las tropas que guardamos de sobra con las que ya están repartidas por ahí
   const totalTropasJugador = React.useMemo(() => {
     let total = tropasDisponibles;
     Object.entries(propietarios).forEach(([id, owner]) => {
-      if (owner === 'jugador1') {
+      if (owner === jugadorLocal) {
         total += (tropas[id] || 0);
       }
     });
     return total;
-  }, [tropasDisponibles, propietarios, tropas]);
+  }, [tropasDisponibles, propietarios, tropas, jugadorLocal]);
 
+  const isMiTurno = turnoActual === jugadorLocal;
   const isFaseDespliegue = faseActual === 'DESPLIEGUE';
   const isUltimaFase = faseActual === 'FORTIFICACION';
 
-  // Bloqueamos el paso de turno si todavía tiene tropas sin colocar
-  const isSiguienteBloqueado = isFaseDespliegue && tropasDisponibles > 0;
+  // Bloqueamos el paso de turno si todavía tiene tropas sin colocar o si no es su turno
+  const isSiguienteBloqueado = !isMiTurno || (isFaseDespliegue && tropasDisponibles > 0);
 
   // Leer el jugador en turno actual real para sacar su color
-  const turnPlayerColor = coloresJugadores && coloresJugadores['jugador1']
-    ? coloresJugadores['jugador1']
+  const turnPlayerColor = coloresJugadores && coloresJugadores[turnoActual]
+    ? coloresJugadores[turnoActual]
     : 'var(--color-border-gold)';
 
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -90,12 +89,16 @@ const CabeceraJuego = () => {
   }
 
   let titleSiguiente = '';
-  if (isSiguienteBloqueado) {
+  if (!isMiTurno) {
+    titleSiguiente = 'Espera tu turno para jugar';
+  } else if (isSiguienteBloqueado) {
     titleSiguiente = 'Despliega todas tus tropas antes de avanzar';
   }
 
   let textoSiguiente = 'AVANZAR';
-  if (isUltimaFase) {
+  if (!isMiTurno) {
+    textoSiguiente = 'ESPERANDO...';
+  } else if (isUltimaFase) {
     textoSiguiente = 'NUEVO TURNO';
   }
 

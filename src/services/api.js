@@ -28,8 +28,15 @@ export const fetchApi = async (endpoint, options = {}) => {
     const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
+        if (response.status === 401) {
+            // El token es inválido o ha caducado
+            localStorage.removeItem('soberania_token');
+            localStorage.removeItem('soberania_user');
+            window.location.href = '/';
+        }
+
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+        throw new Error(errorData.detail || errorData.message || `Error HTTP: ${response.status}`);
     }
 
     return response.json();

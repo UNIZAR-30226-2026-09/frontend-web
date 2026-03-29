@@ -23,14 +23,15 @@ const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
     setCargando(true);
     setError(null);
 
-    const resultado = await unirsePartidaBackend(codigo.trim());
-
-    setCargando(false);
-
-    if (resultado) {
-      onUnido();
-    } else {
-      setError('Código no válido, sala llena o error de conexión.');
+    try {
+      const resultado = await unirsePartidaBackend(codigo.trim());
+      if (resultado) {
+        onUnido();
+      }
+    } catch (err) {
+      setError(err?.message || 'Código no válido, sala llena o error de conexión.');
+    } finally {
+      setCargando(false);
     }
   };
 

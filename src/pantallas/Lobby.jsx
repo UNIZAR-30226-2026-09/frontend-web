@@ -47,12 +47,10 @@ const Lobby = () => {
 
       if (resultado) {
         setVistaActual('sala');
-      } else {
-        setErrorRapida('No se pudo encontrar ni crear una sala. Inténtalo de nuevo.');
       }
     } catch (error) {
       console.error('Error en partida rápida:', error);
-      setErrorRapida('Error de conexión con el servidor.');
+      setErrorRapida(error?.message || 'Error de conexión con el servidor.');
     } finally {
       setCargandoRapida(false);
     }

@@ -3,6 +3,9 @@ import CabeceraJuego from '../components/hud/CabeceraJuego';
 import { PlayerList } from '../components/hud/PlayerList';
 import Tablero from '../components/map/Tablero';
 import { socketService } from '../services/socketService';
+import ControlAtaque from '../components/hud/ControlAtaque';
+import ControlTrasladoConquista from '../components/hud/ControlTrasladoConquista';
+import ControlFortificacion from '../components/hud/ControlFortificacion';
 
 /**
  * Pantalla principal del juego que junta el HUD superior y el mapa interactivo.
@@ -24,6 +27,10 @@ const PantallaJuego = () => {
             <CabeceraJuego />
             <Tablero />
             <PlayerList />
+            
+            <ControlAtaque />
+            <ControlTrasladoConquista />
+            <ControlFortificacion />
         </div>
     );
 };

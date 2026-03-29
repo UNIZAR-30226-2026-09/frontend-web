@@ -11,9 +11,6 @@ import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 import mapData from '../../data/map_aragon.json';
 
-// Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
-const JUGADOR_LOCAL = 'jugador1';
-
 /**
  * Agrupa las comarcas por región, calcula el dominio del jugador local
  * y devuelve las coordenadas del centro geográfico de cada región para
@@ -21,9 +18,10 @@ const JUGADOR_LOCAL = 'jugador1';
  *
  * @param {Array}  comarcasCompletas - Comarcas con campos SVG + datos del mapa (centro, region_id).
  * @param {Object} propietarios      - Mapa comarca → jugador propietario.
+ * @param {string} jugadorLocal      - El id del jugador en este cliente.
  * @returns {Array<{ id, centroX, centroY, nombreCorto, textoStats }>}
  */
-const calcularInfoRegiones = (comarcasCompletas, propietarios) => {
+const calcularInfoRegiones = (comarcasCompletas, propietarios, jugadorLocal) => {
   // Agrupamos las comarcas por region_id en un mapa auxiliar
   const mapaRegiones = {};
 
@@ -45,7 +43,7 @@ const calcularInfoRegiones = (comarcasCompletas, propietarios) => {
   return Object.entries(mapaRegiones).map(([regionId, datos]) => {
     const { comarcas, totalX, totalY } = datos;
     const total = comarcas.length;
-    const poseeJugador = comarcas.filter((id) => propietarios[id] === JUGADOR_LOCAL).length;
+    const poseeJugador = comarcas.filter((id) => propietarios[id] === jugadorLocal).length;
     const porcentaje = total > 0 ? Math.round((poseeJugador / total) * 100) : 0;
 
     const regionInfo = mapData.regions[regionId];
@@ -85,8 +83,8 @@ const Tablero = (props) => {
     }));
 
     inicializarJuego(rawData);
-    setFase('DESPLIEGUE');
-  }, [inicializarJuego, setFase]);
+    // Eliminar force de setFase('DESPLIEGUE') para no sobreescribir datos del Backend WS
+  }, [inicializarJuego]);
 
   const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
   const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
@@ -96,6 +94,7 @@ const Tablero = (props) => {
   const coloresJugadores = useGameStore((state) => state.coloresJugadores);
   const faseActual = useGameStore((state) => state.faseActual);
   const turnoActual = useGameStore((state) => state.turnoActual);
+  const jugadorLocal = useGameStore((state) => state.jugadorLocal);
   const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
 
   const comarcasCompletas = useMemo(() => {
@@ -123,7 +122,7 @@ const Tablero = (props) => {
   // En modo COMARCAS esta variable es nula y no se renderiza nada extra.
   let etiquetasRegiones = null;
   if (modoVista === 'REGIONES') {
-    const infoRegiones = calcularInfoRegiones(comarcasCompletas, propietarios);
+    const infoRegiones = calcularInfoRegiones(comarcasCompletas, propietarios, jugadorLocal);
 
     etiquetasRegiones = infoRegiones.map((region) => (
       <text

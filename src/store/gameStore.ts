@@ -3,6 +3,7 @@ import { EstadoJuego, FaseJuego } from '../types/game.types';
 import { calcularComarcasEnRango, construirGrafoComarcas } from '../utils/graphUtils';
 import { ComarcaDTO } from '../types/mapa.types';
 import { fetchApi } from '../services/api';
+import { gameApi } from '../services/gameApi';
 import { useAuthStore } from './useAuthStore';
 
 export const useGameStore = create<EstadoJuego>((set, get) => ({
@@ -45,6 +46,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     refuerzosRecibidos: 0,
     isSocketConnected: false,
 
+    preparandoAtaque: false,
+    movimientoConquistaPendiente: false,
+    origenConquista: null,
+    destinoConquista: null,
+    preparandoFortificacion: false,
+
     // ACCIONES
 
     /**
@@ -76,23 +83,33 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      * para evitar que pierda sus refuerzos por error. Si todo está correcto, avanza a la siguiente fase 
      * y purga las selecciones anteriores.
      */
-    avanzarFase: () => {
-        const fasesOrden: FaseJuego[] = [
-            'DESPLIEGUE',
-            'INVESTIGACION',
-            'ATAQUE_NORMAL',
-            'MOVER_TROPAS',
-            'ATAQUE_ESPECIAL',
-            'FORTIFICACION'
-        ];
-
-        if (get().faseActual === 'DESPLIEGUE' && get().tropasDisponibles > 0) {
+    avanzarFase: async () => {
+        const estado = get();
+        if (estado.faseActual === 'DESPLIEGUE' && estado.tropasDisponibles > 0) {
             console.log('No se puede avanzar: Faltan tropas por desplegar');
             return;
         }
 
-        set((state) => {
-            const indexActual = fasesOrden.indexOf(state.faseActual);
+        if (!estado.salaActiva?.id) return;
+
+        try {
+            // Limpiamos selecciones locales antes de llamar
+            set({
+                origenSeleccionado: null,
+                destinoSeleccionado: null,
+                comarcasResaltadas: [],
+                comarcaDespliegue: null,
+                tropasAAsignar: 0
+            });
+            await gameApi.pasarFase(estado.salaActiva.id);
+            // El backend no envía por WS el cambio de fase automáticamente en este endpoint
+            // pero si tuvieramos "ACTUALIZACION_MAPA" deberíamos actualizar fase. 
+            // Para asegurar la UX sin lag excesivo (y porque pasar de fase es rápido), lo seteamos aquí
+            // (idealmente deberíamos confiar del backend, pero provisionalmente lo rotamos)
+            const fasesOrden: FaseJuego[] = [
+                'DESPLIEGUE', 'ATAQUE_CONVENCIONAL', 'FORTIFICACION'
+            ];
+            const indexActual = fasesOrden.indexOf(estado.faseActual);
             const siguienteIndex = (indexActual + 1) % fasesOrden.length;
             const nuevaFase = fasesOrden[siguienteIndex];
 
@@ -100,15 +117,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 setTimeout(() => get().calcularRefuerzos(), 10);
             }
 
-            return {
-                faseActual: nuevaFase,
-                origenSeleccionado: null,
-                destinoSeleccionado: null,
-                comarcasResaltadas: [],
-                comarcaDespliegue: null,
-                tropasAAsignar: 0
-            };
-        });
+            set({ faseActual: nuevaFase });
+        } catch (error) {
+            console.error('Error al avanzar fase:', error);
+        }
     },
 
     /**
@@ -151,20 +163,22 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      * Confirma la orden de despliegue UI, moviendo el buffer temporal (tropasAAsignar)
      * a la guarnición global inmutable para no causar problemas con React.
      */
-    confirmarDespliegue: () => {
-        set((state) => {
-            if (!state.comarcaDespliegue || state.tropasAAsignar === 0) return state;
+    confirmarDespliegue: async () => {
+        const estado = get();
+        if (!estado.comarcaDespliegue || estado.tropasAAsignar === 0 || !estado.salaActiva?.id) return;
 
-            const nuevasTropas = { ...state.tropas };
-            nuevasTropas[state.comarcaDespliegue] = (nuevasTropas[state.comarcaDespliegue] || 0) + state.tropasAAsignar;
-
-            return {
-                tropasDisponibles: state.tropasDisponibles - state.tropasAAsignar,
-                tropas: nuevasTropas,
+        try {
+            const result = await gameApi.colocarTropas(estado.salaActiva.id, estado.comarcaDespliegue, estado.tropasAAsignar);
+            // Si el backend es exitoso, actualizamos la reserva aquí mismo. 
+            // Las tropas en el mapa llegarán por WebSocket y sobreescribirán.
+            set({
+                tropasDisponibles: result.reserva_restante !== undefined ? result.reserva_restante : estado.tropasDisponibles - estado.tropasAAsignar,
                 comarcaDespliegue: null,
                 tropasAAsignar: 0
-            };
-        });
+            });
+        } catch (error) {
+            console.error('Llamada a colocarTropas fallida', error);
+        }
     },
 
     /**
@@ -176,23 +190,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         try {
             const grafo = construirGrafoComarcas(rawData);
 
-            // Esto cambiará próximamente (datos controlados desde el backend)
-            const mockTropas: Record<string, number> = {};
-            const mockPropietarios: Record<string, string> = {};
-            const jugadores = ['jugador1', 'jugador2', 'jugador3', 'jugador4'];
-
-            rawData.forEach((comarca, index) => {
-                const jugadorAsignado = jugadores[index % jugadores.length];
-                mockPropietarios[comarca.id] = jugadorAsignado;
-                mockTropas[comarca.id] = Math.floor(Math.random() * 10) + 1;
-            });
-
             set({
-                grafoGlobal: grafo,
-                tropas: mockTropas,
-                propietarios: mockPropietarios
+                grafoGlobal: grafo
             });
-            console.log('Grafo del mapa inicializado correctamente.');
+            console.log('Grafo del mapa inicializado estructuralmente.');
 
             get().calcularRefuerzos();
         } catch (error) {
@@ -236,10 +237,16 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     manejarClickComarca: (comarcaId: string) => {
         const estado = get();
 
+        // Control estricto de turnos
+        if (estado.turnoActual !== estado.jugadorLocal) {
+            console.log('No puedes interactuar, no es tu turno.');
+            return;
+        }
+
         switch (estado.faseActual) {
             case 'DESPLIEGUE':
                 // Nos aseguramos que no despliegue en territorio hostil
-                if (estado.propietarios[comarcaId] === 'jugador1') {
+                if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
                     set({
                         comarcaDespliegue: comarcaId,
                         tropasAAsignar: 0
@@ -247,12 +254,13 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 }
                 break;
 
-            case 'INVESTIGACION':
-                // Lógica de desarrollo e investigación
-                break;
-
-            case 'ATAQUE_NORMAL': {
+            case 'ATAQUE_CONVENCIONAL': {
                 const RANGO_ATAQUE_NORMAL = 1;
+
+                // Si ya está preparando el ataque, bloquea clicks de fondo
+                if (estado.preparandoAtaque || estado.movimientoConquistaPendiente) {
+                    return;
+                }
 
                 if (estado.origenSeleccionado === comarcaId) {
                     set({
@@ -284,6 +292,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 }
 
                 if (!estado.origenSeleccionado) {
+                    // Validar que el origen le pertenece y tiene más de 1 tropa
+                    if (estado.propietarios[comarcaId] !== estado.jugadorLocal || estado.tropas[comarcaId] <= 1) {
+                        console.log('Origen inválido para atacar');
+                        return;
+                    }
+
                     set({ origenSeleccionado: comarcaId });
 
                     try {
@@ -311,12 +325,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 }
 
                 if (estado.origenSeleccionado && estado.comarcasResaltadas.includes(comarcaId)) {
+                    // El usuario procedió a atacar (seleccionó destino válido)
                     set({
                         destinoSeleccionado: comarcaId,
-                        comarcasResaltadas: []
+                        preparandoAtaque: true
                     });
-
-                    console.log(`Intento de ataque: ${estado.origenSeleccionado} -> ${comarcaId}`);
                     return;
                 }
 
@@ -333,17 +346,48 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
-            case 'MOVER_TROPAS':
-                // Por implementar
-                break;
+            case 'FORTIFICACION': {
+                const RANGO_MOVIMIENTO = 1; // Movimiento adyacente por ahora
 
-            case 'ATAQUE_ESPECIAL':
-                // Por implementar
-                break;
+                if (estado.preparandoFortificacion) return;
 
-            case 'FORTIFICACION':
-                // Por implementar
+                if (!estado.origenSeleccionado) {
+                    if (estado.propietarios[comarcaId] !== estado.jugadorLocal || estado.tropas[comarcaId] <= 1) {
+                        return;
+                    }
+                    set({ origenSeleccionado: comarcaId });
+
+                    if (estado.grafoGlobal) {
+                        const alcanzables = calcularComarcasEnRango(
+                            estado.grafoGlobal,
+                            comarcaId,
+                            RANGO_MOVIMIENTO
+                        );
+                        // Filtramos solo los territorios propios
+                        const propiosAdyacentes = Array.from(alcanzables).filter(
+                            (id) => estado.propietarios[id] === estado.jugadorLocal
+                        );
+                        set({ comarcasResaltadas: propiosAdyacentes });
+                    }
+                    return;
+                }
+
+                if (estado.origenSeleccionado === comarcaId) {
+                    set({ origenSeleccionado: null, comarcasResaltadas: [] });
+                    return;
+                }
+
+                if (estado.comarcasResaltadas.includes(comarcaId)) {
+                    // Selecciona el destino válido y abre el Modal de Fortificar
+                    set({
+                        destinoSeleccionado: comarcaId,
+                        preparandoFortificacion: true
+                    });
+                } else {
+                    set({ origenSeleccionado: null, destinoSeleccionado: null, comarcasResaltadas: [] });
+                }
                 break;
+            }
 
             default:
                 console.warn(`Clic en comarca no implementado para la fase: ${estado.faseActual}`);
@@ -380,34 +424,167 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 const nuevo = mensaje.data || mensaje.payload || mensaje;
                 const id = nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '';
                 const displayName = nuevo.username ?? nuevo.jugador ?? id;
-                const color = nuevo.color ?? '';
                 set((state) => {
                     const yaExiste = state.jugadoresLobby.some((j) => j.id === id || j.id === displayName);
                     if (yaExiste) return state;
                     return {
                         jugadoresLobby: [
                             ...state.jugadoresLobby,
-                            { id, username: displayName, numeroJugador: state.jugadoresLobby.length + 1, color }
+                            { id, username: displayName, numeroJugador: state.jugadoresLobby.length + 1, esCreador: false }
                         ]
                     };
                 });
                 break;
             }
 
+            case 'DESCONEXION':
             case 'JUGADOR_SALIO': {
                 const saliente = mensaje.data || mensaje.payload || mensaje;
-                const idSaliente = saliente.usuario_id ?? saliente.id ?? '';
+                const idSaliente = saliente.jugador ?? saliente.usuario_id ?? saliente.id ?? '';
                 set((state) => ({
-                    jugadoresLobby: state.jugadoresLobby.filter((j) => j.id !== idSaliente)
+                    jugadoresLobby: state.jugadoresLobby.filter((j) => j.id !== idSaliente && j.username !== idSaliente)
                 }));
                 break;
             }
 
             case 'PARTIDA_INICIADA':
+                set((state) => {
+                    const payload = mensaje.data || mensaje.payload || mensaje;
+
+                    // The backend map object includes units and owner_id
+                    const nuevasTropas: Record<string, number> = {};
+                    const nuevosPropietarios: Record<string, string> = {};
+
+                    if (payload.mapa) {
+                        for (const [id, t] of Object.entries<any>(payload.mapa)) {
+                            nuevasTropas[id] = t.units;
+                            nuevosPropietarios[id] = t.owner_id;
+                        }
+                    }
+
+                    const nuevosJugadores = payload.jugadores ? Object.keys(payload.jugadores) : state.jugadores;
+                    const nuevosColores = { ...state.coloresJugadores };
+                    let tropasReserva = state.tropasDisponibles;
+
+                    if (payload.jugadores) {
+                        for (const [id, jInfo] of Object.entries<any>(payload.jugadores)) {
+                            if (jInfo.numero_jugador !== undefined) {
+                                const mapColors = ['var(--color-jugador-1)', 'var(--color-jugador-2)', 'var(--color-jugador-3)', 'var(--color-jugador-4)'];
+                                nuevosColores[id] = mapColors[(jInfo.numero_jugador - 1) % mapColors.length];
+                            } else if (jInfo.color) {
+                                nuevosColores[id] = jInfo.color;
+                            }
+                            if (id === state.jugadorLocal && jInfo.tropas_reserva !== undefined) {
+                                tropasReserva = jInfo.tropas_reserva;
+                            }
+                        }
+                    }
+
+                    return {
+                        salaActiva: { ...state.salaActiva, estado: 'activa' },
+                        faseActual: payload.fase_actual ? (payload.fase_actual.toUpperCase() === 'REFUERZO' ? 'DESPLIEGUE' : payload.fase_actual.toUpperCase()) : 'DESPLIEGUE',
+                        turnoActual: payload.turno_de || state.turnoActual,
+                        jugadores: nuevosJugadores,
+                        coloresJugadores: nuevosColores,
+                        tropasDisponibles: tropasReserva,
+                        ...(payload.mapa && { tropas: nuevasTropas, propietarios: nuevosPropietarios })
+                    }
+                });
+                break;
+
+            case 'CAMBIO_FASE': {
+                const data = mensaje.data || mensaje.payload || mensaje;
+                set((state) => {
+                    const faseBack = data.nueva_fase ? data.nueva_fase.toUpperCase() : '';
+                    return {
+                        faseActual: faseBack === 'REFUERZO' ? 'DESPLIEGUE' : faseBack,
+                        turnoActual: data.jugador_activo || state.turnoActual
+                    };
+                });
+                break;
+            }
+
+            case 'TROPAS_COLOCADAS': {
+                const data = mensaje.data || mensaje.payload || mensaje;
                 set((state) => ({
-                    salaActiva: { ...state.salaActiva, estado: 'activa' }
+                    tropas: {
+                        ...state.tropas,
+                        [data.territorio]: data.tropas_totales_ahora
+                    }
                 }));
                 break;
+            }
+
+            case 'ATAQUE_RESULTADO': {
+                const data = mensaje.data || mensaje.payload || mensaje;
+                set((state) => {
+                    const nuevasTropas = { ...state.tropas };
+                    nuevasTropas[data.origen] = nuevasTropas[data.origen] - data.bajas_atacante;
+                    nuevasTropas[data.destino] = nuevasTropas[data.destino] - data.bajas_defensor;
+
+                    const nuevosPropietarios = { ...state.propietarios };
+                    if (data.victoria) {
+                        // El atacante toma el control
+                        nuevosPropietarios[data.destino] = state.propietarios[data.origen];
+                    }
+
+                    return {
+                        tropas: nuevasTropas,
+                        propietarios: nuevosPropietarios,
+                        ...(data.victoria && {
+                            movimientoConquistaPendiente: true,
+                            origenConquista: data.origen,
+                            destinoConquista: data.destino
+                        }),
+                        preparandoAtaque: false,
+                        origenSeleccionado: data.victoria ? data.origen : null,
+                        destinoSeleccionado: data.victoria ? data.destino : null,
+                        comarcasResaltadas: []
+                    };
+                });
+                break;
+            }
+
+            case 'MOVIMIENTO_CONQUISTA': {
+                const data = mensaje.data || mensaje.payload || mensaje;
+                set((state) => {
+                    const nuevasTropas = { ...state.tropas };
+                    nuevasTropas[data.origen] = nuevasTropas[data.origen] - data.tropas;
+                    nuevasTropas[data.destino] = nuevasTropas[data.destino] + data.tropas;
+
+                    return {
+                        tropas: nuevasTropas,
+                        movimientoConquistaPendiente: false,
+                        origenConquista: null,
+                        destinoConquista: null,
+                        origenSeleccionado: null,
+                        destinoSeleccionado: null
+                    };
+                });
+                break;
+            }
+
+            case 'ACTUALIZACION_MAPA': {
+                const payload = mensaje.data || mensaje.payload || mensaje;
+                set((state) => {
+                    const nuevasTropas: Record<string, number> = {};
+                    const nuevosPropietarios: Record<string, string> = {};
+
+                    if (payload.mapa) {
+                        for (const [id, t] of Object.entries<any>(payload.mapa)) {
+                            nuevasTropas[id] = t.units;
+                            nuevosPropietarios[id] = t.owner_id;
+                        }
+                    }
+
+                    return {
+                        faseActual: payload.fase_actual ? payload.fase_actual.toUpperCase() : state.faseActual,
+                        turnoActual: payload.turno_de || state.turnoActual,
+                        ...(payload.mapa && { tropas: nuevasTropas, propietarios: nuevosPropietarios })
+                    }
+                });
+                break;
+            }
 
             default:
                 break;
@@ -446,7 +623,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     config_max_players: data.config_max_players
                 },
                 jugadoresLobby: [
-                    { id: creadorId, username: creadorId, numeroJugador: 1 }
+                    { id: creadorId, username: creadorId, numeroJugador: 1, esCreador: true }
                 ],
                 esCreadorSala: true
             });
@@ -454,7 +631,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             return data;
         } catch (error) {
             console.error('Error al crear la partida:', error);
-            return null;
+            throw error;
         }
     },
 
@@ -470,35 +647,40 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             const authUser = useAuthStore.getState().user;
             const jugadorLocal = authUser?.username ?? authUser?.nombre_usuario ?? authUser?.nombre ?? data.usuario_id;
 
-            // 2. Obtener config de la sala (config_max_players) desde el listado publico
+            // 2. Obtener config de la sala (config_max_players) y su ID desde el listado publico
             let configMaxPlayers = 4;
+            let realPartidaId = data.partida_id;
+
             try {
                 const listaPartidas = await fetchApi('/v1/partidas');
-                const miPartida = listaPartidas.find((p: any) => p.id === data.partida_id);
-                if (miPartida) configMaxPlayers = miPartida.config_max_players;
+                const miPartida = listaPartidas.find((p: any) => p.codigo_invitacion === codigo);
+                if (miPartida) {
+                    configMaxPlayers = miPartida.config_max_players;
+                    realPartidaId = miPartida.id;
+                }
             } catch (_) {
-                // Si falla el segundo fetch, usamos turno como minimo (ej: turno=2 => min 2 slots)
-                configMaxPlayers = Math.max(2, data.turno);
+                configMaxPlayers = 4;
+            }
+
+            if (!realPartidaId) {
+                console.warn("No se pudo obtener el ID de la partida del listado público");
+                // Intento fallar si no hay ID para WS
+                throw new Error("No se pudo localizar el ID de la sala para conectarse.");
             }
 
             // 3. Construir jugadoresLobby:
-            //    - Slot 1: placeholder para el host (no tenemos su nombre sin backend extra)
-            //    - Slot data.turno: el jugador que acaba de unirse (nosotros)
-            const jugadoresLobby: any[] = [];
-            for (let i = 1; i <= configMaxPlayers; i++) {
-                if (i === data.turno) {
-                    jugadoresLobby.push({ id: jugadorLocal, username: jugadorLocal, numeroJugador: i, color: data.color });
-                } else if (i < data.turno) {
-                    // Hay alguien antes que nosotros (el host u otros) — placeholder
-                    jugadoresLobby.push({ id: `slot_${i}`, username: `Comandante ${i}`, numeroJugador: i });
-                }
-                // Slots posteriores al nuestro: vacíos (sin entrada en array)
-            }
+            // Usamos la lista de jugadores_en_sala y marcamos al creador
+            const jugadoresLobby = (data.jugadores_en_sala || []).map((j: any, index: number) => ({
+                id: j.usuario_id,
+                username: j.usuario_id,
+                numeroJugador: index + 1,
+                esCreador: j.usuario_id === data.creador
+            }));
 
             set((state) => ({
                 salaActiva: {
                     ...state.salaActiva,
-                    id: data.partida_id,
+                    id: realPartidaId,
                     config_max_players: configMaxPlayers
                 },
                 jugadoresLobby,
@@ -509,7 +691,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             return data;
         } catch (error) {
             console.error('Error al unirse a la partida:', error);
-            return null;
+            throw error;
         }
     }
 }));

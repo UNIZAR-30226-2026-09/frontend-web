@@ -19,18 +19,19 @@ const MenuCrearPartida = ({ onCreada, onCancelar }) => {
     setCargando(true);
     setError(null);
 
-    const resultado = await crearPartidaBackend({
-      config_max_players: maxJugadores,
-      config_visibility: visibilidad,
-      config_timer_seconds: 60
-    });
-
-    setCargando(false);
-
-    if (resultado) {
-      onCreada();
-    } else {
-      setError('No se pudo crear la partida. Comprueba tu conexión o el servidor.');
+    try {
+      const resultado = await crearPartidaBackend({
+        config_max_players: maxJugadores,
+        config_visibility: visibilidad,
+        config_timer_seconds: 60
+      });
+      if (resultado) {
+        onCreada();
+      }
+    } catch (err) {
+      setError(err?.message || 'No se pudo crear la partida. Comprueba tu conexión o el servidor.');
+    } finally {
+      setCargando(false);
     }
   };
 
