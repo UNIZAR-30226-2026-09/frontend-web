@@ -6,6 +6,7 @@ const ControlAtaque = () => {
     const estado = useGameStore();
     const [cantidad, setCantidad] = useState(1);
     const [atacando, setAtacando] = useState(false);
+    const [resultadoBack, setResultadoBack] = useState(null);
 
     const origen = estado.origenSeleccionado;
     const destino = estado.destinoSeleccionado;
@@ -19,27 +20,59 @@ const ControlAtaque = () => {
         }
     }, [estado.preparandoAtaque, maxAtaque]);
 
-    if (!estado.preparandoAtaque || !origen || !destino) return null;
+    if (!estado.preparandoAtaque && !resultadoBack) return null;
 
     const confirmarAtaque = async () => {
         if (!estado.salaActiva?.id) return;
         setAtacando(true);
         try {
-            await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, maxAtaque);
-            // El backend mandará ATAQUE_RESULTADO y el state limpiará la selección.
+            const res = await estado.ejecutarAtaque(origen, destino, maxAtaque);
+            setResultadoBack(res);
         } catch (error) {
             console.error('Error al atacar:', error);
-            alert("No se pudo efectuar el ataque.");
-            // En caso de error, podríamos cancelar la UI de ataque
+            alert("No se pudo efectuar el ataque. Asegúrese de que es su turno.");
             useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null, comarcasResaltadas: [] });
-        } finally {
             setAtacando(false);
         }
+    };
+
+    const cerrarResultado = () => {
+        setResultadoBack(null);
+        useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
     };
 
     const cancelar = () => {
         useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
     };
+
+    if (resultadoBack) {
+        return (
+            <div style={styles.overlay}>
+                <div style={styles.modal}>
+                    <h3>Reporte de Batalla</h3>
+                    <div style={styles.sliderContainer}>
+                        <p style={{ margin: '10px 0' }}>Has causado <b>{resultadoBack.bajas_defensor}</b> bajas.</p>
+                        <p style={{ margin: '10px 0' }}>Has sufrido <b>{resultadoBack.bajas_atacante}</b> bajas.</p>
+                        {resultadoBack.victoria_atacante && (
+                            <p style={{ color: '#48BB78', fontWeight: 'bold' }}>
+                                ¡Conquista exitosa! Territorio bajo tu control.
+                            </p>
+                        )}
+                        {!resultadoBack.victoria_atacante && (
+                            <p style={{ color: '#E53E3E', fontWeight: 'bold' }}>
+                                El ataque ha fracasado. El defensor resiste.
+                            </p>
+                        )}
+                    </div>
+                    <div style={styles.botones}>
+                        <button style={{ ...styles.btnAtaque, backgroundColor: '#48BB78' }} onClick={cerrarResultado}>
+                            Continuar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={styles.overlay}>

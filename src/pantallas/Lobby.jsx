@@ -43,7 +43,7 @@ const Lobby = () => {
       const salaDisponible = listaPublicas.find((p) => p.estado === 'creando');
       const resultado = salaDisponible
         ? await unirsePartidaBackend(salaDisponible.codigo_invitacion)
-        : await crearPartidaBackend({ config_max_players: 4, config_visibility: 'publica', config_timer_seconds: 60 });
+        : await crearPartidaBackend({ config_max_players: 4, config_visibility: 'publica', config_timer_seconds: 1200 });
 
       if (resultado) {
         setVistaActual('sala');

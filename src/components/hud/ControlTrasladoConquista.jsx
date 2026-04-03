@@ -24,8 +24,7 @@ const ControlTrasladoConquista = () => {
         if (!estado.salaActiva?.id) return;
         setMoviendo(true);
         try {
-            await gameApi.moverConquista(estado.salaActiva.id, cantidad);
-            // El backend contestará con MOVIMIENTO_CONQUISTA y el socket limpiará la UI.
+            await estado.moverTropasConquista(cantidad);
         } catch (error) {
             console.error('Error al trasladar:', error);
             alert("Ocurrió un error al mover tus tropas imperiales.");

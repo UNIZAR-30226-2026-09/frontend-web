@@ -30,7 +30,7 @@ const CabeceraJuego = () => {
     dinero,
     tropasDisponibles,
     faseActual,
-    avanzarFase,
+    pasarFaseBackend,
     tropas,
     propietarios,
     coloresJugadores,
@@ -120,7 +120,7 @@ const CabeceraJuego = () => {
             <span className="fase-texto" style={{ color: turnPlayerColor }}>{formatearFase(faseActual)}</span>
             <button
               className={clasesBotonSiguiente}
-              onClick={avanzarFase}
+              onClick={pasarFaseBackend}
               disabled={isSiguienteBloqueado}
               title={titleSiguiente}
             >

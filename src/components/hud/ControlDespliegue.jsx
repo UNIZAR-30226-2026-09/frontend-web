@@ -1,7 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import '../../styles/ControlDespliegue.css';
-import mapData from '../../data/map_aragon.json';
 
 /**
  * Panel para asignar tropas de refuerzo a un territorio.
@@ -14,6 +13,7 @@ const ControlDespliegue = () => {
     const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
     const confirmarDespliegue = useGameStore((state) => state.confirmarDespliegue);
     const faseActual = useGameStore((state) => state.faseActual);
+    const mapaEstatico = useGameStore((state) => state.mapaEstatico);
 
     if (faseActual !== 'DESPLIEGUE') {
         // Ocultar si no es fase de despliegue
@@ -22,8 +22,8 @@ const ControlDespliegue = () => {
 
     // Obtener nombre de la comarca
     let nombreComarca = '';
-    if (comarcaDespliegue) {
-        nombreComarca = mapData.comarcas[comarcaDespliegue]?.name || comarcaDespliegue;
+    if (comarcaDespliegue && mapaEstatico?.comarcas) {
+        nombreComarca = mapaEstatico.comarcas[comarcaDespliegue]?.name || comarcaDespliegue;
     }
 
     const handleValidChange = (e) => {

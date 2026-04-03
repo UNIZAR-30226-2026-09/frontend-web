@@ -68,7 +68,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
-            if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) {
+            if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
@@ -109,7 +109,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     }
 
     let cursorStyle = 'pointer';
-    if (faseActual === 'ATAQUE_NORMAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
+    if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
         cursorStyle = 'default';
     }
 
@@ -119,7 +119,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
      */
     const handleMouseEnter = () => {
         // Ignorar hover en comarcas inatacables durante el ataque
-        if (faseActual === 'ATAQUE_NORMAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
+        if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
             return;
         }
 

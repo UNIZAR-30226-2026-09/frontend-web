@@ -15,6 +15,12 @@ export type ModoVista = 'COMARCAS' | 'REGIONES';
  */
 export interface EstadoJuego {
     grafoGlobal: GrafoSoberania | null;
+    mapaEstatico: { 
+        metadata?: any;
+        regions?: Record<string, { name: string; bonus_troops: number; comarcas: string[] }>;
+        comarcas: Record<string, { name: string; region_id: string; adjacent_to: string[] }> 
+    } | null;
+    errorMapaEstatico: string | null;
 
     faseActual: FaseJuego;
     modoVista: ModoVista;
@@ -77,6 +83,11 @@ export interface EstadoJuego {
     inicializarJuego: (rawData: import('./mapa.types').ComarcaDTO[]) => void;
 
     /**
+     * Descarga el mapa estático del backend y lo guarda en el store.
+     */
+    cargarMapaEstatico: () => Promise<void>;
+
+    /**
      * Obliga a la máquina de estados a saltar a una fase específica y limpia la UI.
      * @param {FaseJuego} nuevaFase Fase destino.
      */
@@ -101,20 +112,15 @@ export interface EstadoJuego {
     toggleModoVista: () => void;
 
     /**
-     * Calcula el monto de refuerzos aplicables según el control base del jugador e inicia la notificación.
-     */
-    calcularRefuerzos: () => void;
-
-    /**
      * Contabiliza las tropas a depositar en el nodo destino temporal.
      * @param {number} cantidad Valor pre-evaluado de ocupación.
      */
     setTropasAAsignar: (cantidad: number) => void;
 
     /**
-     * Aplica la carga encolada de tropas al inventario real de la comarca destino y cierra la pasarela.
+     * Envía la petición al backend para colocar tropas de la reserva.
      */
-    confirmarDespliegue: () => void;
+    confirmarDespliegue: () => Promise<void>;
 
     /**
      * Oculta el componente notificacional superpuesto de nuevos refuerzos.
@@ -134,9 +140,24 @@ export interface EstadoJuego {
     setRegionHover: (regionId: string | null) => void;
 
     /**
-     * Conmuta la fase actual procesando secuencialmente el bucle de eventos del juego.
+     * Informa al backend que el jugador actual desea pasar de fase.
      */
-    avanzarFase: () => void;
+    pasarFaseBackend: () => Promise<void>;
+
+    /**
+     * Solicita al backend la ejecución de un ataque.
+     */
+    ejecutarAtaque: (origen: string, destino: string, tropas: number) => Promise<any>;
+
+    /**
+     * Mueve tropas post-conquista comunicándolo al backend.
+     */
+    moverTropasConquista: (tropas: number) => Promise<void>;
+
+    /**
+     * Realiza un traslado táctico (fortificación) a través del backend.
+     */
+    fortificarBackend: (origen: string, destino: string, tropas: number) => Promise<void>;
 
     /**
      * Enrutador para gestionar la lógica de acción sobre una comarca dependiente de su fase asignada.

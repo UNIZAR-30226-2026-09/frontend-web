@@ -9,7 +9,6 @@ import BotonVistaRegiones from '../ui/BotonVistaRegiones';
 import ControlDespliegue from '../hud/ControlDespliegue';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
-import mapData from '../../data/map_aragon.json';
 
 /**
  * Agrupa las comarcas por región, calcula el dominio del jugador local
@@ -19,9 +18,10 @@ import mapData from '../../data/map_aragon.json';
  * @param {Array}  comarcasCompletas - Comarcas con campos SVG + datos del mapa (centro, region_id).
  * @param {Object} propietarios      - Mapa comarca → jugador propietario.
  * @param {string} jugadorLocal      - El id del jugador en este cliente.
+ * @param {Object} mapaEstatico      - El JSON descargado del servidor.
  * @returns {Array<{ id, centroX, centroY, nombreCorto, textoStats }>}
  */
-const calcularInfoRegiones = (comarcasCompletas, propietarios, jugadorLocal) => {
+const calcularInfoRegiones = (comarcasCompletas, propietarios, jugadorLocal, mapaEstatico) => {
   // Agrupamos las comarcas por region_id en un mapa auxiliar
   const mapaRegiones = {};
 
@@ -46,7 +46,7 @@ const calcularInfoRegiones = (comarcasCompletas, propietarios, jugadorLocal) => 
     const poseeJugador = comarcas.filter((id) => propietarios[id] === jugadorLocal).length;
     const porcentaje = total > 0 ? Math.round((poseeJugador / total) * 100) : 0;
 
-    const regionInfo = mapData.regions[regionId];
+    const regionInfo = mapaEstatico?.regions ? mapaEstatico.regions[regionId] : null;
     const nombreCorto = regionInfo ? regionInfo.name : regionId;
 
     return {
@@ -75,42 +75,102 @@ const Tablero = (props) => {
   const setFase = useGameStore((state) => state.setFase);
   const limpiarSeleccion = useGameStore((state) => state.limpiarSeleccion);
 
-  useEffect(() => {
-    const rawData = Object.entries(mapData.comarcas).map(([key, value]) => ({
-      id: key,
-      nombre: value.name,
-      adyacentes: value.adjacent_to,
-    }));
-
-    inicializarJuego(rawData);
-    // Eliminar force de setFase('DESPLIEGUE') para no sobreescribir datos del Backend WS
-  }, [inicializarJuego]);
-
   const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
   const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
   const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
   const tropas = useGameStore((state) => state.tropas);
   const propietarios = useGameStore((state) => state.propietarios);
   const coloresJugadores = useGameStore((state) => state.coloresJugadores);
+
   const faseActual = useGameStore((state) => state.faseActual);
   const turnoActual = useGameStore((state) => state.turnoActual);
   const jugadorLocal = useGameStore((state) => state.jugadorLocal);
   const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
 
+  const mapaEstatico = useGameStore((state) => state.mapaEstatico);
+  const cargarMapaEstatico = useGameStore((state) => state.cargarMapaEstatico);
+  const errorMapaEstatico = useGameStore((state) => state.errorMapaEstatico);
+
+  // EFECTO 1: Descargar el mapa estático al montar si no está
+  useEffect(() => {
+    if (!mapaEstatico && !errorMapaEstatico) {
+      cargarMapaEstatico();
+    }
+  }, [mapaEstatico, errorMapaEstatico, cargarMapaEstatico]);
+
+  // EFECTO 2: Una vez hay mapa estático, inyectarlo al grafo motor del juego
+  useEffect(() => {
+    if (mapaEstatico && mapaEstatico.comarcas) {
+      const rawData = Object.entries(mapaEstatico.comarcas).map(([id, info]) => ({
+          id,
+          nombre: info.name,
+          adyacentes: info.adjacent_to
+      }));
+      inicializarJuego(rawData);
+    }
+  }, [mapaEstatico, inicializarJuego]);
+
   const comarcasCompletas = useMemo(() => {
+    if (!mapaEstatico || !mapaEstatico.comarcas) return [];
+    
     return COMARCAS_SVG_DATA.map((svgItem) => {
-      const infoExtra = mapData.comarcas[svgItem.id];
-      if (infoExtra) {
+      const serverInfo = mapaEstatico.comarcas[svgItem.id];
+      if (serverInfo) {
         return {
           ...svgItem,
-          ...infoExtra,
+          name: serverInfo.name,
+          region_id: serverInfo.region_id,
+          adjacent_to: serverInfo.adjacent_to
         };
       }
       return svgItem;
     });
-  }, []);
+  }, [mapaEstatico]);
 
   const modoVista = useGameStore((state) => state.modoVista);
+
+  // EFECTO 3: Registrar el zoom D3 una vez que el SVG existe
+  useEffect(() => {
+    if (!mapaEstatico) return;
+    if (!svgRef.current || !gRef.current) return;
+
+    const svgElement = select(svgRef.current);
+    const gElement = select(gRef.current);
+
+    const zoomBehavior = zoom()
+      .scaleExtent([1, 5])
+      .translateExtent([
+        [-400, -250],
+        [50, 300]
+      ])
+      .on('zoom', (evento) => {
+        gElement.attr('transform', evento.transform);
+        setZoomScale(evento.transform.k);
+      });
+
+    // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
+    svgElement.call(zoomBehavior).on('dblclick.zoom', null);
+  }, [mapaEstatico]);
+
+  // --- ZONA DE GUARD CLAUSES ---
+  
+  // ESTADOS DE CARGA / ERROR QUE BLOQUEAN LA PANTALLA PRINCIPAL
+  if (errorMapaEstatico) {
+    return (
+      <div className="loading" style={{ color: 'red', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#222' }}>
+        <h3>Error Fatal</h3>
+        <p>{errorMapaEstatico}</p>
+      </div>
+    );
+  }
+
+  if (!mapaEstatico) {
+    return (
+      <div className="loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#333', color: 'white', fontSize: '1.2rem' }}>
+        Descargando cartografía del servidor...
+      </div>
+    );
+  }
 
   // En modo REGIONES las tropas no se muestran para no confundir la lectura del mapa
   let mostrarTropas = true;
@@ -122,7 +182,7 @@ const Tablero = (props) => {
   // En modo COMARCAS esta variable es nula y no se renderiza nada extra.
   let etiquetasRegiones = null;
   if (modoVista === 'REGIONES') {
-    const infoRegiones = calcularInfoRegiones(comarcasCompletas, propietarios, jugadorLocal);
+    const infoRegiones = calcularInfoRegiones(comarcasCompletas, propietarios, jugadorLocal, mapaEstatico);
 
     etiquetasRegiones = infoRegiones.map((region) => (
       <text
@@ -183,26 +243,7 @@ const Tablero = (props) => {
     return aScore - bScore;
   });
 
-  useEffect(() => {
-    if (!svgRef.current || !gRef.current) return;
 
-    const svgElement = select(svgRef.current);
-    const gElement = select(gRef.current);
-
-    const zoomBehavior = zoom()
-      .scaleExtent([1, 5])
-      .translateExtent([
-        [-400, -250],
-        [50, 300]
-      ])
-      .on('zoom', (evento) => {
-        gElement.attr('transform', evento.transform);
-        setZoomScale(evento.transform.k);
-      });
-
-    // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
-    svgElement.call(zoomBehavior).on('dblclick.zoom', null);
-  }, []);
 
   /**
    * Deselecciona cualquier provincia activa si el jugador hace clic al vacío del mapa.
@@ -322,7 +363,7 @@ const Tablero = (props) => {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
               if (propietarioId) {
                 if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) isVivoState = true;
+                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
               }
             }
 
@@ -407,7 +448,7 @@ const Tablero = (props) => {
               if (isSelected) isVivoState = true;
               if (dueño) {
                 if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_NORMAL' && cantidadTropas > 1) isVivoState = true;
+                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
               }
             }
 

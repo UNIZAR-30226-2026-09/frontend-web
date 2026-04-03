@@ -120,7 +120,7 @@ export const COMARCAS_SVG_DATA = [
 
     },
     {
-        id: "tarazona_y_moncayo",
+        id: "tarazona_y_el_moncayo",
         fill: "#01929e",
         "centro": [
             -337,

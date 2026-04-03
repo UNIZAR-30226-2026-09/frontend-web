@@ -24,12 +24,10 @@ const ControlFortificacion = () => {
         if (!estado.salaActiva?.id) return;
         setFortificando(true);
         try {
-            await gameApi.fortificar(estado.salaActiva.id, origen, destino, cantidad);
-            useGameStore.setState({ preparandoFortificacion: false, origenSeleccionado: null, destinoSeleccionado: null, comarcasResaltadas: [] });
+            await estado.fortificarBackend(origen, destino, cantidad);
         } catch (err) {
             console.error('Error al fortificar:', err);
             alert("Error al fortificar:\n" + (err?.message || "Error desconocido"));
-        } finally {
             setFortificando(false);
         }
     };

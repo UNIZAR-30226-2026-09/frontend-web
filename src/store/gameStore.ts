@@ -9,6 +9,9 @@ import { useAuthStore } from './useAuthStore';
 export const useGameStore = create<EstadoJuego>((set, get) => ({
     // ESTADO INICIAL (inicializar todo)
     grafoGlobal: null,
+    mapaEstatico: null,
+    errorMapaEstatico: null,
+    
     faseActual: 'DESPLIEGUE',
     modoVista: 'COMARCAS',
     dinero: 0,
@@ -55,6 +58,20 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // ACCIONES
 
     /**
+     * Descarga el mapa estático del backend de forma asíncrona.
+     */
+    cargarMapaEstatico: async () => {
+        try {
+            set({ errorMapaEstatico: null });
+            const data = await fetchApi('/v1/mapa');
+            set({ mapaEstatico: data });
+        } catch (error) {
+            console.error('Error al cargar mapa estático:', error);
+            set({ errorMapaEstatico: 'Fallo de conexión al descargar cartografía.' });
+        }
+    },
+
+    /**
      * Cambia el modo de visualización del mapa (comarcas o regiones).
      */
     toggleModoVista: () => set((state) => ({
@@ -78,18 +95,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     }),
 
     /**
-     * Gestiona la máquina de estados finitos que controla los turnos del juego.
-     * Si el jugador está en la fase de despliegue y le sobran tropas, se bloquea la transición 
-     * para evitar que pierda sus refuerzos por error. Si todo está correcto, avanza a la siguiente fase 
-     * y purga las selecciones anteriores.
+     * Solicita al servidor el cambio de fase.
      */
-    avanzarFase: async () => {
+    pasarFaseBackend: async () => {
         const estado = get();
-        if (estado.faseActual === 'DESPLIEGUE' && estado.tropasDisponibles > 0) {
-            console.log('No se puede avanzar: Faltan tropas por desplegar');
-            return;
-        }
-
         if (!estado.salaActiva?.id) return;
 
         try {
@@ -101,44 +110,19 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 comarcaDespliegue: null,
                 tropasAAsignar: 0
             });
-            await gameApi.pasarFase(estado.salaActiva.id);
-            // El backend no envía por WS el cambio de fase automáticamente en este endpoint
-            // pero si tuvieramos "ACTUALIZACION_MAPA" deberíamos actualizar fase. 
-            // Para asegurar la UX sin lag excesivo (y porque pasar de fase es rápido), lo seteamos aquí
-            // (idealmente deberíamos confiar del backend, pero provisionalmente lo rotamos)
-            const fasesOrden: FaseJuego[] = [
-                'DESPLIEGUE', 'ATAQUE_CONVENCIONAL', 'FORTIFICACION'
-            ];
-            const indexActual = fasesOrden.indexOf(estado.faseActual);
-            const siguienteIndex = (indexActual + 1) % fasesOrden.length;
-            const nuevaFase = fasesOrden[siguienteIndex];
-
-            if (nuevaFase === 'DESPLIEGUE') {
-                setTimeout(() => get().calcularRefuerzos(), 10);
+            const resp = await gameApi.pasarFase(estado.salaActiva.id);
+            // Aplicamos explícitamente el cambio de fase devuelto por el HTTP para inmediatez visual
+            if (resp && resp.nueva_fase) {
+                const faseUpper = resp.nueva_fase.toUpperCase();
+                set({
+                    faseActual: faseUpper === 'REFUERZO' ? 'DESPLIEGUE' : faseUpper,
+                    turnoActual: resp.turno_de || estado.turnoActual
+                });
             }
-
-            set({ faseActual: nuevaFase });
+            // El backend procesará y enviará un evento WS 'CAMBIO_FASE' que actualizará de nuevo por seguridad localmente.
         } catch (error) {
-            console.error('Error al avanzar fase:', error);
+            console.error('Error al avanzar fase en el servidor:', error);
         }
-    },
-
-    /**
-     * Calcula los refuerzos correspondientes al jugador basándose en su control territorial.
-     * Cuenta las comarcas poseídas (por ahora del jugador 1) y divide entre 3, asegurando siempre
-     * un mínimo de 3 tropas para mantener el equilibrio del juego clásico.
-     */
-    calcularRefuerzos: () => {
-        set((state) => {
-            const misComarcas = Object.values(state.propietarios).filter(p => p === 'jugador1').length;
-            const refuerzos = Math.max(3, Math.floor(misComarcas / 3));
-
-            return {
-                tropasDisponibles: state.tropasDisponibles + refuerzos,
-                mostrarAnimacionRefuerzos: true,
-                refuerzosRecibidos: refuerzos
-            };
-        });
     },
 
     /**
@@ -160,19 +144,68 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     },
 
     /**
-     * Confirma la orden de despliegue UI, moviendo el buffer temporal (tropasAAsignar)
-     * a la guarnición global inmutable para no causar problemas con React.
+     * Ejecuta un ataque utilizando el backend y devuelve el resultado matemático al componente.
+     */
+    ejecutarAtaque: async (origen: string, destino: string, tropas: number) => {
+        const estado = get();
+        if (!estado.salaActiva?.id) return;
+
+        try {
+            const result = await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, tropas);
+            return result;
+        } catch (error) {
+            console.error('Llamada a ejecutarAtaque fallida', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Comunica al backend mover las tropas de una conquista obligatoria.
+     */
+    moverTropasConquista: async (tropas: number) => {
+        const estado = get();
+        if (!estado.salaActiva?.id) return;
+
+        try {
+            await gameApi.moverConquista(estado.salaActiva.id, tropas);
+        } catch (error) {
+            console.error('Llamada a moverTropasConquista fallida', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Ejecuta una fortificación de tropas controlada por el backend.
+     */
+    fortificarBackend: async (origen: string, destino: string, tropas: number) => {
+        const estado = get();
+        if (!estado.salaActiva?.id) return;
+
+        try {
+            await gameApi.fortificar(estado.salaActiva.id, origen, destino, tropas);
+            set({
+                preparandoFortificacion: false,
+                origenSeleccionado: null,
+                destinoSeleccionado: null,
+                comarcasResaltadas: []
+            });
+        } catch (error) {
+            console.error('Llamada a fortificar fallida', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Confirma la orden de despliegue delegando completamente en Server Authoritative logic.
      */
     confirmarDespliegue: async () => {
         const estado = get();
         if (!estado.comarcaDespliegue || estado.tropasAAsignar === 0 || !estado.salaActiva?.id) return;
 
         try {
-            const result = await gameApi.colocarTropas(estado.salaActiva.id, estado.comarcaDespliegue, estado.tropasAAsignar);
-            // Si el backend es exitoso, actualizamos la reserva aquí mismo. 
-            // Las tropas en el mapa llegarán por WebSocket y sobreescribirán.
+            await gameApi.colocarTropas(estado.salaActiva.id, estado.comarcaDespliegue, estado.tropasAAsignar);
+            // Ya no restamos tropasDisponibles localmente; será sobreescrito por la respuesta WS ('TROPAS_COLOCADAS' o GET si implementado)
             set({
-                tropasDisponibles: result.reserva_restante !== undefined ? result.reserva_restante : estado.tropasDisponibles - estado.tropasAAsignar,
                 comarcaDespliegue: null,
                 tropasAAsignar: 0
             });
@@ -194,8 +227,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 grafoGlobal: grafo
             });
             console.log('Grafo del mapa inicializado estructuralmente.');
-
-            get().calcularRefuerzos();
         } catch (error) {
             console.error('Error al inicializar el mapa:', error);
         }
