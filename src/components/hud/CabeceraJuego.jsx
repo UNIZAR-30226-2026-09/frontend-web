@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
+import { useTurno } from '../../hooks/useTurno';
 import '../../styles/CabeceraJuego.css';
 
 /**
@@ -49,12 +50,12 @@ const CabeceraJuego = () => {
     return total;
   }, [tropasDisponibles, propietarios, tropas, jugadorLocal]);
 
-  const isMiTurno = turnoActual === jugadorLocal;
+  const { esMiTurno } = useTurno();
   const isFaseDespliegue = faseActual === 'DESPLIEGUE';
   const isUltimaFase = faseActual === 'FORTIFICACION';
 
   // Bloqueamos el paso de turno si todavía tiene tropas sin colocar o si no es su turno
-  const isSiguienteBloqueado = !isMiTurno || (isFaseDespliegue && tropasDisponibles > 0);
+  const isSiguienteBloqueado = !esMiTurno || (isFaseDespliegue && tropasDisponibles > 0);
 
   // Leer el jugador en turno actual real para sacar su color
   const turnPlayerColor = coloresJugadores && coloresJugadores[turnoActual]
@@ -89,14 +90,14 @@ const CabeceraJuego = () => {
   }
 
   let titleSiguiente = '';
-  if (!isMiTurno) {
+  if (!esMiTurno) {
     titleSiguiente = 'Espera tu turno para jugar';
   } else if (isSiguienteBloqueado) {
     titleSiguiente = 'Despliega todas tus tropas antes de avanzar';
   }
 
   let textoSiguiente = 'AVANZAR';
-  if (!isMiTurno) {
+  if (!esMiTurno) {
     textoSiguiente = 'ESPERANDO...';
   } else if (isUltimaFase) {
     textoSiguiente = 'NUEVO TURNO';

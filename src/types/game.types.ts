@@ -32,6 +32,7 @@ export interface EstadoJuego {
     jugadorLocal: string;
     turnoActual: string;
     jugadores: string[];
+    diccionarioJugadores: Record<string, any>;
 
     // Sala de lobby procedente del backend (tras crear o unirse a partida)
     salaActiva: {

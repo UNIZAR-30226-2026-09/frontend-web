@@ -3,8 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import mapData from '../../data/map_aragon.json';
 import '../../styles/PanelInfoRegion.css';
 
-// Jugador local actual — sustituir por el valor real cuando se conecte el backend
-const JUGADOR_LOCAL = 'jugador1';
+
 
 /**
  * Calcula el dominio territorial de un jugador sobre una región concreta.
@@ -39,6 +38,7 @@ const PanelInfoRegion = () => {
     const modoVista    = useGameStore((state) => state.modoVista);
     const regionHover  = useGameStore((state) => state.regionHover);
     const propietarios = useGameStore((state) => state.propietarios);
+    const jugadorLocal = useGameStore((state) => state.jugadorLocal);
 
     // Solo se muestra en modo REGIONES con una región activa
     if (modoVista !== 'REGIONES') return null;
@@ -48,7 +48,7 @@ const PanelInfoRegion = () => {
 
     if (!regionData) return null;
 
-    const { total, poseeJugador, porcentaje } = calcularDominioRegion(regionHover, JUGADOR_LOCAL, propietarios);
+    const { total, poseeJugador, porcentaje } = calcularDominioRegion(regionHover, jugadorLocal, propietarios);
 
     return (
         <div className="panel-info-region">

@@ -2,8 +2,7 @@ import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { obtenerColorRegion, obtenerColorFuerteRegion } from '../../utils/colorUtils';
 
-// Jugador local actual — sustituir por el valor real del store cuando se conecte el backend
-const JUGADOR_LOCAL = 'jugador1';
+
 
 /**
  * Renderiza el trazado SVG de una comarca y gestiona sus interacciones.
@@ -23,6 +22,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     const faseActual           = useGameStore((state) => state.faseActual);
     const propietarios         = useGameStore((state) => state.propietarios);
     const coloresJugadores     = useGameStore((state) => state.coloresJugadores);
+    const jugadorLocal         = useGameStore((state) => state.jugadorLocal);
     const turnoActual          = useGameStore((state) => state.turnoActual);
     const cantidadTropas       = useGameStore((state) => state.tropas[id] || 0);
     const tropasDisponibles    = useGameStore((state) => state.tropasDisponibles);
@@ -53,7 +53,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
 
         // 2. Modo de visualización por regiones
         if (modoVista === 'REGIONES' && regionId) {
-            const esDelJugador = propietarios[id] === JUGADOR_LOCAL;
+            const esDelJugador = String(propietarios[id]) === String(jugadorLocal);
             const color        = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
             const opacidad     = 1;
@@ -62,7 +62,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
 
         // 3. Color del jugador propietario
         if (colorBase) {
-            const esSuTurno = propietarioId === turnoActual;
+            const esSuTurno = String(propietarioId) === String(turnoActual);
 
             if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };

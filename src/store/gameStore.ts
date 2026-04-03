@@ -20,6 +20,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     jugadorLocal: 'jugador1',
     turnoActual: 'jugador1',
     jugadores: ['jugador1', 'jugador2', 'jugador3', 'jugador4'],
+    diccionarioJugadores: {},
 
     // Sala activa (lobby): se rellena tras crear o unirse a una partida
     salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
@@ -269,7 +270,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         const estado = get();
 
         // Control estricto de turnos
-        if (estado.turnoActual !== estado.jugadorLocal) {
+        if (String(estado.turnoActual) !== String(estado.jugadorLocal)) {
             console.log('No puedes interactuar, no es tu turno.');
             return;
         }
@@ -496,8 +497,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     const nuevosJugadores = payload.jugadores ? Object.keys(payload.jugadores) : state.jugadores;
                     const nuevosColores = { ...state.coloresJugadores };
                     let tropasReserva = state.tropasDisponibles;
+                    let nuevoJugadorLocal = state.jugadorLocal;
 
                     if (payload.jugadores) {
+                        const miUsername = String(useAuthStore.getState().user?.username || useAuthStore.getState().user?.nombre);
                         for (const [id, jInfo] of Object.entries<any>(payload.jugadores)) {
                             if (jInfo.numero_jugador !== undefined) {
                                 const mapColors = ['var(--color-jugador-1)', 'var(--color-jugador-2)', 'var(--color-jugador-3)', 'var(--color-jugador-4)'];
@@ -505,8 +508,20 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                             } else if (jInfo.color) {
                                 nuevosColores[id] = jInfo.color;
                             }
-                            if (id === state.jugadorLocal && jInfo.tropas_reserva !== undefined) {
-                                tropasReserva = jInfo.tropas_reserva;
+                            const normalizedMiUsername = String(miUsername).toLowerCase();
+                            const esJugadorLocal = (
+                                String(id).toLowerCase() === String(state.jugadorLocal).toLowerCase() ||
+                                (jInfo.nombre && String(jInfo.nombre).toLowerCase() === normalizedMiUsername) ||
+                                (jInfo.jugador && String(jInfo.jugador).toLowerCase() === normalizedMiUsername) ||
+                                (jInfo.username && String(jInfo.username).toLowerCase() === normalizedMiUsername) ||
+                                (jInfo.nombre_usuario && String(jInfo.nombre_usuario).toLowerCase() === normalizedMiUsername)
+                            );
+
+                            if (esJugadorLocal) {
+                                nuevoJugadorLocal = id;
+                                if (jInfo.tropas_reserva !== undefined) {
+                                    tropasReserva = jInfo.tropas_reserva;
+                                }
                             }
                         }
                     }
@@ -516,7 +531,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         faseActual: payload.fase_actual ? (payload.fase_actual.toUpperCase() === 'REFUERZO' ? 'DESPLIEGUE' : payload.fase_actual.toUpperCase()) : 'DESPLIEGUE',
                         turnoActual: payload.turno_de || state.turnoActual,
                         jugadores: nuevosJugadores,
+                        diccionarioJugadores: payload.jugadores || state.diccionarioJugadores,
                         coloresJugadores: nuevosColores,
+                        jugadorLocal: nuevoJugadorLocal,
                         tropasDisponibles: tropasReserva,
                         ...(payload.mapa && { tropas: nuevasTropas, propietarios: nuevosPropietarios })
                     }

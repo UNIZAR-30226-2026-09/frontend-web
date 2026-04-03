@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
+import { useTurno } from '../../hooks/useTurno';
 import '../../styles/ControlDespliegue.css';
 
 /**
@@ -14,11 +15,14 @@ const ControlDespliegue = () => {
     const confirmarDespliegue = useGameStore((state) => state.confirmarDespliegue);
     const faseActual = useGameStore((state) => state.faseActual);
     const mapaEstatico = useGameStore((state) => state.mapaEstatico);
+    const { esMiTurno } = useTurno();
 
     if (faseActual !== 'DESPLIEGUE') {
         // Ocultar si no es fase de despliegue
         return null;
     }
+
+    console.log("🪖 [RESERVA CORREGIDA]:", tropasDisponibles, "Local Store Match:", esMiTurno);
 
     // Obtener nombre de la comarca
     let nombreComarca = '';
@@ -91,7 +95,7 @@ const ControlDespliegue = () => {
                     <button
                         className="despliegue-btn-confirmar"
                         onClick={confirmarDespliegue}
-                        disabled={tropasAAsignar === 0}
+                        disabled={tropasAAsignar === 0 || !esMiTurno}
                     >
                         Confirmar
                     </button>

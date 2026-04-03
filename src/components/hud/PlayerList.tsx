@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { PlayerCard } from './PlayerCard';
 import './PlayerList.css';
 
@@ -10,6 +11,7 @@ export const PlayerList: React.FC = () => {
         jugadorLocal, 
         turnoActual, 
         coloresJugadores,
+        diccionarioJugadores,
         getEstadisticasJugador
     } = useGameStore();
 
@@ -18,12 +20,15 @@ export const PlayerList: React.FC = () => {
     useGameStore(state => state.propietarios);
     useGameStore(state => state.tropas);
 
+    const user = useAuthStore(state => state.user);
+    const miUsername = user?.username || user?.nombre_usuario || user?.nombre;
+
     return (
         <div className="player-list-container">
             {jugadores.map((jugadorId) => {
                 const stats = getEstadisticasJugador(jugadorId);
-                // Simple capitalización del nombre mockeado 'jugador1' -> 'Jugador1'
-                const nombre = jugadorId.charAt(0).toUpperCase() + jugadorId.slice(1);
+                const info = diccionarioJugadores ? diccionarioJugadores[jugadorId] : null;
+                const nombre = info?.nombre || info?.jugador || info?.username || info?.nombre_usuario || (jugadorId.charAt(0).toUpperCase() + jugadorId.slice(1));
                 
                 return (
                     <PlayerCard
@@ -33,8 +38,8 @@ export const PlayerList: React.FC = () => {
                         color={coloresJugadores[jugadorId]}
                         territorios={stats.territorios}
                         tropas={stats.tropas}
-                        isTurnoActual={jugadorId === turnoActual}
-                        isLocal={jugadorId === jugadorLocal}
+                        isTurnoActual={String(jugadorId) === String(turnoActual)}
+                        isLocal={String(jugadorId) === String(jugadorLocal) || (miUsername && String(nombre).toLowerCase() === String(miUsername).toLowerCase())}
                     />
                 );
             })}

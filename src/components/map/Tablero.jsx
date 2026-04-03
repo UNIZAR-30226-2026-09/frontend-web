@@ -355,7 +355,7 @@ const Tablero = (props) => {
             const isHovered = hovered === comarca.id;
 
             const propietarioId = propietarios[comarca.id];
-            const esSuTurno = propietarioId === turnoActual;
+            const esSuTurno = String(propietarioId) === String(turnoActual);
             const cantidadTropas = tropas[comarca.id] || 0;
 
             let isVivoState = false;
@@ -441,7 +441,7 @@ const Tablero = (props) => {
             const isSelected = isOrigin || isDestination || isHighlighted;
             const isHovered = hovered === comarca.id;
 
-            const esSuTurno = dueño === turnoActual;
+            const esSuTurno = String(dueño) === String(turnoActual);
 
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
