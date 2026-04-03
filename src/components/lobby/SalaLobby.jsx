@@ -33,10 +33,6 @@ const SalaLobby = ({ onVolver }) => {
     if (!salaActiva.id || !usernameLocal) return;
 
     socketService.connectToPartida(salaActiva.id, usernameLocal);
-
-    return () => {
-      socketService.disconnect();
-    };
   }, [salaActiva.id, usernameLocal]);
 
   // Navegar automáticamente cuando el backend notifica que la partida ha iniciado
@@ -84,6 +80,10 @@ const SalaLobby = ({ onVolver }) => {
         console.error("Error al abandonar la sala:", err);
       }
     }
+    
+    // Desconexión explícita requerida aquí en lugar de hacerlo en cleanup
+    socketService.disconnect();
+    
     useGameStore.setState({
       salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
       jugadoresLobby: [],

@@ -16,21 +16,9 @@ class SocketService {
     public connect(url?: string) {
         const targetUrl = url || `${WS_BASE_URL}/ws`;
 
-        // No reconectar si ya apuntamos al mismo socket abierto
-        if (
-            this.socket &&
-            this.currentUrl === targetUrl &&
-            (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
-        ) {
-            return;
-        }
-
-        // Cerrar conexión anterior si la URL ha cambiado
-        if (this.socket) {
-            this.socket.onclose = null; // Evitar reconexión involuntaria
-            this.socket.close(1000, 'Reconectando a nueva sala');
-            this.socket = null;
-        }
+        // Idempotencia absoluta: si ya hay un socket vivo, se ignora todo. 
+        // Esto previene que Strict Mode cierre e intente abrir de 0 muy rápido
+        if (this.socket) return;
 
         this.currentUrl = targetUrl;
         this.retryCount = 0;

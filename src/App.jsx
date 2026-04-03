@@ -4,6 +4,7 @@ import { useAuthStore } from './store/useAuthStore';
 import PantallaJuego from './pantallas/PantallaJuego';
 import Login from './pantallas/Login';
 import Lobby from './pantallas/Lobby';
+import { socketService } from './services/socketService';
 
 /**
  * Layout principal que envuelve las diferentes rutas de la aplicación.
@@ -89,6 +90,16 @@ export default function App() {
 
   useEffect(() => {
     checkSession();
+
+    // Cierre de ventana: Avisar al servidor al cerrar pestaña para desconexión limpia
+    const handleBeforeUnload = () => {
+      socketService.disconnect();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [checkSession]);
 
   return (
