@@ -64,7 +64,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
         if (colorBase) {
             const esSuTurno = String(propietarioId) === String(turnoActual);
 
-            if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) {
+            if (esSuTurno && faseActual === 'REFUERZO' && tropasDisponibles > 0) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 

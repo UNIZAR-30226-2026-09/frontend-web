@@ -4,7 +4,7 @@ import { GrafoSoberania } from './mapa.types';
  * Tipos de fase por las que transcurre el flujo del juego en un turno.
  */
 export type FaseJuego =
-    | 'DESPLIEGUE'
+    | 'REFUERZO'
     | 'ATAQUE_CONVENCIONAL'
     | 'FORTIFICACION';
 
@@ -22,15 +22,15 @@ export interface EstadoJuego {
     } | null;
     errorMapaEstatico: string | null;
 
-    faseActual: FaseJuego;
+    faseActual: FaseJuego | null;
     modoVista: ModoVista;
 
     dinero: number;
-    tropasDisponibles: number;
+    tropasDisponibles: number | null;
 
     // Control de jugadores
-    jugadorLocal: string;
-    turnoActual: string;
+    jugadorLocal: string | null;
+    turnoActual: string | null;
     jugadores: string[];
     diccionarioJugadores: Record<string, any>;
 
@@ -57,8 +57,8 @@ export interface EstadoJuego {
     origenSeleccionado: string | null;
     destinoSeleccionado: string | null;
 
-    // Estado temporal durante la fase de despliegue
-    comarcaDespliegue: string | null;
+    // Estado temporal durante la fase de refuerzo
+    comarcaRefuerzo: string | null;
     tropasAAsignar: number;
     mostrarAnimacionRefuerzos: boolean;
     refuerzosRecibidos: number;
@@ -121,7 +121,7 @@ export interface EstadoJuego {
     /**
      * Envía la petición al backend para colocar tropas de la reserva.
      */
-    confirmarDespliegue: () => Promise<void>;
+    confirmarRefuerzo: () => Promise<void>;
 
     /**
      * Oculta el componente notificacional superpuesto de nuevos refuerzos.

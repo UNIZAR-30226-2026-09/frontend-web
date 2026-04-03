@@ -53,5 +53,9 @@ export const gameApi = {
                 tropas: tropas
             })
         });
+    },
+
+    getPartida: async (partidaId: number | string) => {
+        return fetchApi(`/v1/partidas/${partidaId}/estado`);
     }
 };

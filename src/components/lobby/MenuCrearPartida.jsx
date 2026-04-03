@@ -40,7 +40,7 @@ const MenuCrearPartida = ({ onCreada, onCancelar }) => {
       <div className="lobby-panel">
 
         <h2 className="lobby-titulo">Nueva Operación</h2>
-        <p className="lobby-subtitulo">Define los parámetros de tu sala antes de desplegar.</p>
+        <p className="lobby-subtitulo">Define los parámetros de tu sala antes de comenzar.</p>
 
         <hr className="lobby-separador" />
 

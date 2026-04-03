@@ -57,7 +57,7 @@ const ControlFortificacion = () => {
                 </div>
                 <div style={styles.botones}>
                     <button style={styles.btnConfirmar} onClick={confirmarFortificacion} disabled={fortificando}>
-                        {fortificando ? "Enviando..." : "Desplegar"}
+                        {fortificando ? "Enviando..." : "Fortificar"}
                     </button>
                     <button style={styles.btnCancelar} onClick={cancelar} disabled={fortificando}>
                         Cancelar

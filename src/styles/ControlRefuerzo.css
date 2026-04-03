@@ -1,4 +1,4 @@
-.control-despliegue-container {
+.control-refuerzo-container {
   position: absolute;
   top: 140px;
   left: 20px;
@@ -17,7 +17,7 @@
   min-width: 250px;
 }
 
-.control-despliegue-header {
+.control-refuerzo-header {
   margin: 0;
   font-size: 15px;
   font-weight: bold;
@@ -30,7 +30,7 @@
   margin-bottom: 12px;
 }
 
-.despliegue-global-info {
+.refuerzo-global-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,7 +52,7 @@
   text-shadow: none;
 }
 
-.despliegue-hint {
+.refuerzo-hint {
   text-align: center;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
@@ -60,19 +60,19 @@
   margin-top: 5px;
 }
 
-.despliegue-box-activa {
+.refuerzo-box-activa {
   display: flex;
   flex-direction: column;
 }
 
-.control-despliegue-body {
+.control-refuerzo-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.despliegue-input-group {
+.refuerzo-input-group {
   display: flex;
   align-items: center;
   background: rgba(0, 0, 0, 0.5);
@@ -81,7 +81,7 @@
   overflow: hidden;
 }
 
-.despliegue-btn-math {
+.refuerzo-btn-math {
   background: var(--color-ui-bg-primary);
   color: var(--color-text-primary);
   border: none;
@@ -92,16 +92,16 @@
   transition: background 0.2s;
 }
 
-.despliegue-btn-math:hover:not(:disabled) {
+.refuerzo-btn-math:hover:not(:disabled) {
   background: var(--color-border-bronze);
 }
 
-.despliegue-btn-math:disabled {
+.refuerzo-btn-math:disabled {
   color: var(--color-border-bronze);
   cursor: not-allowed;
 }
 
-.despliegue-input {
+.refuerzo-input {
   width: 50px;
   background: transparent;
   border: none;
@@ -114,13 +114,13 @@
   appearance: textfield;
 }
 
-.despliegue-input::-webkit-outer-spin-button,
-.despliegue-input::-webkit-inner-spin-button {
+.refuerzo-input::-webkit-outer-spin-button,
+.refuerzo-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.despliegue-btn-confirmar {
+.refuerzo-btn-confirmar {
   background-color: var(--color-state-success);
   color: var(--color-text-primary);
   border: 1px solid var(--color-state-success);
@@ -133,13 +133,13 @@
   text-transform: uppercase;
 }
 
-.despliegue-btn-confirmar:hover:not(:disabled) {
+.refuerzo-btn-confirmar:hover:not(:disabled) {
   background-color: var(--color-state-success);
   filter: brightness(1.1);
   box-shadow: 0 0 8px rgba(56, 142, 60, 0.6);
 }
 
-.despliegue-btn-confirmar:disabled {
+.refuerzo-btn-confirmar:disabled {
   background-color: var(--color-ui-bg-primary);
   border-color: var(--color-state-disabled);
   color: var(--color-text-secondary);

@@ -173,7 +173,7 @@ const Lobby = () => {
                   <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Partida Rápida</h3>
                   <p style={{ flex: 1, fontSize: '0.9vw' }}>Busca una sala pública disponible y te une automáticamente. Si no hay, crea una nueva.</p>
                   <button disabled={cargandoRapida} style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: cargandoRapida ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: cargandoRapida ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                    {cargandoRapida ? 'Buscando...' : 'DESPLEGAR ➔'}
+                    {cargandoRapida ? 'Buscando...' : 'INICIAR ➔'}
                   </button>
                 </div>
 

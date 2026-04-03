@@ -6,7 +6,7 @@ import { useGameStore } from '../../store/gameStore';
 import ComarcaPath from './ComarcaPath';
 import FichaTropas from './FichaTropas';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
-import ControlDespliegue from '../hud/ControlDespliegue';
+import ControlRefuerzo from '../hud/ControlRefuerzo';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 
@@ -362,7 +362,7 @@ const Tablero = (props) => {
             if (modoVista !== 'REGIONES') {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
               if (propietarioId) {
-                if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
+                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
                 if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
               }
             }
@@ -447,7 +447,7 @@ const Tablero = (props) => {
             if (modoVista !== 'REGIONES') {
               if (isSelected) isVivoState = true;
               if (dueño) {
-                if (esSuTurno && faseActual === 'DESPLIEGUE' && tropasDisponibles > 0) isVivoState = true;
+                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
                 if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
               }
             }
@@ -483,7 +483,7 @@ const Tablero = (props) => {
         </g>
       </svg>
       <BotonVistaRegiones />
-      <ControlDespliegue />
+      <ControlRefuerzo />
       <AnimacionRefuerzos />
     </div>
   );
