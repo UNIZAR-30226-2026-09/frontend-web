@@ -6,6 +6,7 @@ import { ComarcaDTO } from '../types/mapa.types';
 import { fetchApi } from '../services/api';
 import { gameApi } from '../services/gameApi';
 import { useAuthStore } from './useAuthStore';
+import { socketService } from '../services/socketService';
 
 // Helpers internos
 
@@ -174,50 +175,48 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      *   - Resolver inconsistencias entre UI y servidor.
      */
     sincronizarEstadoPartida: async () => {
-        const { salaActiva, jugadorLocal } = get();
-        if (!salaActiva?.id) {
-            console.warn('[sincronizarEstadoPartida] Sin salaActiva.id, abortando.');
-            return;
-        }
+        const { salaActiva } = get();
+        if (!salaActiva?.id) return;
 
         try {
             const data = await fetchApi(`/v1/partidas/${salaActiva.id}/estado`);
-
-            const { tropas, propietarios } = data.mapa
-                ? parsearMapa(data.mapa)
-                : { tropas: get().tropas, propietarios: get().propietarios };
-
-            const { coloresJugadores, tropasReservaLocal, jugadorLocalId } =
-                data.jugadores
-                    ? parsearJugadores(data.jugadores, jugadorLocal)
-                    : {
-                        coloresJugadores: get().coloresJugadores,
-                        tropasReservaLocal: null,
-                        jugadorLocalId: jugadorLocal,
-                    };
-
-            set((state) => ({
-                faseActual: data.fase_actual
-                    ? normalizarFase(data.fase_actual)
-                    : state.faseActual,
-                turnoActual: data.turno_de ?? state.turnoActual,
-                jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
-                tropas,
-                propietarios,
-                coloresJugadores: { ...state.coloresJugadores, ...coloresJugadores },
-                diccionarioJugadores: data.jugadores ?? state.diccionarioJugadores,
-                jugadores: data.jugadores
-                    ? Object.keys(data.jugadores)
-                    : state.jugadores,
-                ...(tropasReservaLocal !== null && {
-                    tropasDisponibles: tropasReservaLocal,
-                }),
-            }));
-
-            console.log('[sincronizarEstadoPartida] Estado sincronizado con el servidor.');
+            get().setEstadoDinamico(data);
+            console.log('[sincronizarEstadoPartida] Estado sincronizado.');
         } catch (error) {
-            console.error('[sincronizarEstadoPartida] Error al sincronizar:', error);
+            console.error('[sincronizarEstadoPartida] Error:', error);
         }
+    },
+
+    setEstadoDinamico: (payload: any) => {
+        const { tropas, propietarios } = payload.mapa
+            ? parsearMapa(payload.mapa)
+            : { tropas: get().tropas, propietarios: get().propietarios };
+
+        const { coloresJugadores, tropasReservaLocal } = payload.jugadores
+            ? parsearJugadores(payload.jugadores, get().jugadorLocal)
+            : {
+                coloresJugadores: get().coloresJugadores,
+                tropasReservaLocal: null,
+            };
+
+        set((state) => ({
+            faseActual: payload.fase_actual
+                ? normalizarFase(payload.fase_actual)
+                : state.faseActual,
+            turnoActual: payload.turno_de ?? state.turnoActual,
+            ...(payload.mapa && { tropas, propietarios }),
+            coloresJugadores: {
+                ...state.coloresJugadores,
+                ...coloresJugadores,
+            },
+            ...(tropasReservaLocal !== null && {
+                tropasDisponibles: tropasReservaLocal,
+            }),
+            diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
+            jugadores: payload.jugadores
+                ? Object.keys(payload.jugadores)
+                : state.jugadores,
+        }));
     },
 
     // ACCIONES — UI
@@ -305,8 +304,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
         try {
             await gameApi.colocarTropas(estado.salaActiva.id, comarca, cantidad);
-            // TROPAS_COLOCADAS → actualiza comarca en el mapa.
-            // ACTUALIZACION_MAPA → sobreescribe tropasDisponibles con verdad del servidor.
+            await get().sincronizarEstadoPartida();
         } catch (error) {
             console.error('[confirmarRefuerzo] Error al colocar tropas:', error);
             set((state) => ({
@@ -338,7 +336,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
         try {
             await gameApi.pasarFase(estado.salaActiva.id);
-            // La nueva fase llega por WS → CAMBIO_FASE.
+            await get().sincronizarEstadoPartida();
         } catch (error) {
             console.error('[pasarFaseBackend] Error:', error);
         }
@@ -355,7 +353,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         const estado = get();
         if (!estado.salaActiva?.id) return;
         try {
-            return await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, tropas);
+            const result = await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, tropas);
+            await get().sincronizarEstadoPartida();
+            return result;
         } catch (error) {
             console.error('[ejecutarAtaque] Error:', error);
             throw error;
@@ -367,6 +367,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         if (!estado.salaActiva?.id) return;
         try {
             await gameApi.moverConquista(estado.salaActiva.id, tropas);
+            await get().sincronizarEstadoPartida();
         } catch (error) {
             console.error('[moverTropasConquista] Error:', error);
             throw error;
@@ -385,6 +386,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         if (!estado.salaActiva?.id) return;
         try {
             await gameApi.fortificar(estado.salaActiva.id, origen, destino, tropas);
+            await get().sincronizarEstadoPartida();
             set({
                 preparandoFortificacion: false,
                 origenSeleccionado: null,
@@ -569,12 +571,25 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     setSocketConnection: (status: boolean) => set({ isSocketConnected: status }),
 
     /**
-     * Procesa los eventos entrantes del WebSocket y actualiza el estado.
-     * @param {any} mensaje - 
+     * Inyecta el evento del WebSocket directamente en Zustand.
      */
-    procesarMensajeSocket: (mensaje: any) => {
-        console.log('📡 [WS]', mensaje);
-        const tipo = mensaje.tipo_evento ?? mensaje.type ?? '';
+    actualizarDesdeSocket: (mensaje: any) => {
+        console.log('%c🔄 Tablero actualizado por otro jugador', 'color: cyan; font-weight: bold;');
+        console.log('📡 [WS RECIBIDO]:', mensaje);
+
+        if (mensaje.estado_partida) {
+            get().setEstadoDinamico(mensaje.estado_partida);
+            return;
+        }
+
+        const tipo = mensaje.tipo_evento ?? mensaje.type ?? mensaje.tipo ?? '';
+
+        // Soporte para alias y recarga forzada si el mensaje es parcial
+        if (tipo === 'ESTADO_ACTUALIZADO' || tipo === 'ACTUALIZACION_MAPA') {
+            get().setEstadoDinamico(mensaje.data ?? mensaje.payload ?? mensaje);
+            return;
+        }
+
 
         switch (tipo) {
 
@@ -620,58 +635,31 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
             case 'PARTIDA_INICIADA': {
                 const payload = mensaje.data ?? mensaje.payload ?? mensaje;
-
-                const { tropas, propietarios } = payload.mapa
-                    ? parsearMapa(payload.mapa)
-                    : { tropas: {}, propietarios: {} };
-
-                const { coloresJugadores, tropasReservaLocal, jugadorLocalId } =
-                    payload.jugadores
-                        ? parsearJugadores(payload.jugadores, get().jugadorLocal)
-                        : {
-                            coloresJugadores: {},
-                            tropasReservaLocal: null,
-                            jugadorLocalId: get().jugadorLocal,
-                        };
-
+                get().setEstadoDinamico(payload);
                 set((state) => ({
                     salaActiva: { ...state.salaActiva, estado: 'activa' },
-                    faseActual: payload.fase_actual
-                        ? normalizarFase(payload.fase_actual)
-                        : 'REFUERZO',
-                    turnoActual: payload.turno_de ?? state.turnoActual,
-                    jugadores: payload.jugadores
-                        ? Object.keys(payload.jugadores)
-                        : state.jugadores,
-                    diccionarioJugadores:
-                        payload.jugadores ?? state.diccionarioJugadores,
-                    coloresJugadores,
-                    jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
-                    tropasDisponibles:
-                        tropasReservaLocal !== null
-                            ? tropasReservaLocal
-                            : state.tropasDisponibles,
-                    ...(payload.mapa && { tropas, propietarios }),
                 }));
                 break;
             }
 
+            case 'FASE_CAMBIADA':
             case 'CAMBIO_FASE': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                const nuevaFase: FaseJuego | null = data.nueva_fase
-                    ? normalizarFase(data.nueva_fase)
-                    : null;
-                const jugadorActivo: string = data.turno_de ?? data.jugador_activo ?? '';
+                const faseRaw = data.nueva_fase ?? data.fase_actual;
+                const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
                 const tropasRecibidas: number = data.tropas_recibidas ?? 0;
 
                 set((state) => {
+                    const nuevaFase = faseRaw ? normalizarFase(faseRaw) : state.faseActual;
+                    const jugadorActivo = jugadorRaw || state.turnoActual;
                     const esRefuerzo = nuevaFase === 'REFUERZO';
                     const esMiTurno = jugadorActivo === state.jugadorLocal;
 
                     return {
-                        faseActual: nuevaFase ?? state.faseActual,
-                        turnoActual: jugadorActivo || state.turnoActual,
+                        faseActual: nuevaFase,
+                        turnoActual: jugadorActivo,
 
+                        // Sincronización de tropas disponibles si hay refuerzos por WS
                         tropasDisponibles:
                             esRefuerzo && esMiTurno && tropasRecibidas > 0
                                 ? (state.tropasDisponibles ?? 0) + tropasRecibidas
@@ -680,10 +668,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         mostrarAnimacionRefuerzos:
                             esRefuerzo && esMiTurno && tropasRecibidas > 0,
                         refuerzosRecibidos:
-                            esRefuerzo && esMiTurno
-                                ? tropasRecibidas
-                                : state.refuerzosRecibidos,
+                            esRefuerzo && esMiTurno ? tropasRecibidas : state.refuerzosRecibidos,
 
+                        // LIMPIEZA CRÍTICA: Limpiar selecciones locales para que la UI 
+                        // se refresque (botones se oculten, comarcas se de-resalten)
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
                         comarcasResaltadas: [],
@@ -691,8 +679,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         tropasAAsignar: 0,
                         preparandoAtaque: false,
                         preparandoFortificacion: false,
+                        movimientoConquistaPendiente: false,
                     };
                 });
+
                 break;
             }
 
@@ -761,32 +751,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
             case 'ACTUALIZACION_MAPA': {
                 const payload = mensaje.data ?? mensaje.payload ?? mensaje;
-
-                const { tropas, propietarios } = payload.mapa
-                    ? parsearMapa(payload.mapa)
-                    : { tropas: get().tropas, propietarios: get().propietarios };
-
-                const { coloresJugadores, tropasReservaLocal } = payload.jugadores
-                    ? parsearJugadores(payload.jugadores, get().jugadorLocal)
-                    : {
-                        coloresJugadores: get().coloresJugadores,
-                        tropasReservaLocal: null,
-                    };
-
-                set((state) => ({
-                    faseActual: payload.fase_actual
-                        ? normalizarFase(payload.fase_actual)
-                        : state.faseActual,
-                    turnoActual: payload.turno_de ?? state.turnoActual,
-                    ...(payload.mapa && { tropas, propietarios }),
-                    coloresJugadores: {
-                        ...state.coloresJugadores,
-                        ...coloresJugadores,
-                    },
-                    ...(tropasReservaLocal !== null && {
-                        tropasDisponibles: tropasReservaLocal,
-                    }),
-                }));
+                get().setEstadoDinamico(payload);
                 break;
             }
 
@@ -913,6 +878,41 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         } catch (error) {
             console.error('[unirsePartidaBackend] Error:', error);
             throw error;
+        }
+    },
+
+    abandonarSoberania: async () => {
+        const { salaActiva } = get();
+        try {
+            if (salaActiva?.id) {
+                await gameApi.abandonarPartida(salaActiva.id);
+            }
+        } catch (error) {
+            console.error('[abandonarSoberania] Error al notificar al servidor:', error);
+        } finally {
+            socketService.disconnect();
+            set({
+                salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+                jugadoresLobby: [],
+                faseActual: null,
+                tropas: {},
+                propietarios: {},
+                coloresJugadores: {},
+                jugadorLocal: null,
+                turnoActual: null,
+                jugadores: [],
+                diccionarioJugadores: {},
+                origenSeleccionado: null,
+                destinoSeleccionado: null,
+                comarcasResaltadas: [],
+                comarcaRefuerzo: null,
+                tropasAAsignar: 0,
+                mostrarAnimacionRefuerzos: false,
+                refuerzosRecibidos: 0,
+                preparandoAtaque: false,
+                movimientoConquistaPendiente: false,
+                preparandoFortificacion: false,
+            });
         }
     },
 }));

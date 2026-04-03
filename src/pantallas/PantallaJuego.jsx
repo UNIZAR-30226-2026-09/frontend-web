@@ -3,6 +3,7 @@ import CabeceraJuego from '../components/hud/CabeceraJuego';
 import { PlayerList } from '../components/hud/PlayerList';
 import Tablero from '../components/map/Tablero';
 import { socketService } from '../services/socketService';
+import { useGameStore } from '../store/gameStore';
 import ControlAtaque from '../components/hud/ControlAtaque';
 import ControlTrasladoConquista from '../components/hud/ControlTrasladoConquista';
 import ControlFortificacion from '../components/hud/ControlFortificacion';
@@ -13,14 +14,19 @@ import ControlFortificacion from '../components/hud/ControlFortificacion';
  */
 const PantallaJuego = () => {
     useEffect(() => {
-        // Conectamos al WebSocket cuando el componente se monta
-        socketService.connect();
+        const salaId = useGameStore.getState().salaActiva?.id;
+        const username = useGameStore.getState().jugadorLocal;
 
-        // Desconectamos cuando el componente se desmonta (limpieza)
+        if (salaId && username) {
+            // Usar la función específica que arma la URL con /api/v1/ws/ID/USER
+            socketService.connectToPartida(salaId, username);
+        }
+
+        // Opcional: limpiar al desmontar
         return () => {
             socketService.disconnect();
-        };
-    }, []); // El array vacío asegura que solo se ejecute al montar y desmontar
+        }
+    }, []); 
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>

@@ -186,7 +186,7 @@ export interface EstadoJuego {
      * Recibe y procesa los mensajes entrantes emitidos por el servidor a través del WebSocket.
      * @param {any} mensaje Carga útil del mensaje recibido.
      */
-    procesarMensajeSocket: (mensaje: any) => void;
+    actualizarDesdeSocket: (mensaje: any) => void;
 
     /**
      * Envía la configuración al backend para crear una nueva sala y persiste los datos en salaActiva.
@@ -205,4 +205,20 @@ export interface EstadoJuego {
      * @returns {Promise<object|null>} Objeto JugadorPartidaRead del backend, o null si falla.
      */
     unirsePartidaBackend: (codigo: string) => Promise<any>;
+
+    /**
+     * Sincroniza el estado completo de la partida desde el servidor.
+     */
+    sincronizarEstadoPartida: () => Promise<void>;
+
+    /**
+     * Informa al backend que el jugador abandona la partida y limpia el estado local.
+     */
+    abandonarSoberania: () => Promise<void>;
+
+    /**
+     * Inyecta un estado dinámico completo en el almacén (desde WS o REST).
+     * @param {any} estado - Payload con mapa, jugadores, turno, etc.
+     */
+    setEstadoDinamico: (estado: any) => void;
 }

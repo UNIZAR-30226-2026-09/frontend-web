@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useTurno } from '../../hooks/useTurno';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/CabeceraJuego.css';
 
 /**
@@ -36,8 +37,11 @@ const CabeceraJuego = () => {
     propietarios,
     coloresJugadores,
     turnoActual,
-    jugadorLocal
+    jugadorLocal,
+    abandonarSoberania
   } = useGameStore();
+
+  const navigate = useNavigate();
 
   // Sumamos las tropas que guardamos de sobra con las que ya están repartidas por ahí
   const totalTropasJugador = React.useMemo(() => {
@@ -68,14 +72,22 @@ const CabeceraJuego = () => {
     setMenuAbierto(!menuAbierto);
   };
 
-  const handleRendirse = () => {
-    console.log('Rendirse');
-    setMenuAbierto(false);
+  const handleRendirse = async () => {
+    const confirmar = window.confirm('¿Estás seguro de que deseas rendirte? Perderás todos tus territorios y tropas.');
+    if (confirmar) {
+      await abandonarSoberania();
+      setMenuAbierto(false);
+      navigate('/lobby');
+    }
   };
 
-  const handleVolverSala = () => {
-    console.log('Volver a la Sala');
-    setMenuAbierto(false);
+  const handleVolverSala = async () => {
+    const confirmar = window.confirm('¿Deseas salir al Centro de Mando? Se considerará un abandono de la partida actual.');
+    if (confirmar) {
+      await abandonarSoberania();
+      setMenuAbierto(false);
+      navigate('/lobby');
+    }
   };
 
   // Construir renderizado condicional del botón central

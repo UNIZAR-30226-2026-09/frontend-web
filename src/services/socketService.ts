@@ -59,7 +59,7 @@ class SocketService {
         this.socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                useGameStore.getState().procesarMensajeSocket(data);
+                useGameStore.getState().actualizarDesdeSocket(data);
             } catch (error) {
                 console.error('[WebSocket] Error al parsear el mensaje:', error);
             }
