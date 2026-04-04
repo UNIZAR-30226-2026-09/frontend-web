@@ -82,7 +82,7 @@ const parsearJugadores = (
         if (username === miUsername && info.tropas_reserva !== undefined) {
             tropasReservaLocal = info.tropas_reserva;
         }
-        
+
         // Si es el jugador del turno, guardamos su reserva para que todos la vean
         if (username === turnoActual && info.tropas_reserva !== undefined) {
             tropasReservaActivo = info.tropas_reserva;
@@ -387,6 +387,16 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         }
     },
 
+    prepararTrasladoConquista: (origen: string, destino: string) => {
+        set({
+            movimientoConquistaPendiente: true,
+            origenConquista: origen,
+            destinoConquista: destino,
+            origenSeleccionado: origen, 
+            destinoSeleccionado: destino,
+        });
+    },
+
     /**
      * Ejecuta una fortificación entre dos comarcas propias.
      * @param {string} origen - Comarca de salida.
@@ -521,7 +531,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         return;
 
                     if (!estado.grafoGlobal) return;
-                    
+
                     // BFS: Buscamos todas las comarcas conectadas que también sean nuestras
                     const alcanzables = calcularComarcasEnRango(
                         estado.grafoGlobal,
@@ -705,15 +715,15 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             case 'TROPAS_COLOCADAS': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
                 const jugadorQueColoca = data.jugador || get().turnoActual;
-                
+
                 set((state) => {
                     // Calculamos cuántas se han puesto comparando con el estado actual
                     const tropasPrevias = state.tropas[data.territorio] ?? 0;
                     const cantidadColocada = Math.max(0, data.tropas_totales_ahora - tropasPrevias);
-                    
-                    const esMiAccion = 
-                        state.jugadorLocal && 
-                        jugadorQueColoca && 
+
+                    const esMiAccion =
+                        state.jugadorLocal &&
+                        jugadorQueColoca &&
                         String(jugadorQueColoca).toLowerCase() === String(state.jugadorLocal).toLowerCase();
 
                     return {
@@ -751,14 +761,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         tropas: nuevasTropas,
                         propietarios: nuevosPropietarios,
                         preparandoAtaque: false,
-                        origenSeleccionado: data.victoria ? data.origen : null,
-                        destinoSeleccionado: data.victoria ? data.destino : null,
+                        // El trigger de movimientoConquistaPendiente se quita de aquí
+                        // para que sea el jugador atacante quien lo dispare manualmente
+                        // tras cerrar el resumen de batalla.
                         comarcasResaltadas: [],
-                        ...(data.victoria && {
-                            movimientoConquistaPendiente: true,
-                            origenConquista: data.origen,
-                            destinoConquista: data.destino,
-                        }),
                     };
                 });
                 break;

@@ -20,6 +20,9 @@ const ControlTrasladoConquista = () => {
 
     if (!estado.movimientoConquistaPendiente || !origen || !destino) return null;
 
+    // Solo el jugador que controla el destino (el conquistador) debe ver este panel
+    if (estado.propietarios[destino] !== estado.jugadorLocal) return null;
+
     const confirmarTraslado = async () => {
         if (!estado.salaActiva?.id) return;
         setMoviendo(true);

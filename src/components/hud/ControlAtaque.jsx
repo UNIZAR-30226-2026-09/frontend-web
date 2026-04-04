@@ -37,6 +37,9 @@ const ControlAtaque = () => {
     };
 
     const cerrarResultado = () => {
+        if (resultadoBack?.victoria_atacante) {
+            estado.prepararTrasladoConquista(origen, destino);
+        }
         setResultadoBack(null);
         useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
     };

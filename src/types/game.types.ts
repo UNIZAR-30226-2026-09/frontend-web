@@ -217,6 +217,13 @@ export interface EstadoJuego {
     abandonarSoberania: () => Promise<void>;
 
     /**
+     * Prepara el estado para mostrar el panel de traslado de tropas tras una conquista exitosa.
+     * @param {string} origen - ID de la comarca de origen.
+     * @param {string} destino - ID de la comarca conquistada.
+     */
+    prepararTrasladoConquista: (origen: string, destino: string) => void;
+
+    /**
      * Inyecta un estado dinámico completo en el almacén (desde WS o REST).
      * @param {any} estado - Payload con mapa, jugadores, turno, etc.
      */
