@@ -1,0 +1,293 @@
+/* ================================================================
+   LOBBY.CSS — Estilos compartidos del sistema de Lobby
+   Sigue estrictamente la guía GUI_BASE.md
+   ================================================================ */
+
+/* Fondo oscuro con blur que cubre toda la pantalla */
+.lobby-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+}
+
+/* Contenedor principal de cualquier panel del lobby */
+.lobby-panel {
+  background: var(--color-ui-panel-overlay);
+  border: 2px solid var(--color-border-gold);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+  max-width: 800px;
+  width: 70%;
+}
+
+/* Título principal del panel */
+.lobby-titulo {
+  font-family: var(--font-family-title);
+  color: var(--color-border-gold);
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+}
+
+/* Subtítulo secundario */
+.lobby-subtitulo {
+  font-family: var(--font-family-base);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin: 0;
+}
+
+/* Botón principal (dorado) */
+.lobby-boton-primario {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: var(--color-border-gold);
+  color: var(--color-ui-bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-title);
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.lobby-boton-primario:hover:not(:disabled) {
+  background: var(--color-border-gold-vivo);
+  transform: translateY(-2px);
+}
+
+.lobby-boton-primario:disabled {
+  background: var(--color-state-disabled);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Botón secundario (fantasma) */
+.lobby-boton-secundario {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-base);
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.lobby-boton-secundario:hover {
+  border-color: var(--color-border-bronze);
+  color: var(--color-text-primary);
+}
+
+/* Botón de éxito (verde) */
+.lobby-boton-exito {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: var(--color-state-success);
+  color: var(--color-text-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-title);
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+}
+
+.lobby-boton-exito:hover {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+}
+
+/* Código de invitación — display grande tipo terminal */
+.lobby-codigo {
+  background: var(--color-ui-bg-primary);
+  border: 2px solid var(--color-border-gold-vivo);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-family: monospace;
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: var(--color-border-gold-vivo);
+  letter-spacing: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: all;
+}
+
+.lobby-codigo:hover {
+  background: var(--color-ui-bg-secondary);
+}
+
+/* Hueco de jugador */
+.lobby-jugador-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  background: var(--color-ui-bg-secondary);
+  border: 1px solid var(--color-border-bronze);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  width: 100%;
+}
+
+.lobby-jugador-slot--vacio {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.lobby-jugador-numero {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-border-bronze);
+  color: var(--color-ui-bg-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.lobby-jugador-nombre {
+  font-family: var(--font-family-base);
+  font-weight: bold;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.lobby-jugador-nombre--vacio {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-weight: normal;
+}
+
+/* Mensaje de error */
+.lobby-error {
+  color: var(--color-state-danger);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  text-align: center;
+  margin: 0;
+}
+
+/* Fila de botones de selección numérica */
+.lobby-selector-numero {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.lobby-selector-numero__boton {
+  width: 3rem;
+  height: 3rem;
+  border: 2px solid var(--color-border-bronze);
+  border-radius: var(--radius-md);
+  background: var(--color-ui-bg-secondary);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-title);
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lobby-selector-numero__boton:hover {
+  border-color: var(--color-border-gold);
+  color: var(--color-border-gold);
+}
+
+.lobby-selector-numero__boton--activo {
+  border-color: var(--color-border-gold-vivo);
+  background: var(--color-ui-bg-primary);
+  color: var(--color-border-gold-vivo);
+}
+
+/* Separador fino */
+.lobby-separador {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--color-border-bronze);
+  margin: 0;
+}
+
+/* Input de texto (código) */
+.lobby-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-ui-bg-primary);
+  border: 2px solid var(--color-border-bronze);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: monospace;
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  letter-spacing: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.lobby-input:focus {
+  outline: none;
+  border-color: var(--color-border-gold);
+}
+
+.lobby-input::placeholder {
+  color: var(--color-state-disabled);
+  letter-spacing: 2px;
+  font-weight: normal;
+}
+
+/* Fila de acciones del panel */
+.lobby-acciones {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Etiqueta de configuración */
+.lobby-label {
+  font-family: var(--font-family-base);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  align-self: flex-start;
+}
+
+/* Lista de jugadores*/
+.lobby-lista-jugadores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+}

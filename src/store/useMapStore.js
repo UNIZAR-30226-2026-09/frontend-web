@@ -1,26 +1,44 @@
 // src/store/useMapStore.js
 import { create } from 'zustand';
 
+/**
+ * Gestor de estado específico para las selecciones temporales en el mapa.
+ * Controla qué comarcas están clicadas para actuar como origen/destino
+ * en acciones como ataques o envío de tropas.
+ */
 export const useMapStore = create((set) => ({
-    selectedComarcas: [],
+  selectedComarcas: [],
 
-    toggleSelection: (id) => set((state) => {
-        const isSelected = state.selectedComarcas.includes(id);
+  /**
+   * Alterna la selección de una comarca, gestionando internamente si es origen o destino
+   * y controlando las deselecciones accidentales sobre la propia comarca.
+   * @param {string} id - Identificador de la comarca sobre la que se hizo click.
+   */
+  toggleSelection: (id) => set((state) => {
+    const isSelected = state.selectedComarcas.includes(id);
 
-        if (isSelected) { // si ya estaba pinchada...
-            if (state.selectedComarcas[0] === id) { // si el origen de repente clica en sí mismo de nuevo, cancelamos la jugada
-                return { selectedComarcas: [] };
-            }
-            else { // si hacemos click en el pobre defensor ya elegido, lo quitamos de la diana
-                return { selectedComarcas: [state.selectedComarcas[0]] };
-            }
-        }
+    // Si ya estaba seleccionada...
+    if (isSelected) {
+      // Diferenciamos si el jugador hizo clic sobre el origen (para cancelar todo)
+      if (state.selectedComarcas[0] === id) {
+        return { selectedComarcas: [] };
+      }
 
-        if (state.selectedComarcas.length < 2) { // si tenemos hueco libre en el array la metemos para ser origen o destino
-            return { selectedComarcas: [...state.selectedComarcas, id] };
-        }
-        return { selectedComarcas: [state.selectedComarcas[0], id] };
-    }),
+      // O si hizo click sobre un objetivo de ataque para descartar a ese defensor
+      return { selectedComarcas: [state.selectedComarcas[0]] };
+    }
 
-    clearSelection: () => set({ selectedComarcas: [] }),
+    // Si hay espacio libre (no hay origen Y destino seleccionados simultáneamente)
+    if (state.selectedComarcas.length < 2) {
+      return { selectedComarcas: [...state.selectedComarcas, id] };
+    }
+
+    // Si está lleno, el nuevo click sustituye al destino actual, manteniendo el origen
+    return { selectedComarcas: [state.selectedComarcas[0], id] };
+  }),
+
+  /**
+   * Vacia el array de comarcas seleccionadas.
+   */
+  clearSelection: () => set({ selectedComarcas: [] }),
 }));

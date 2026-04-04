@@ -1,88 +1,96 @@
 import React from 'react';
 
-const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale }) => {
-
-    // calculamos la escala al revés: si el usuario hace mucho zoom, encogemos la ficha
-    // así la cosa se lee bien siempre pero no nos cubre todo el css del mapa
-    // le clavamos un math.max para que pare de achicarse y no desaparezca
+/**
+ * Renderiza el marcador circular sobre una comarca para mostrar su cantidad de tropas.
+ * @param {Object} props
+ * @returns {JSX.Element} El SVG group con la ficha.
+ */
+const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, strokeFondo }) => {
+    // Calcular escala inversa para mantener la legibilidad al hacer zoom
     const escalaInversa = Math.max(0.4, 1 / (zoomScale * 0.75));
+
+    // Separar el nombre de la comarca en dos líneas si es demasiado largo
+    let lineasTexto = [];
+    const partes = nombreComarca.split(nombreComarca.includes(' ') ? ' ' : '_');
+
+    if (partes.length <= 2) {
+        lineasTexto = partes;
+    } else {
+        const medio = Math.ceil(partes.length / 2);
+        lineasTexto = [
+            partes.slice(0, medio).join(' '),
+            partes.slice(medio).join(' ')
+        ];
+    }
+
+    // Renderizar el nombre de la comarca solo si el zoom es suficiente
+    let etiquetaNombre = null;
+    if (zoomScale > 1.75) {
+        etiquetaNombre = (
+            <text
+                x={cx}
+                y={cy + 22}
+                textAnchor="middle"
+                fontWeight="bold"
+                fill="var(--color-text-primary)"
+                stroke="var(--color-ui-bg-primary)"
+                strokeWidth="2.5"
+                paintOrder="stroke fill"
+                style={{
+                    fontFamily: 'var(--font-family-base)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    textShadow: '0px 2px 2px var(--color-ui-bg-primary)',
+                    pointerEvents: 'none'
+                }}
+            >
+                {lineasTexto.map((linea, i) => (
+                    <tspan
+                        key={i}
+                        x={cx}
+                        dy={i === 0 ? 0 : 10}
+                        fontSize="8.5px"
+                    >
+                        {linea}
+                    </tspan>
+                ))}
+            </text>
+        );
+    }
+
+    // Establecer el color de la ficha
+    const fillColorFondo = colorFondo || 'var(--color-ui-panel-overlay)';
 
     return (
         <g
             pointerEvents="none"
             transform={`translate(${cx}, ${cy}) scale(${escalaInversa}) translate(${-cx}, ${-cy})`}
         >
-            {/* el nombre bajadito para que no pise al icono de la tropa */}
-            {zoomScale > 1.75 && (
-                <text
-                    x={cx}
-                    y={cy + 22} /* lo tiramos un poco para abajo para que el ojo descanse */
-                    textAnchor="middle"
-                    fontWeight="bold"
-                    fill="#ffffff"
-                    stroke="#000000"
-                    strokeWidth="2.5"
-                    paintOrder="stroke fill"
-                    style={{
-                        fontFamily: 'system-ui, sans-serif',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        textShadow: '0px 2px 2px rgba(0,0,0,0.8)',
-                        pointerEvents: 'none'
-                    }}
-                >
-                    {/* chapucilla rápida para partir nombres muy largos en un par de líneas */}
-                    {(() => {
-                        const partes = nombreComarca.split(nombreComarca.includes(' ') ? ' ' : '_');
-                        let lineas = [];
-                        if (partes.length <= 2) {
-                            lineas = partes;
-                        } else {
-                            // si son demasiadas palabras, cortamos más o menos por el medio
-                            const medio = Math.ceil(partes.length / 2);
-                            lineas = [
-                                partes.slice(0, medio).join(' '),
-                                partes.slice(medio).join(' ')
-                            ];
-                        }
+            {etiquetaNombre}
 
-                        return lineas.map((linea, i) => (
-                            <tspan
-                                key={i}
-                                x={cx}
-                                dy={i === 0 ? 0 : 10}
-                                fontSize="8.5px" // letra un pelín más enana por si el string se alarga mucho
-                            >
-                                {linea}
-                            </tspan>
-                        ));
-                    })()}
-                </text>
-            )}
-
-            {/* el círculo oscurito donde se pone el número de tropas. levantado de na' */}
             <circle
                 cx={cx}
                 cy={cy - 4}
-                r={13} // de 14 bajó a 13 para darle algo de respiro visual
-                fill="rgba(30, 30, 30, 0.9)"
-                stroke="#b8860b"
+                r={13}
+                fill={fillColorFondo}
+                stroke={strokeFondo || "var(--color-border-gold)"}
                 strokeWidth="1.5"
-                filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.6))"
+                filter="drop-shadow(0px 2px 3px var(--color-ui-bg-primary))"
             />
 
-            {/* el dígito gigante en tol centro del círculo */}
             <text
                 x={cx}
                 y={cy - 4}
                 textAnchor="middle"
-                dominantBaseline="central" /* magia negra para centrar en vertical clavado */
+                dominantBaseline="central"
                 fontSize="13px"
                 fontWeight="900"
-                fill="#ffd700" /* doradito para conjuntar el stroke de fuera */
+                fill="var(--color-text-primary)"
+                stroke="var(--color-ui-bg-primary)"
+                strokeWidth="0.5"
+                paintOrder="stroke fill"
                 style={{
-                    fontFamily: 'system-ui, sans-serif',
-                    textShadow: '1px 1px 1px rgba(0,0,0,0.9)'
+                    fontFamily: 'var(--font-family-base)'
                 }}
             >
                 {tropas}

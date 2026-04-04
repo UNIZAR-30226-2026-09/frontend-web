@@ -6,6 +6,7 @@ export interface ComarcaDTO {
     nombre: string;
     adyacentes: string[];
 }
+
 /**
  * Nodo interno del juego. 
  * Separarlo del DTO nos permite en el futuro añadir propiedades
@@ -16,7 +17,8 @@ export interface NodoComarca {
     nombre: string;
     adyacentes: string[];
 }
+
 /**
- * Un Map que relaciona un ID con su NodoComarca en tiempo O(1).
+ * Grafo optimizado que relaciona un ID con su NodoComarca en tiempo O(1).
  */
 export type GrafoSoberania = Map<string, NodoComarca>;

@@ -1,0 +1,118 @@
+/* ==============================================================
+   VARIABLES GLOBALES DE DISEÑO - SOBERANÍA
+   ============================================================== */
+:root {
+   /* --- UI BASE --- */
+   --color-ui-bg-primary: #1a1a24;
+   --color-ui-bg-secondary: #252530;
+   --color-ui-panel-overlay: rgba(26, 26, 36, 0.85);
+   /* Fondos modales/HUD */
+
+   --color-border-gold: #c5a059;
+   --color-border-gold-vivo: #FFD13B;
+   --color-border-bronze: #8c6d3f;
+
+   --color-text-primary: #f0f0f5;
+   --color-text-secondary: #a0a0b0;
+
+   /* --- ESTADOS DE UI --- */
+   --color-state-success: #388e3c;
+   --color-state-danger: #d32f2f;
+   --color-state-disabled: #616161;
+
+   /* --- COLORES JUGADORES (Base / Fuerte) --- */
+   --color-jugador-1: #E54545;
+   /* Rojo carmesí brillante */
+   --color-jugador-2: #33B1D4;
+   /* Cian/Azul brillante */
+   --color-jugador-3: #4CAE1E;
+   /* Verde esmeralda rico */
+   --color-jugador-4: #F08A24;
+   /* Naranja intenso */
+
+   /* --- COLORES JUGADORES (Apagados / Territorios inactivos) --- */
+   --color-jugador-1-apagado: #A34A4A;
+   /* Rojo granate apagado */
+   --color-jugador-2-apagado: #4A8594;
+   /* Azul acero apagado */
+   --color-jugador-3-apagado: #858A59;
+   /* Verde oliva apagado */
+   --color-jugador-4-apagado: #C67C4E;
+   /* Naranja bronce apagado */
+
+
+   /* --- MAPA --- */
+   --color-map-land-neutral: #d4c4a8;
+   --color-map-ocean: #111118;
+   --color-map-select-origin: #e6b800;
+   --color-map-select-target: #e63946;
+
+   /* --- TIPOGRAFÍA --- */
+   --font-family-base: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+   --font-family-title: 'Cinzel', 'Playfair Display', serif;
+
+   --font-size-sm: 0.875rem;
+   /* ~14px */
+   --font-size-md: 1rem;
+   /* ~16px */
+   --font-size-lg: 1.25rem;
+   /* ~20px */
+   --font-size-xl: 1.5rem;
+   /* ~24px */
+
+   /* --- ESPACIADOS Y BORDES --- */
+   --spacing-xs: 0.25rem;
+   /* ~4px */
+   --spacing-sm: 0.5rem;
+   /* ~8px */
+   --spacing-md: 1rem;
+   /* ~16px */
+   --spacing-lg: 1.5rem;
+   /* ~24px */
+   --spacing-xl: 2rem;
+   /* ~32px */
+
+   --radius-sm: 0.25rem;
+   --radius-md: 0.5rem;
+   --radius-lg: 1rem;
+
+   /* --- REGIONES DEL MAPA (Modo Continentes) --- */
+   /* Lógica de uso: 
+       - Base (Apagado): Relleno de territorios neutrales/enemigos
+       - Medio: Relleno de territorios propios
+       - Fuerte: Borde grueso de territorios propios (efecto resplandor)
+    */
+
+   /* 1. PIRINEOS (Morado) */
+   --color-region-pirineos-base: #5a2e85;
+   /* Relleno neutral */
+   --color-region-pirineos-medio: #7517c2;
+   /* Relleno propio */
+   --color-region-pirineos-fuerte: #8f00ff;
+   /* Borde neón */
+
+   /* 2. ESTEPAS (Amarillo) */
+   --color-region-estepas-base: #9e8d24;
+   --color-region-estepas-medio: #ceb512;
+   --color-region-estepas-fuerte: #ffdd00;
+
+   /* 3. EBRO (Azul) */
+   --color-region-ebro-base: #2b738f;
+   --color-region-ebro-medio: #1698c6;
+   --color-region-ebro-fuerte: #01befe;
+
+   /* 4. CAMPOS (Naranja) */
+   --color-region-campos-base: #9c5b21;
+   --color-region-campos-medio: #cd6c10;
+   --color-region-campos-fuerte: #ff7d00;
+
+   /* 5. VALLES (Verde) */
+   --color-region-valles-base: #68941b;
+   --color-region-valles-medio: #8ac90e;
+   --color-region-valles-fuerte: #adff02;
+
+   /* 6. SIERRAS (Rosa) */
+   --color-region-sierras-base: #8f1c4f;
+   --color-region-sierras-medio: #c70e5e;
+   --color-region-sierras-fuerte: #ff006d;
+}

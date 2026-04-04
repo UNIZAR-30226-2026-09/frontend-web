@@ -1,0 +1,28 @@
+@import './variables.css';
+
+:root {
+  --bg-dark: var(--color-ui-bg-primary);
+  --text-main: var(--color-text-primary);
+  --primary-neon: var(--color-border-gold);
+
+  /* Colores temáticos Anexo III - Ramas de Investigación */
+  --color-biologica: #22c55e;
+  --color-logistica: #a855f7;
+  --color-artilleria: #f97316;
+
+  --border-ui: var(--color-border-bronze);
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  margin: 0;
+  font-family: var(--font-family-base);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100%;
+}

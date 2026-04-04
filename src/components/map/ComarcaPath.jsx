@@ -1,84 +1,165 @@
-// src/components/ComarcaPath.jsx
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
-import { obtenerColorRegion } from '../../utils/colorUtils';
+import { obtenerColorRegion, obtenerColorFuerteRegion } from '../../utils/colorUtils';
 
+
+
+/**
+ * Renderiza el trazado SVG de una comarca y gestiona sus interacciones.
+ * @param {Object} props
+ * @returns {JSX.Element} El elemento path.
+ */
 const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
     const isHovered = hovered === id;
 
-    // sacamos todo lo del zustand, que al final la comarca solo dibuja lo que le manden
-    const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
-    const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
-    const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
-    const manejarClickComarca = useGameStore((state) => state.manejarClickComarca);
-    const modoVista = useGameStore((state) => state.modoVista);
-    const faseActual = useGameStore((state) => state.faseActual);
-    const propietarios = useGameStore((state) => state.propietarios);
-    const coloresJugadores = useGameStore((state) => state.coloresJugadores);
+    // Estado global necesario para interactuar con la comarca
+    const origenSeleccionado   = useGameStore((state) => state.origenSeleccionado);
+    const destinoSeleccionado  = useGameStore((state) => state.destinoSeleccionado);
+    const comarcasResaltadas   = useGameStore((state) => state.comarcasResaltadas) || [];
+    const manejarClickComarca  = useGameStore((state) => state.manejarClickComarca);
+    const setRegionHover       = useGameStore((state) => state.setRegionHover);
+    const modoVista            = useGameStore((state) => state.modoVista);
+    const faseActual           = useGameStore((state) => state.faseActual);
+    const propietarios         = useGameStore((state) => state.propietarios);
+    const coloresJugadores     = useGameStore((state) => state.coloresJugadores);
+    const jugadorLocal         = useGameStore((state) => state.jugadorLocal);
+    const turnoActual          = useGameStore((state) => state.turnoActual);
+    const cantidadTropas       = useGameStore((state) => state.tropas[id] || 0);
+    const tropasDisponibles    = useGameStore((state) => state.tropasDisponibles);
 
-    const isOrigin = origenSeleccionado === id;
+    const isOrigin      = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
     const isHighlighted = comarcasResaltadas.includes(id);
-
-    // nos hace falta saber si está tocada para ponerle el borde blanquito
-    const isSelected = isOrigin || isDestination || isHighlighted;
+    const isSelected    = isOrigin || isDestination || isHighlighted;
 
     /**
-     * @function obtenerColorComarca
-     * @description evalúa las props booleanas del elemento y escupe el color en HEX 
-     * crudo para el inline style de fill. evalúa el orden de precedencia: primero
-     * va lo bélico (selecciones y destinos), después modos de visualización (por comarcas), 
-     * y por último a color del dueño (por defecto).
-     * @param {string} idComarca id para pescar los props asociados de zustand
-     * @returns {string} color hex como "#ffffff"
+     * Evalúa el color de relleno y la opacidad según el contexto actual.
+     * Usa if/else tempranos para evitar ternarios anidados.
+     * @returns {{ color: string, opacidad: number }}
      */
-    const obtenerColorComarca = (idComarca) => {
-        // lo 1º siempre es pintar la movida bélica si está pasando por encima del color que sea
-        if (isOrigin) return '#fbfbfbff';
-        if (isDestination) return '#ff00d0ff';
-        if (isHighlighted) return '#000000ff';
+    const obtenerEstiloComarca = () => {
+        const propietarioId = propietarios[id];
+        const colorBase = propietarioId && coloresJugadores[propietarioId] ? coloresJugadores[propietarioId] : null;
+        const colorApagado = colorBase ? colorBase.replace(')', '-apagado)') : 'var(--color-ui-bg-secondary)';
 
-        // si el usuario le dio al boton de ver provincias, sudamos de todo y tiramos de ese color
+        // 1. Interacciones tácticas tienen prioridad absoluta
+        if (isDestination) {
+            return { color: 'var(--color-map-select-target)', opacidad: 1, isVivoState: true };
+        }
+
+        if (isOrigin || isHighlighted) {
+            return { color: colorBase, opacidad: 1, isVivoState: true };
+        }
+
+        // 2. Modo de visualización por regiones
         if (modoVista === 'REGIONES' && regionId) {
-            return obtenerColorRegion(regionId);
+            const esDelJugador = String(propietarios[id]) === String(jugadorLocal);
+            const color        = obtenerColorRegion(regionId, esDelJugador);
+            // Contraste extremo: propio opaco, ajeno muy translúcido
+            const opacidad     = 1;
+            return { color, opacidad, isVivoState: false };
         }
 
-        // si estamos en normal, pues buscamos el colorcito en el diccionario
-        const propietarioId = propietarios[idComarca];
-        if (propietarioId && coloresJugadores[propietarioId]) {
-            return coloresJugadores[propietarioId];
+        // 3. Color del jugador propietario
+        if (colorBase) {
+            const esSuTurno = String(propietarioId) === String(turnoActual);
+
+            if (esSuTurno && faseActual === 'REFUERZO' && tropasDisponibles > 0) {
+                return { color: colorBase, opacidad: 1, isVivoState: true };
+            }
+
+            if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                return { color: colorBase, opacidad: 1, isVivoState: true };
+            }
+
+            return { color: colorApagado, opacidad: 1, isVivoState: false };
         }
 
-        // por si acaso hay alguna suelta sin dueño, gris feo
-        return '#E0E0E0';
+        // 4. Color neutral por defecto
+        return { color: 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: false };
     };
 
-    // sacamos a ver de qué color toca dibujar esta path este frame
-    const currentColor = obtenerColorComarca(id);
+    const { color: currentColor, opacidad: fillOpacity, isVivoState } = obtenerEstiloComarca();
+
+    let strokeColor = 'var(--color-border-gold)'; // Base golden border
+    let strokeWidthSize = 1.5;
+
+    if (modoVista === 'REGIONES') {
+        if (regionId) {
+            strokeColor = obtenerColorFuerteRegion(regionId);
+        } else {
+            strokeColor = currentColor;
+        }
+        
+        // Mantener hover selectivo en blanco original
+        if (isHovered || isSelected) {
+            strokeColor = 'var(--color-text-primary)';
+            strokeWidthSize = 3;
+        }
+    } else {
+        if (isOrigin) {
+            strokeColor = 'var(--color-text-primary)';
+        } else if (isHovered || isSelected || isVivoState) {
+            strokeColor = 'var(--color-border-gold-vivo)';
+        }
+        
+        if (isOrigin || isHovered || isSelected || isVivoState) {
+            strokeWidthSize = 3;
+        }
+    }
+
+    let cursorStyle = 'pointer';
+    if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
+        cursorStyle = 'default';
+    }
+
+    /**
+     * Gestiona la entrada del ratón sobre la comarca.
+     * En modo REGIONES registra la región para el panel de estadísticas.
+     */
+    const handleMouseEnter = () => {
+        // Ignorar hover en comarcas inatacables durante el ataque
+        if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
+            return;
+        }
+
+        setHovered(id);
+
+        if (modoVista === 'REGIONES' && regionId) {
+            setRegionHover(regionId);
+        }
+    };
+
+    /**
+     * Gestiona la salida del ratón de la comarca.
+     */
+    const handleMouseLeave = () => {
+        setHovered(null);
+
+        if (modoVista === 'REGIONES') {
+            setRegionHover(null);
+        }
+    };
 
     return (
         <path
             id={id}
             d={d}
             fill={currentColor}
-            fillOpacity={0.75}
-            stroke={isHovered || isSelected ? 'white' : 'rgba(0,0,0,0.3)'}
-            strokeWidth={isHovered || isSelected ? 3 : 1}
-            vectorEffect="non-scaling-stroke"
-            onMouseEnter={() => {
-                if (faseActual === 'ATAQUE_NORMAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
-                    return; // que no le haga el hover blanco si es una comarca que no se puede atacar ni de broma
-                }
-                setHovered(id);
-            }}
-            onMouseLeave={() => setHovered(null)}
+            fillOpacity={fillOpacity}
+            stroke={strokeColor}
+            strokeWidth={strokeWidthSize}
+            clipPath={`url(#clip-comarca-${id})`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             onClick={(e) => {
-                e.stopPropagation(); // esto salva vidas, para que el click no caiga al fondo negro del tablero y lo rompa todo
+                // Evitar propagación al SVG del tablero
+                e.stopPropagation();
                 manejarClickComarca(id);
             }}
             style={{
-                cursor: (faseActual === 'ATAQUE_NORMAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) ? 'default' : 'pointer',
-                transition: 'all 0.2s ease-in-out'
+                cursor: cursorStyle,
+                transition: 'fill 0.25s ease-in-out, fill-opacity 0.25s ease-in-out'
             }}
         />
     );

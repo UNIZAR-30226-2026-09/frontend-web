@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
-import './AnimacionRefuerzos.css';
+import '../../styles/AnimacionRefuerzos.css';
 
 /**
- * @component AnimacionRefuerzos
- * @description pop-up a pantalla completa que salta justo al principio del despliegue.
- * bloquea la interacción 3 segundos y se desaparece solo metiendo unas clases css
- * para el difuminado. da feedback visual 
+ * Pop-up que le salta al jugador en pantalla cuando recibe refuerzos.
+ * @returns {JSX.Element} El pop-up animado con los refuerzos.
  */
 const AnimacionRefuerzos = () => {
     const mostrarAnimacionRefuerzos = useGameStore((state) => state.mostrarAnimacionRefuerzos);
@@ -18,27 +16,40 @@ const AnimacionRefuerzos = () => {
     useEffect(() => {
         if (mostrarAnimacionRefuerzos) {
             setVisible(true);
-            // quitamos el cartelico a los 3 segundos para que no moleste
+
             const timer = setTimeout(() => {
                 setVisible(false);
-                setTimeout(cerrarAnimacionRefuerzos, 500); // nos esperamos medio segundo a que acabe el difuminado del css
+                /* El alias histórico 'DESPLIEGUE' queda eliminado. La fase de colocación de
+                 * tropas se denomina REFUERZO en todo el stack. */
+                setTimeout(cerrarAnimacionRefuerzos, 500);
             }, 3000);
+
             return () => clearTimeout(timer);
         }
     }, [mostrarAnimacionRefuerzos, cerrarAnimacionRefuerzos]);
 
-    if (!mostrarAnimacionRefuerzos) return null;
+    if (!mostrarAnimacionRefuerzos) {
+        return null;
+    }
+
+    let overlayClassName = 'animacion-refuerzos-overlay';
+    if (visible) {
+        overlayClassName += ' visible';
+    }
 
     return (
-        <div className={`animacion-refuerzos-overlay ${visible ? 'visible' : ''}`}>
+        <div className={overlayClassName}>
             <div className="animacion-refuerzos-modal">
-                <h2>¡Fase de Despliegue!</h2>
+                <h2>FASE DE REFUERZO</h2>
+
                 <div className="refuerzos-numero">
                     +{refuerzosRecibidos}
                 </div>
+
                 <p>Tropas de refuerzo recibidas</p>
+
                 <div className="refuerzos-instrucciones">
-                    Selecciona tus territorios para desplegarlas
+                    Selecciona tus territorios para reforzarlos
                 </div>
             </div>
         </div>
