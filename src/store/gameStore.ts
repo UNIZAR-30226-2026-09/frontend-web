@@ -39,14 +39,17 @@ const parsearMapa = (
  * Procesa el diccionario de jugadores para asignar colores y detectar la reserva local.
  * @param {Record<string, any>} jugadores - Diccionario de jugadores por username.
  * @param {string | null} jugadorLocalActual - Username actual almacenado.
- * @returns {{ coloresJugadores: Record<string, string>; tropasReservaLocal: number | null; jugadorLocalId: string | null; }}
+ * @param {string | null} turnoActual - Username del jugador que tiene el turno.
+ * @returns {{ coloresJugadores: Record<string, string>; tropasReservaLocal: number | null; tropasReservaActivo: number | null; jugadorLocalId: string | null; }}
  */
 const parsearJugadores = (
     jugadores: Record<string, any>,
-    jugadorLocalActual: string | null
+    jugadorLocalActual: string | null,
+    turnoActual: string | null
 ): {
     coloresJugadores: Record<string, string>;
     tropasReservaLocal: number | null;
+    tropasReservaActivo: number | null;
     jugadorLocalId: string | null;
 } => {
     const MAP_COLORS = [
@@ -58,6 +61,7 @@ const parsearJugadores = (
 
     const coloresJugadores: Record<string, string> = {};
     let tropasReservaLocal: number | null = null;
+    let tropasReservaActivo: number | null = null;
 
     const miUsername =
         useAuthStore.getState().user?.username ??
@@ -78,11 +82,17 @@ const parsearJugadores = (
         if (username === miUsername && info.tropas_reserva !== undefined) {
             tropasReservaLocal = info.tropas_reserva;
         }
+        
+        // Si es el jugador del turno, guardamos su reserva para que todos la vean
+        if (username === turnoActual && info.tropas_reserva !== undefined) {
+            tropasReservaActivo = info.tropas_reserva;
+        }
     }
 
     return {
         coloresJugadores,
         tropasReservaLocal,
+        tropasReservaActivo,
         jugadorLocalId: miUsername || null,
     };
 };
@@ -192,11 +202,13 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             ? parsearMapa(payload.mapa)
             : { tropas: get().tropas, propietarios: get().propietarios };
 
-        const { coloresJugadores, tropasReservaLocal } = payload.jugadores
-            ? parsearJugadores(payload.jugadores, get().jugadorLocal)
+        const { coloresJugadores, tropasReservaLocal, tropasReservaActivo, jugadorLocalId } = payload.jugadores
+            ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
             : {
                 coloresJugadores: get().coloresJugadores,
                 tropasReservaLocal: null,
+                tropasReservaActivo: null,
+                jugadorLocalId: get().jugadorLocal,
             };
 
         set((state) => ({
@@ -209,9 +221,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 ...state.coloresJugadores,
                 ...coloresJugadores,
             },
-            ...(tropasReservaLocal !== null && {
-                tropasDisponibles: tropasReservaLocal,
+            ...(tropasReservaActivo !== null && {
+                tropasDisponibles: tropasReservaActivo,
             }),
+            jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
             diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
             jugadores: payload.jugadores
                 ? Object.keys(payload.jugadores)
@@ -659,16 +672,17 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         faseActual: nuevaFase,
                         turnoActual: jugadorActivo,
 
-                        // Sincronización de tropas disponibles si hay refuerzos por WS
+                        // Sincronización de tropas disponibles: ahora se actualiza para todos
+                        // para que el rival vea cuántas tropas tiene el activo.
                         tropasDisponibles:
-                            esRefuerzo && esMiTurno && tropasRecibidas > 0
+                            esRefuerzo && tropasRecibidas > 0
                                 ? (state.tropasDisponibles ?? 0) + tropasRecibidas
                                 : state.tropasDisponibles,
 
                         mostrarAnimacionRefuerzos:
                             esRefuerzo && esMiTurno && tropasRecibidas > 0,
                         refuerzosRecibidos:
-                            esRefuerzo && esMiTurno ? tropasRecibidas : state.refuerzosRecibidos,
+                            esRefuerzo ? tropasRecibidas : state.refuerzosRecibidos,
 
                         // LIMPIEZA CRÍTICA: Limpiar selecciones locales para que la UI 
                         // se refresque (botones se oculten, comarcas se de-resalten)
@@ -688,12 +702,31 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
             case 'TROPAS_COLOCADAS': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                set((state) => ({
-                    tropas: {
-                        ...state.tropas,
-                        [data.territorio]: data.tropas_totales_ahora,
-                    },
-                }));
+                const jugadorQueColoca = data.jugador || get().turnoActual;
+                
+                set((state) => {
+                    // Calculamos cuántas se han puesto comparando con el estado actual
+                    const tropasPrevias = state.tropas[data.territorio] ?? 0;
+                    const cantidadColocada = Math.max(0, data.tropas_totales_ahora - tropasPrevias);
+                    
+                    const esMiAccion = 
+                        state.jugadorLocal && 
+                        jugadorQueColoca && 
+                        String(jugadorQueColoca).toLowerCase() === String(state.jugadorLocal).toLowerCase();
+
+                    return {
+                        tropas: {
+                            ...state.tropas,
+                            [data.territorio]: data.tropas_totales_ahora,
+                        },
+                        // Si NO soy yo quien las puso (o si queremos ser deterministas con el socket),
+                        // restamos de la reserva global. 
+                        // Nota: El local ya restó optimísticamente en confirmarRefuerzo.
+                        ...(!esMiAccion && {
+                            tropasDisponibles: Math.max(0, (state.tropasDisponibles ?? 0) - cantidadColocada)
+                        })
+                    };
+                });
                 break;
             }
 
