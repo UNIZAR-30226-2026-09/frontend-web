@@ -923,7 +923,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
                 method: 'POST',
             });
-
             const authUser = useAuthStore.getState().user;
             const jugadorLocal =
                 authUser?.username ??
@@ -931,26 +930,36 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 authUser?.nombre ??
                 data.usuario_id;
 
-            // Obtener config y ID real de la sala desde el listado público.
-            let configMaxPlayers = 4;
-            let realPartidaId = data.partida_id;
+            // ✅ NUEVA LÓGICA DE EXTRACCIÓN DE ID:
+            // 1. Miramos si viene en la raíz (por si el backend lo arregla en el futuro)
+            let realPartidaId = data.id || data.partida_id;
 
-            try {
-                const listaPartidas = await fetchApi('/v1/partidas');
-                const miPartida = listaPartidas.find(
-                    (p: any) => p.codigo_invitacion === codigo
-                );
-                if (miPartida) {
-                    configMaxPlayers = miPartida.config_max_players;
-                    realPartidaId = miPartida.id;
+            // 2. Si no está en la raíz, ¡lo robamos de la lista de jugadores!
+            if (!realPartidaId && data.jugadores_en_sala && data.jugadores_en_sala.length > 0) {
+                realPartidaId = data.jugadores_en_sala[0].partida_id;
+            }
+
+            let configMaxPlayers = data.config_max_players || 4;
+
+            // 3. El truco de la lista pública solo como ultimísimo recurso
+            if (!realPartidaId) {
+                try {
+                    const listaPartidas = await fetchApi('/v1/partidas');
+                    const miPartida = listaPartidas.find(
+                        (p: any) => p.codigo_invitacion === codigo
+                    );
+                    if (miPartida) {
+                        configMaxPlayers = miPartida.config_max_players;
+                        realPartidaId = miPartida.id;
+                    }
+                } catch (_) {
+                    // Fallo silencioso
                 }
-            } catch (_) {
-                configMaxPlayers = 4;
             }
 
             if (!realPartidaId) {
                 throw new Error(
-                    'No se pudo localizar el ID de la sala para conectarse.'
+                    'No se pudo localizar el ID de la sala para conectarse. Revisa la respuesta del servidor.'
                 );
             }
 
