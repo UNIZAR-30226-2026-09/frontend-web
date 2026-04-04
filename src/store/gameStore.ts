@@ -977,6 +977,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     ...state.salaActiva,
                     id: realPartidaId,
                     config_max_players: configMaxPlayers,
+                    codigoInvitacion: codigo,
                 },
                 jugadoresLobby,
                 jugadorLocal,
