@@ -521,16 +521,18 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         return;
 
                     if (!estado.grafoGlobal) return;
+                    
+                    // BFS: Buscamos todas las comarcas conectadas que también sean nuestras
                     const alcanzables = calcularComarcasEnRango(
                         estado.grafoGlobal,
                         comarcaId,
-                        RANGO_MOVIMIENTO
+                        Infinity, // Rango infinito para buscar por todo el mapa conectado
+                        (id) => estado.propietarios[id] === estado.jugadorLocal
                     );
+
                     set({
                         origenSeleccionado: comarcaId,
-                        comarcasResaltadas: Array.from(alcanzables).filter(
-                            (id) => estado.propietarios[id] === estado.jugadorLocal
-                        ),
+                        comarcasResaltadas: Array.from(alcanzables),
                     });
                     return;
                 }

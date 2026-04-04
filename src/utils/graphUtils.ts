@@ -58,14 +58,16 @@ export function construirGrafoComarcas(rawData: ComarcaDTO[]): GrafoSoberania {
  * 
  * @param {GrafoSoberania} grafo - Mapa estructurado de nodos y aristas validadas.
  * @param {string} origenId - Identificador del nodo raíz de exploración.
- * @param {number} rangoMaximo - Nivel máximo de profundidad permitido para las fronteras topológicas.
+ * @param {number} rangoMaximo - Nivel máximo de profundidad permitido (Infinity para sin límite).
+ * @param {(id: string) => boolean} [filtroAdyacente] - Predicado opcional para restringir el paso por ciertos nodos.
  * @returns {Set<string>} Conjunto único conteniendo los identificadores de todos los nodos alcanzables.
  * @throws {Error} Si el origen proporcionado no existe en el grafo actual.
  */
 export function calcularComarcasEnRango(
   grafo: GrafoSoberania,
   origenId: string,
-  rangoMaximo: number
+  rangoMaximo: number,
+  filtroAdyacente?: (id: string) => boolean
 ): Set<string> {
   if (!grafo.has(origenId)) {
     throw new Error(`El origen (${origenId}) no existe en el grafo.`);
@@ -86,6 +88,12 @@ export function calcularComarcasEnRango(
 
     for (const vecinoId of nodoActual.adyacentes) {
       if (!visitados.has(vecinoId)) {
+        // Si hay un filtro, solo visitamos el vecino si el filtro lo permite.
+        // Importante: El filtro controla si podemos PASAR por ese nodo.
+        if (filtroAdyacente && !filtroAdyacente(vecinoId)) {
+          continue;
+        }
+
         visitados.add(vecinoId);
         const nuevaDistancia = distanciaAcumulada + 1;
 
