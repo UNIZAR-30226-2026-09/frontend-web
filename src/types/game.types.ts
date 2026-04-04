@@ -24,6 +24,7 @@ export interface EstadoJuego {
 
     faseActual: FaseJuego | null;
     modoVista: ModoVista;
+    estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO';
 
     dinero: number;
     tropasDisponibles: number | null;
@@ -228,4 +229,9 @@ export interface EstadoJuego {
      * @param {any} estado - Payload con mapa, jugadores, turno, etc.
      */
     setEstadoDinamico: (estado: any) => void;
+
+    /**
+     * Define el estado local de la partida (victoria, derrota, espectador).
+     */
+    setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO') => void;
 }

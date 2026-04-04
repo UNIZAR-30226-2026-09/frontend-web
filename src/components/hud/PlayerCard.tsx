@@ -9,6 +9,7 @@ interface PlayerCardProps {
     tropas: number;
     isTurnoActual: boolean;
     isLocal: boolean;
+    isDisconnected?: boolean;
 }
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({
@@ -18,7 +19,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     territorios,
     tropas,
     isTurnoActual,
-    isLocal
+    isLocal,
+    isDisconnected
 }) => {
     return (
         <div 
@@ -26,10 +28,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             style={{ borderColor: color }}
         >
             <div className="player-card-header">
-                <span className="player-name" style={{ color: color }}>
+                <span className="player-name" style={{ color: color, opacity: isDisconnected ? 0.5 : 1 }}>
                     {nombre}
                 </span>
                 {isLocal && <span className="local-badge" style={{ backgroundColor: color }}>(Tú)</span>}
+                {isDisconnected && <span className="disconnected-badge" title="Conexión perdida">⚠️ OFF</span>}
             </div>
             <div className="player-card-stats">
                 <div className="stat">

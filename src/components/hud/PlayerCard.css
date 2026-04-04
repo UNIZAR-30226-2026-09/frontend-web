@@ -35,6 +35,22 @@
     font-weight: normal;
 }
 
+.disconnected-badge {
+    font-size: 10px;
+    background-color: #ef4444; /* Rojo/Naranja */
+    color: white;
+    padding: 1px 4px;
+    border-radius: 4px;
+    margin-left: 6px;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
 .player-card-stats {
     display: flex;
     justify-content: space-between;

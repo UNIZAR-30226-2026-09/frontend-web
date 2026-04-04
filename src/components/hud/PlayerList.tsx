@@ -40,6 +40,7 @@ export const PlayerList: React.FC = () => {
                         tropas={stats.tropas}
                         isTurnoActual={String(jugadorId) === String(turnoActual)}
                         isLocal={String(jugadorId) === String(jugadorLocal) || (miUsername && String(nombre).toLowerCase() === String(miUsername).toLowerCase())}
+                        isDisconnected={info?.esta_desconectado}
                     />
                 );
             })}

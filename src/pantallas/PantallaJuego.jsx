@@ -7,6 +7,7 @@ import { useGameStore } from '../store/gameStore';
 import ControlAtaque from '../components/hud/ControlAtaque';
 import ControlTrasladoConquista from '../components/hud/ControlTrasladoConquista';
 import ControlFortificacion from '../components/hud/ControlFortificacion';
+import GameOverModal from '../components/hud/GameOverModal';
 
 /**
  * Pantalla principal del juego que junta el HUD superior y el mapa interactivo.
@@ -24,7 +25,9 @@ const PantallaJuego = () => {
 
         // Opcional: limpiar al desmontar
         return () => {
-            socketService.disconnect();
+            // Se comenta la desconexión manual para permitir que el socketService maneje 
+            // las reconexiones automáticamente incluso tras un desmontaje/montaje accidental (StrictMode, re-renders).
+            // socketService.disconnect();
         }
     }, []); 
 
@@ -37,6 +40,7 @@ const PantallaJuego = () => {
             <ControlAtaque />
             <ControlTrasladoConquista />
             <ControlFortificacion />
+            <GameOverModal />
         </div>
     );
 };

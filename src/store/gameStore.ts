@@ -108,6 +108,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // Estado de partida
     faseActual: null,
     modoVista: 'COMARCAS',
+    estadoPartidaLocal: 'JUGANDO',
     dinero: 0,
     tropasDisponibles: null,
 
@@ -231,6 +232,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 : state.jugadores,
         }));
     },
+
+    setEstadoPartidaLocal: (nuevoEstado: any) => set({ estadoPartidaLocal: nuevoEstado }),
 
     // ACCIONES — UI
 
@@ -392,7 +395,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             movimientoConquistaPendiente: true,
             origenConquista: origen,
             destinoConquista: destino,
-            origenSeleccionado: origen, 
+            origenSeleccionado: origen,
             destinoSeleccionado: destino,
         });
     },
@@ -428,6 +431,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      */
     manejarClickComarca: (comarcaId: string) => {
         const estado = get();
+
+        if (estado.estadoPartidaLocal === 'ESPECTANDO') {
+            console.log('[manejarClickComarca] Estás en modo espectador.');
+            return;
+        }
 
         if (String(estado.turnoActual) !== String(estado.jugadorLocal)) {
             console.log('[manejarClickComarca] No es tu turno.');
@@ -649,12 +657,63 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             case 'JUGADOR_SALIO': {
                 const saliente = mensaje.data ?? mensaje.payload ?? mensaje;
                 const idSaliente =
-                    saliente.jugador ?? saliente.usuario_id ?? saliente.id ?? '';
-                set((state) => ({
-                    jugadoresLobby: state.jugadoresLobby.filter(
-                        (j) => j.id !== idSaliente && j.username !== idSaliente
-                    ),
-                }));
+                    saliente.jugador ?? saliente.username ?? saliente.usuario_id ?? saliente.id ?? '';
+
+                set((state) => {
+                    const nuevoDiccionario = { ...state.diccionarioJugadores };
+                    if (nuevoDiccionario[idSaliente]) {
+                        nuevoDiccionario[idSaliente] = {
+                            ...nuevoDiccionario[idSaliente],
+                            esta_desconectado: true
+                        };
+                    }
+
+                    return {
+                        jugadoresLobby: state.jugadoresLobby.filter(
+                            (j) => j.id !== idSaliente && j.username !== idSaliente
+                        ),
+                        diccionarioJugadores: nuevoDiccionario
+                    };
+                });
+                break;
+            }
+
+            case 'JUGADOR_ELIMINADO': {
+                const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                // Soportar tanto "jugador" como "username"
+                const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
+
+                set((state) => {
+                    if (!eliminadoId) return state;
+
+                    const nuevoDiccionario = { ...state.diccionarioJugadores };
+
+                    if (nuevoDiccionario[eliminadoId]) {
+                        nuevoDiccionario[eliminadoId] = {
+                            ...nuevoDiccionario[eliminadoId],
+                            es_muerto: true,
+                            estado_jugador: 'muerto'
+                        };
+                    }
+
+                    if (eliminadoId === state.jugadorLocal) {
+                        return {
+                            diccionarioJugadores: nuevoDiccionario,
+                            estadoPartidaLocal: 'DERROTA'
+                        };
+                    }
+
+                    const propietariosRestantes = new Set(Object.values(state.propietarios));
+
+                    propietariosRestantes.delete(eliminadoId);
+
+                    const esVictoria = propietariosRestantes.size === 1 && propietariosRestantes.has(state.jugadorLocal);
+
+                    return {
+                        diccionarioJugadores: nuevoDiccionario,
+                        ...(esVictoria && { estadoPartidaLocal: 'VICTORIA' })
+                    };
+                });
                 break;
             }
 
