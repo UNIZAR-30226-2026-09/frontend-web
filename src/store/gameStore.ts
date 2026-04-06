@@ -705,13 +705,18 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
                     const propietariosRestantes = new Set(Object.values(state.propietarios));
 
-                    propietariosRestantes.delete(eliminadoId);
+                    // Eliminamos al jugador que sale de la lista de propietarios.
+                    // Convertimos a string por seguridad tipográfica.
+                    propietariosRestantes.delete(String(eliminadoId));
 
-                    const esVictoria = propietariosRestantes.size === 1 && propietariosRestantes.has(state.jugadorLocal);
+                    const esVictoria =
+                        !!state.jugadorLocal &&
+                        propietariosRestantes.size === 1 &&
+                        propietariosRestantes.has(state.jugadorLocal);
 
                     return {
                         diccionarioJugadores: nuevoDiccionario,
-                        ...(esVictoria && { estadoPartidaLocal: 'VICTORIA' })
+                        ...(esVictoria && { estadoPartidaLocal: 'VICTORIA' }),
                     };
                 });
                 break;
