@@ -47,6 +47,20 @@ const PanelAlianzas = ({ onCerrar }) => {
         }
     }, [tabActiva]);
 
+    // Función para gestionar los botones de Aceptar/Rechazar
+    const handleProcesarSolicitud = async (solicitudId, accion) => {
+        try {
+            await socialApi.procesarSolicitud(solicitudId, accion);
+            // Si sale bien, quitamos la solicitud de la lista visualmente
+            setSolicitudes(prev => prev.filter(sol => sol.id !== solicitudId));
+            alert(`Solicitud ${accion.toLowerCase()} con éxito.`);
+        } catch (error) {
+            console.error("Fallo al procesar alianza:", error);
+            alert(`Error del cuartel general (Backend): ${error.message || 'Error desconocido'}`);
+        }
+    };
+
+
     const handleAñadirAmigo = async () => {
         if (!busqueda) return;
         setEnviando(true);
@@ -146,6 +160,7 @@ const PanelAlianzas = ({ onCerrar }) => {
                             ) : (
                                 solicitudes.map((sol, idx) => {
                                     const nombreSolicitante = sol.user_1 || sol.username || 'Desconocido';
+                                    const idReal = sol.id || sol.solicitud_id || sol.id_solicitud;
                                     return (
                                         <div key={idx} className="alianzas-card" style={{ borderLeftColor: 'var(--color-border-gold)' }}>
                                             <div className="alianzas-info">
@@ -156,8 +171,18 @@ const PanelAlianzas = ({ onCerrar }) => {
                                                 </div>
                                             </div>
                                             <div className="alianzas-acciones">
-                                                <button className="btn-accion btn-accion-principal" onClick={() => alert('El backend de Aceptar da Error 501 (No implementado)')}>Aceptar</button>
-                                                <button className="btn-accion" onClick={() => alert('El backend de Rechazar da Error 501 (No implementado)')}>✕</button>
+                                                <button
+                                                    className="btn-accion btn-accion-principal"
+                                                    onClick={() => handleProcesarSolicitud(idReal, 'ACEPTADA')}
+                                                >
+                                                    Aceptar
+                                                </button>
+                                                <button
+                                                    className="btn-accion"
+                                                    onClick={() => handleProcesarSolicitud(idReal, 'RECHAZADA')}
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
                                         </div>
                                     )
