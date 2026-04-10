@@ -1,8 +1,10 @@
 // src/components/lobby/PanelInteligencia.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { fetchApi } from '../../services/api';
+import { socialApi } from '../../services/socialApi';
+import PanelEstadisticas from '../social/PanelEstadisticas';
 import '../../styles/Lobby.css';
 import '../../styles/PanelInteligencia.css';
 
@@ -34,6 +36,31 @@ const PanelInteligencia = ({ onCerrar }) => {
 
   const [feedbackUsername, setFeedbackUsername] = useState(null); // { ok, msg }
   const [feedbackEmail, setFeedbackEmail] = useState(null);
+
+  // Estados para las estadísticas reales
+  const [estadisticas, setEstadisticas] = useState(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Cargar estadísticas al abrir el panel
+  useEffect(() => {
+    const cargarStats = async () => {
+      if (!user?.id) {
+        setIsLoadingStats(false);
+        return;
+      }
+      try {
+        setIsLoadingStats(true);
+        const data = await socialApi.obtenerEstadisticas(user.id);
+        setEstadisticas(data);
+      } catch (error) {
+        console.error('Error al obtener estadísticas:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    cargarStats();
+  }, [user]);
+
 
   /** Llama a PUT /v1/usuarios/me con el campo actualizado y refresca el store. */
   const persistirCambio = async (payload, onOk, setGuardando, setFeedback) => {
@@ -80,9 +107,7 @@ const PanelInteligencia = ({ onCerrar }) => {
 
   const inicial = usernameInicial.charAt(0).toUpperCase() || '?';
 
-  const stats = [
-    { label: 'Aqui iran las estadisticas' }
-  ];
+
 
   return (
     <div className="intel-overlay">
@@ -202,15 +227,9 @@ const PanelInteligencia = ({ onCerrar }) => {
 
           <hr className="lobby-separador" style={{ width: '100%' }} />
 
-          <h3 className="intel-stats-titulo">Estadisticas historicas</h3>
-
-          <div className="intel-stats-grid">
-            {stats.map((stat) => (
-              <div key={stat.label} className="intel-stat-item">
-                <span className="intel-stat-valor">{stat.valor}</span>
-                <span className="intel-stat-label">{stat.label}</span>
-              </div>
-            ))}
+          {/* Aquí inyectamos el componente táctico que hicimos antes */}
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+            <PanelEstadisticas estadisticas={estadisticas} isLoading={isLoadingStats} />
           </div>
         </div>{/* fin zona scrollable */}
 

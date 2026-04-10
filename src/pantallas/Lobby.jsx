@@ -8,6 +8,7 @@ import MenuCrearPartida from '../components/lobby/MenuCrearPartida';
 import SalaLobby from '../components/lobby/SalaLobby';
 import MenuUnirsePartida from '../components/lobby/MenuUnirsePartida';
 import PanelInteligencia from '../components/lobby/PanelInteligencia';
+import PanelAlianzas from '../components/lobby/PanelAlianzas';
 import '../styles/Lobby.css';
 
 /**
@@ -229,42 +230,9 @@ const Lobby = () => {
           />
         )}
 
-        {/* ALIANZAS (partidas de amigos — mock) */}
+        {/* ALIANZAS Y AMIGOS */}
         {vistaActual === 'amigos' && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-            <button
-              onClick={() => setVistaActual('mando')}
-              style={{ position: 'absolute', top: '2%', right: '2%', padding: '0.6rem 1.2rem', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9vw' }}
-            >
-              ⬅ Volver a la Mesa
-            </button>
-
-            <div style={{ width: '40%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <h2 style={{ color: 'var(--color-ui-bg-primary)', textAlign: 'center', fontFamily: 'var(--font-family-title)', borderBottom: '2px solid var(--color-ui-bg-primary)', paddingBottom: '0.5rem', margin: 0 }}>
-                Alianzas — Partidas de Amigos
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                {partidas.map((p) => {
-                  const llena = p.jugadores === p.maxJugadores;
-                  return (
-                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-ui-bg-secondary)', paddingBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '1.1vw', color: 'var(--color-ui-bg-primary)', fontFamily: 'var(--font-family-title)' }}>{p.nombre}</span>
-                        <span style={{ fontSize: '0.75vw', color: 'var(--color-ui-bg-secondary)', fontStyle: 'italic' }}>{p.jugadores}/{p.maxJugadores} — {p.estado}</span>
-                      </div>
-                      <button
-                        disabled={llena}
-                        onClick={() => navigate(`/partida/${p.id}`)}
-                        style={{ padding: '0.4rem 1rem', background: llena ? 'transparent' : 'var(--color-state-danger)', color: llena ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: llena ? '1px solid var(--color-state-disabled)' : 'none', cursor: llena ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8vw' }}
-                      >
-                        {llena ? 'CERRADA' : 'UNIRSE'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <PanelAlianzas onCerrar={() => setVistaActual('mando')} />
         )}
 
       </div>
