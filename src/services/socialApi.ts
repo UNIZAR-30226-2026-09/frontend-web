@@ -37,5 +37,28 @@ export const socialApi = {
             method: 'POST',
             body: JSON.stringify({ user_2: usernameDestino }),
         });
+    },
+
+    /**
+     * Obtiene la lista de solicitudes de amistad pendientes.
+     */
+    obtenerSolicitudes: async () => {
+        return await fetchApi('/v1/amigos/solicitudes', {
+            method: 'GET',
+        });
+    },
+
+    /**
+     * Acepta o rechaza una solicitud de amistad.
+     * @param {number} solicitudId - ID de la solicitud.
+     * @param {'ACEPTADA' | 'RECHAZADA'} estado - La decisión tomada.
+     */
+    procesarSolicitud: async (solicitudId: number, estado: 'ACEPTADA' | 'RECHAZADA') => {
+        return await fetchApi(`/v1/amigos/solicitudes/${solicitudId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ estado: estado }),
+        });
     }
+
 };
+

@@ -5,37 +5,47 @@ import '../../styles/PanelAlianzas.css';
 
 const PanelAlianzas = ({ onCerrar }) => {
     const [amigos, setAmigos] = useState([]);
+    const [solicitudes, setSolicitudes] = useState([]);
     const [tabActiva, setTabActiva] = useState('lista'); // 'lista' o 'solicitudes'
     const [busqueda, setBusqueda] = useState('');
     const [enviando, setEnviando] = useState(false);
-
-    // Mock Data para que veas el diseño aunque el backend esté vacío
-    const mockAmigos = [
-        { username: 'Comandante_Rex', estado: 'JUGANDO', salaActivaId: '102' },
-        { username: 'General_Kenobi', estado: 'EN_LOBBY', salaActivaId: '105' },
-        { username: 'Soldado_Raso', estado: 'ONLINE' },
-        { username: 'Desertor_99', estado: 'DESCONECTADO' }
-    ];
+    const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
 
     useEffect(() => {
         const cargarAmigos = async () => {
             try {
                 const data = await socialApi.obtenerAmigos();
-                // Si el backend devuelve datos, los usamos. Si no, metemos los de prueba para ver el diseño.
                 if (data && data.length > 0) {
-                    // Mapeamos para forzar un estado si el backend no lo envía aún
                     setAmigos(data.map(a => ({ ...a, estado: a.estado || 'ONLINE' })));
                 } else {
-                    setAmigos(mockAmigos);
+                    setAmigos([]);
                 }
             } catch (error) {
                 console.error("Error al cargar amigos (activando simulación):", error);
-                setAmigos(mockAmigos);
+                setAmigos([]);
             }
         };
 
         cargarAmigos();
     }, []);
+
+    // Cargar solicitudes solo cuando se abre su pestaña
+    useEffect(() => {
+        if (tabActiva === 'solicitudes') {
+            const fetchSolicitudes = async () => {
+                setCargandoSolicitudes(true);
+                try {
+                    const data = await socialApi.obtenerSolicitudes();
+                    setSolicitudes(data || []);
+                } catch (error) {
+                    console.error("Error al cargar peticiones:", error);
+                } finally {
+                    setCargandoSolicitudes(false);
+                }
+            };
+            fetchSolicitudes();
+        }
+    }, [tabActiva]);
 
     const handleAñadirAmigo = async () => {
         if (!busqueda) return;
@@ -126,9 +136,34 @@ const PanelAlianzas = ({ onCerrar }) => {
                     })}
 
                     {tabActiva === 'solicitudes' && (
-                        <div style={{ textAlign: 'center', color: '#888', marginTop: '2rem', fontStyle: 'italic' }}>
-                            No hay tratados pendientes de firma.
-                        </div>
+                        <>
+                            {cargandoSolicitudes ? (
+                                <div style={{ textAlign: 'center', color: '#888', marginTop: '2rem' }}>Interceptando comunicaciones...</div>
+                            ) : solicitudes.length === 0 ? (
+                                <div style={{ textAlign: 'center', color: '#888', marginTop: '2rem', fontStyle: 'italic' }}>
+                                    No hay tratados pendientes de firma.
+                                </div>
+                            ) : (
+                                solicitudes.map((sol, idx) => {
+                                    const nombreSolicitante = sol.user_1 || sol.username || 'Desconocido';
+                                    return (
+                                        <div key={idx} className="alianzas-card" style={{ borderLeftColor: 'var(--color-border-gold)' }}>
+                                            <div className="alianzas-info">
+                                                <div className="alianzas-avatar">{nombreSolicitante.charAt(0).toUpperCase()}</div>
+                                                <div className="alianzas-detalles">
+                                                    <span className="alianzas-nombre">{nombreSolicitante}</span>
+                                                    <span className="alianzas-estado">Propuesta de alianza entrante</span>
+                                                </div>
+                                            </div>
+                                            <div className="alianzas-acciones">
+                                                <button className="btn-accion btn-accion-principal" onClick={() => alert('El backend de Aceptar da Error 501 (No implementado)')}>Aceptar</button>
+                                                <button className="btn-accion" onClick={() => alert('El backend de Rechazar da Error 501 (No implementado)')}>✕</button>
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </>
                     )}
                 </div>
 
