@@ -11,6 +11,7 @@ const ControlAtaque = () => {
     const origen = estado.origenSeleccionado;
     const destino = estado.destinoSeleccionado;
     const maxAtaque = origen ? Math.max(1, (estado.tropas[origen] || 0) - 1) : 1;
+    const popupCoords = estado.popupCoords;
 
     useEffect(() => {
         // Reset slider al montar el modal
@@ -48,9 +49,17 @@ const ControlAtaque = () => {
         useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
     };
 
+    const modalPosition = {
+        position: 'fixed',
+        top: popupCoords ? popupCoords.y : '50%',
+        left: popupCoords ? popupCoords.x : '50%',
+        transform: 'translate(-50%, +15px)',
+        zIndex: 9999
+    };
+
     if (resultadoBack) {
         return (
-            <div style={styles.overlay}>
+            <div style={modalPosition}>
                 <div style={styles.modal}>
                     <h3>Reporte de Batalla</h3>
                     <div style={styles.sliderContainer}>
@@ -78,7 +87,7 @@ const ControlAtaque = () => {
     }
 
     return (
-        <div style={styles.overlay}>
+        <div style={modalPosition}>
             <div style={styles.modal}>
                 <h3>Planear Ataque</h3>
                 <p>
@@ -102,23 +111,16 @@ const ControlAtaque = () => {
 };
 
 const styles = {
-    overlay: {
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999
-    },
     modal: {
-        backgroundColor: '#2A2A35',
+        backgroundColor: 'var(--color-ui-bg-secondary)',
         color: '#FFF',
         padding: '24px',
-        borderRadius: '12px',
+        borderRadius: 'var(--radius-md)',
         width: '320px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        textAlign: 'center'
+        textAlign: 'center',
+        border: '2px solid var(--color-border-bronze)',
+        backdropFilter: 'blur(4px)'
     },
     sliderContainer: {
         margin: '20px 0',

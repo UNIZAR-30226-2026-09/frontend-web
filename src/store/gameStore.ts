@@ -111,6 +111,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     estadoPartidaLocal: 'JUGANDO',
     dinero: 0,
     tropasDisponibles: null,
+    movimientoRealizadoEnTurno: false,
 
     // Jugador local
     jugadorLocal: null,
@@ -131,6 +132,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // UI de selección e interacción
     origenSeleccionado: null,
     destinoSeleccionado: null,
+    popupCoords: null,
     comarcasResaltadas: [],
     regionHover: null,
     comarcaRefuerzo: null,
@@ -249,6 +251,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             origenSeleccionado: null,
             destinoSeleccionado: null,
             comarcasResaltadas: [],
+            popupCoords: null,
         }),
 
     cerrarAnimacionRefuerzos: () => set({ mostrarAnimacionRefuerzos: false }),
@@ -259,6 +262,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             origenSeleccionado: null,
             destinoSeleccionado: null,
             comarcasResaltadas: [],
+            popupCoords: null,
         }),
 
     setTropas: (nuevasTropas: Record<string, number>) => set({ tropas: nuevasTropas }),
@@ -316,6 +320,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             tropasDisponibles: (state.tropasDisponibles ?? 0) - cantidad,
             comarcaRefuerzo: null,
             tropasAAsignar: 0,
+            popupCoords: null,
         }));
 
         try {
@@ -348,6 +353,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             comarcasResaltadas: [],
             comarcaRefuerzo: null,
             tropasAAsignar: 0,
+            popupCoords: null,
         });
 
         try {
@@ -397,6 +403,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             destinoConquista: destino,
             origenSeleccionado: origen,
             destinoSeleccionado: destino,
+            popupCoords: null,
         });
     },
 
@@ -417,7 +424,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 preparandoFortificacion: false,
                 origenSeleccionado: null,
                 destinoSeleccionado: null,
+                popupCoords: null,
                 comarcasResaltadas: [],
+                movimientoRealizadoEnTurno: true,
             });
         } catch (error) {
             console.error('[fortificarBackend] Error:', error);
@@ -428,8 +437,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     /**
      * Enrutador central de interacciones tácticas sobre el mapa.
      * @param {string} comarcaId - Identificador de la comarca pulsada.
+     * @param {{x: number, y: number}} [coords] - Posición en la pantalla.
      */
-    manejarClickComarca: (comarcaId: string) => {
+    manejarClickComarca: (comarcaId: string, coords?: {x: number, y: number}) => {
         const estado = get();
 
         if (estado.estadoPartidaLocal === 'ESPECTANDO') {
@@ -450,7 +460,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     return;
                 }
                 if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
-                    set({ comarcaRefuerzo: comarcaId, tropasAAsignar: 0 });
+                    set({ comarcaRefuerzo: comarcaId, tropasAAsignar: 0, popupCoords: coords || null });
                 }
                 break;
             }
@@ -465,12 +475,13 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
                         comarcasResaltadas: [],
+                        popupCoords: null,
                     });
                     return;
                 }
 
                 if (estado.destinoSeleccionado === comarcaId) {
-                    set({ destinoSeleccionado: null });
+                    set({ destinoSeleccionado: null, popupCoords: null });
                     if (estado.grafoGlobal && estado.origenSeleccionado) {
                         const alcanzables = calcularComarcasEnRango(
                             estado.grafoGlobal,
@@ -509,12 +520,13 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         comarcasResaltadas: Array.from(alcanzables).filter(
                             (id) => estado.propietarios[id] !== propietarioOrigen
                         ),
+                        popupCoords: coords || null,
                     });
                     return;
                 }
 
                 if (estado.comarcasResaltadas.includes(comarcaId)) {
-                    set({ destinoSeleccionado: comarcaId, preparandoAtaque: true });
+                    set({ destinoSeleccionado: comarcaId, preparandoAtaque: true, popupCoords: coords || null });
                     return;
                 }
 
@@ -522,22 +534,19 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     origenSeleccionado: null,
                     destinoSeleccionado: null,
                     comarcasResaltadas: [],
+                    popupCoords: null,
                 });
                 break;
             }
 
             case 'FORTIFICACION': {
-                const RANGO_MOVIMIENTO = 1;
-
                 if (estado.preparandoFortificacion) return;
 
-                if (!estado.origenSeleccionado) {
-                    if (
-                        estado.propietarios[comarcaId] !== estado.jugadorLocal ||
-                        (estado.tropas[comarcaId] ?? 0) <= 1
-                    )
-                        return;
-
+                if (
+                    !estado.origenSeleccionado &&
+                    estado.propietarios[comarcaId] === estado.jugadorLocal &&
+                    (estado.tropas[comarcaId] ?? 0) > 1
+                ) {
                     if (!estado.grafoGlobal) return;
 
                     // BFS: Buscamos todas las comarcas conectadas que también sean nuestras
@@ -551,22 +560,24 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     set({
                         origenSeleccionado: comarcaId,
                         comarcasResaltadas: Array.from(alcanzables),
+                        popupCoords: coords || null,
                     });
                     return;
                 }
 
                 if (estado.origenSeleccionado === comarcaId) {
-                    set({ origenSeleccionado: null, comarcasResaltadas: [] });
+                    set({ origenSeleccionado: null, comarcasResaltadas: [], popupCoords: null });
                     return;
                 }
 
                 if (estado.comarcasResaltadas.includes(comarcaId)) {
-                    set({ destinoSeleccionado: comarcaId, preparandoFortificacion: true });
+                    set({ destinoSeleccionado: comarcaId, preparandoFortificacion: true, popupCoords: coords || null });
                 } else {
                     set({
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
                         comarcasResaltadas: [],
+                        popupCoords: null,
                     });
                 }
                 break;
@@ -767,6 +778,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         comarcasResaltadas: [],
                         comarcaRefuerzo: null,
                         tropasAAsignar: 0,
+                        popupCoords: null,
                         preparandoAtaque: false,
                         preparandoFortificacion: false,
                         movimientoConquistaPendiente: false,
@@ -829,6 +841,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         // para que sea el jugador atacante quien lo dispare manualmente
                         // tras cerrar el resumen de batalla.
                         comarcasResaltadas: [],
+                        popupCoords: null,
                     };
                 });
                 break;
@@ -849,6 +862,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         destinoConquista: null,
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
+                        popupCoords: null,
                     };
                 });
                 break;
@@ -944,10 +958,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 realPartidaId = data.jugadores_en_sala[0].partida_id;
             }
 
-            let configMaxPlayers = data.config_max_players || 4;
+            let configMaxPlayers = data.config_max_players;
 
-            // 3. El truco de la lista pública solo como ultimísimo recurso
-            if (!realPartidaId) {
+            // 3. Truco de la lista pública para extraer config_max_players (ya que el backend WS no lo manda)
+            if (!realPartidaId || !configMaxPlayers) {
                 try {
                     const listaPartidas = await fetchApi('/v1/partidas');
                     const miPartida = listaPartidas.find(
@@ -955,12 +969,14 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     );
                     if (miPartida) {
                         configMaxPlayers = miPartida.config_max_players;
-                        realPartidaId = miPartida.id;
+                        if (!realPartidaId) realPartidaId = miPartida.id;
                     }
                 } catch (_) {
                     // Fallo silencioso
                 }
             }
+            
+            configMaxPlayers = configMaxPlayers || 4;
 
             if (!realPartidaId) {
                 throw new Error(

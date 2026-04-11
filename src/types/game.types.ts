@@ -57,6 +57,7 @@ export interface EstadoJuego {
     // Estado temporal de interacción en el mapa interactivo
     origenSeleccionado: string | null;
     destinoSeleccionado: string | null;
+    popupCoords: { x: number, y: number, orientacionArriba?: boolean } | null;
 
     // Estado temporal durante la fase de refuerzo
     comarcaRefuerzo: string | null;
@@ -77,6 +78,8 @@ export interface EstadoJuego {
 
     // Región bajo el puntero del jugador (modo REGIONES)
     regionHover: string | null;
+
+    movimientoRealizadoEnTurno: boolean;
 
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.
@@ -164,8 +167,9 @@ export interface EstadoJuego {
     /**
      * Enrutador para gestionar la lógica de acción sobre una comarca dependiente de su fase asignada.
      * @param {string} comarcaId Clave identificadora del nodo presionado.
+     * @param {{x: number, y: number, orientacionArriba?: boolean}} [coords] Coordenadas en pantalla del territorio.
      */
-    manejarClickComarca: (comarcaId: string) => void;
+    manejarClickComarca: (comarcaId: string, coords?: {x: number, y: number, orientacionArriba?: boolean}) => void;
 
     /**
      * Obtiene el total de territorios y tropas de un jugador específico.

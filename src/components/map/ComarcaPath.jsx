@@ -62,13 +62,18 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
 
         // 3. Color del jugador propietario
         if (colorBase) {
-            const esSuTurno = String(propietarioId) === String(turnoActual);
+            const esMio = String(propietarioId) === String(jugadorLocal);
+            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
 
-            if (esSuTurno && faseActual === 'REFUERZO' && tropasDisponibles > 0) {
+            if (esMio && esMiTurnoLocal && faseActual === 'REFUERZO' && tropasDisponibles > 0) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
-            if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+            if (esMio && esMiTurnoLocal && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                return { color: colorBase, opacidad: 1, isVivoState: true };
+            }
+
+            if (esMio && esMiTurnoLocal && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
@@ -83,6 +88,8 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
 
     let strokeColor = 'var(--color-border-gold)'; // Base golden border
     let strokeWidthSize = 1.5;
+
+    const esMiTurnoLocalGlobal = String(turnoActual) === String(jugadorLocal);
 
     if (modoVista === 'REGIONES') {
         if (regionId) {
@@ -100,7 +107,8 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
         if (isOrigin) {
             strokeColor = 'var(--color-text-primary)';
         } else if (isHovered || isSelected || isVivoState) {
-            strokeColor = 'var(--color-border-gold-vivo)';
+            if (!esMiTurnoLocalGlobal) strokeColor = 'var(--color-border-gold)';
+            else strokeColor = 'var(--color-border-gold-vivo)';
         }
         
         if (isOrigin || isHovered || isSelected || isVivoState) {
@@ -155,7 +163,13 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             onClick={(e) => {
                 // Evitar propagación al SVG del tablero
                 e.stopPropagation();
-                manejarClickComarca(id);
+                const rect = e.target.getBoundingClientRect();
+                const orientacionArriba = rect.bottom > window.innerHeight - 200;
+                manejarClickComarca(id, { 
+                    x: rect.left + rect.width / 2, 
+                    y: orientacionArriba ? rect.top - 10 : rect.bottom + 10,
+                    orientacionArriba
+                });
             }}
             style={{
                 cursor: cursorStyle,

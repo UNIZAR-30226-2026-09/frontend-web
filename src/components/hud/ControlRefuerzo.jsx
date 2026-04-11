@@ -15,6 +15,7 @@ const ControlRefuerzo = () => {
     const confirmarRefuerzo = useGameStore((state) => state.confirmarRefuerzo);
     const faseActual = useGameStore((state) => state.faseActual);
     const mapaEstatico = useGameStore((state) => state.mapaEstatico);
+    const popupCoords = useGameStore((state) => state.popupCoords);
     const { esMiTurno } = useTurno();
 
     if (faseActual !== 'REFUERZO') {
@@ -55,15 +56,22 @@ const ControlRefuerzo = () => {
         clasesPendientes += ' agotados';
     }
 
-    let hintUI = null;
-    if (!comarcaRefuerzo && (tropasDisponibles ?? 0) > 0) {
-        hintUI = <div className="refuerzo-hint">Selecciona un territorio azul para reforzar</div>;
-    }
-
     let controlesUI = null;
     if (comarcaRefuerzo) {
+        // Si por alguna razón perdemos las coordenadas, no renderizamos el popup en el medio de la nada
+        if (!popupCoords) return null;
+
+        const top = popupCoords.y;
+        const left = popupCoords.x;
+        const transformY = popupCoords.orientacionArriba ? '-100%' : '15px';
+
         controlesUI = (
-            <div className="refuerzo-box-activa">
+            <div className="refuerzo-box-activa" style={{
+                position: 'fixed', top: top, left: left, transform: `translate(-50%, ${transformY})`, zIndex: 1000,
+                backgroundColor: 'var(--color-ui-bg-secondary)', border: '2px solid var(--color-border-bronze)',
+                borderRadius: 'var(--radius-md)', padding: '15px 20px', boxShadow: '0 8px 12px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)', minWidth: '220px'
+            }}>
                 <h3 className="control-refuerzo-header">Reforzar en {nombreComarca}</h3>
 
                 <div className="control-refuerzo-body">
@@ -105,17 +113,18 @@ const ControlRefuerzo = () => {
     }
 
     return (
-        <div className="control-refuerzo-container">
-            <div className="refuerzo-global-info">
-                <span>Refuerzos Pendientes:</span>
-                <span className={clasesPendientes}>
-                    {tropasDisponibles ?? '...'}
-                </span>
+        <>
+            <div className="control-refuerzo-container">
+                <div className="refuerzo-global-info">
+                    <span>Refuerzos Pendientes:</span>
+                    <span className={clasesPendientes}>
+                        {tropasDisponibles ?? '...'}
+                    </span>
+                </div>
             </div>
 
-            {hintUI}
             {controlesUI}
-        </div>
+        </>
     );
 };
 

@@ -37,8 +37,6 @@
   font-size: 18px;
   font-weight: bold;
   color: var(--color-text-primary);
-  padding-bottom: 10px;
-  border-bottom: 2px dashed rgba(240, 240, 245, 0.2);
 }
 
 .refuerzos-pendientes-num {

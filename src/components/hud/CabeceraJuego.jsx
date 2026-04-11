@@ -61,6 +61,14 @@ const CabeceraJuego = () => {
   // Bloqueamos el paso de turno si todavía tiene tropas sin colocar o si no es su turno
   const isSiguienteBloqueado = !esMiTurno || (isFaseRefuerzo && (tropasDisponibles ?? 0) > 0);
 
+  const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
+
+  let debeBrillar = false;
+  if (!isSiguienteBloqueado && esMiTurno) {
+    if (isFaseRefuerzo && (tropasDisponibles ?? 0) === 0) debeBrillar = true;
+    if (isUltimaFase && movimientoRealizadoEnTurno) debeBrillar = true;
+  }
+
   // Leer el jugador en turno actual real para sacar su color
   const turnPlayerColor = coloresJugadores && turnoActual && coloresJugadores[turnoActual]
     ? coloresJugadores[turnoActual]
@@ -131,14 +139,25 @@ const CabeceraJuego = () => {
         >
           <div className="fase-poligono">
             <span className="fase-texto" style={{ color: turnPlayerColor }}>{formatearFase(faseActual || 'CARGANDO...')}</span>
-            <button
-              className={clasesBotonSiguiente}
-              onClick={pasarFaseBackend}
-              disabled={isSiguienteBloqueado}
-              title={titleSiguiente}
-            >
-              {textoSiguiente}
-            </button>
+            {esMiTurno ? (
+              <button
+                className={clasesBotonSiguiente}
+                onClick={pasarFaseBackend}
+                disabled={isSiguienteBloqueado}
+                title={titleSiguiente}
+                style={{
+                  boxShadow: debeBrillar ? `0 0 15px ${turnPlayerColor}, inset 0 0 8px ${turnPlayerColor}` : undefined,
+                  borderColor: debeBrillar ? turnPlayerColor : undefined,
+                  animation: debeBrillar ? 'pulse 1.5s infinite alternate' : 'none'
+                }}
+              >
+                {textoSiguiente}
+              </button>
+            ) : (
+              <span style={{color: 'var(--color-ui-bg-primary)', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', textShadow: 'none', backgroundColor: turnPlayerColor, padding: '4px 12px', borderRadius: '4px'}}>
+                Turno de: {turnoActual}
+              </span>
+            )}
           </div>
         </div>
       </div>

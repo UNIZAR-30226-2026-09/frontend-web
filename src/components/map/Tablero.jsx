@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
-import { zoom } from 'd3-zoom';
+import { zoom, zoomIdentity } from 'd3-zoom';
 import { useGameStore } from '../../store/gameStore';
 
 import ComarcaPath from './ComarcaPath';
@@ -143,6 +143,10 @@ const Tablero = (props) => {
         [-400, -250],
         [50, 300]
       ])
+      .on('start', () => {
+         // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups limipiando su estado
+         useGameStore.setState({ comarcaRefuerzo: null, popupCoords: null });
+      })
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
         setZoomScale(evento.transform.k);
@@ -150,6 +154,9 @@ const Tablero = (props) => {
 
     // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
     svgElement.call(zoomBehavior).on('dblclick.zoom', null);
+
+    // Centrar inicialmente el tablero
+    svgElement.call(zoomBehavior.transform, zoomIdentity);
   }, [mapaEstatico]);
 
   // --- ZONA DE GUARD CLAUSES ---
@@ -252,6 +259,7 @@ const Tablero = (props) => {
   const handleFondoClick = (e) => {
     if (e.target.tagName === 'svg' || e.target.tagName === 'image' || e.target.tagName === 'rect') {
       limpiarSeleccion();
+      useGameStore.setState({ comarcaRefuerzo: null, popupCoords: null });
     }
   };
 
@@ -310,6 +318,9 @@ const Tablero = (props) => {
 
           {/* DEFINIMOS LAS MÁSCARAS DE RECORTE PARA LOGRAR INNER STROKES */}
           <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-border-gold-vivo)" />
+            </marker>
             {CONTINENTES_SVG_DATA.map((continente) => (
               <clipPath key={`clip-${continente.id}`} id={`clip-${continente.id}`}>
                 <path d={continente.d} />
@@ -328,9 +339,23 @@ const Tablero = (props) => {
             // Damos el doble de grosor. Al recortarlo con clipPath por su propia forma, 
             // desaparece el 50% exterior y se queda el 50% interior (simulando border-inside de 1.5)
             let strokeWidth = 1.5 * 2;
+            let filterStyle = 'none';
 
             if (modoVista === 'REGIONES') {
               strokeColor = `var(--color-region-${continente.id}-fuerte)`;
+            } else {
+              // Comprobar si un solo jugador domina TODO el continente
+              const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
+              if (comarcasDelContinente.length > 0) {
+                 const primerDueño = propietarios[comarcasDelContinente[0].id];
+                 if (primerDueño && comarcasDelContinente.every(c => propietarios[c.id] === primerDueño)) {
+                   if (coloresJugadores && coloresJugadores[primerDueño]) {
+                     strokeColor = coloresJugadores[primerDueño];
+                     strokeWidth = 2.5 * 2; // Borde más presente
+                     filterStyle = `drop-shadow(0 0 6px ${strokeColor})`;
+                   }
+                 }
+              }
             }
 
             return (
@@ -341,6 +366,7 @@ const Tablero = (props) => {
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 clipPath={`url(#clip-${continente.id})`}
+                style={{ filter: filterStyle, transition: 'all 0.5s ease' }}
                 pointerEvents="none"
               />
             );
@@ -355,15 +381,17 @@ const Tablero = (props) => {
             const isHovered = hovered === comarca.id;
 
             const propietarioId = propietarios[comarca.id];
-            const esSuTurno = String(propietarioId) === String(turnoActual);
+            const esMio = String(propietarioId) === String(jugadorLocal);
+            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
             const cantidadTropas = tropas[comarca.id] || 0;
 
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
-              if (propietarioId) {
-                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+              if (propietarioId && esMiTurnoLocal) {
+                if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) isVivoState = true;
               }
             }
 
@@ -374,10 +402,15 @@ const Tablero = (props) => {
             }
 
             let strokeColor = 'var(--color-border-gold-vivo)';
+
             if (modoVista === 'REGIONES') {
               strokeColor = 'var(--color-text-primary)';
             } else if (isOrigin) {
               strokeColor = 'var(--color-text-primary)';
+            } else if (!esMiTurnoLocal) {
+              // Si no es nuestro turno, obligamos a que el stroke sea el apagado
+              // incluso si por algún isVivoState se renderizara
+              strokeColor = 'var(--color-border-gold)';
             }
 
             return (
@@ -441,14 +474,16 @@ const Tablero = (props) => {
             const isSelected = isOrigin || isDestination || isHighlighted;
             const isHovered = hovered === comarca.id;
 
-            const esSuTurno = String(dueño) === String(turnoActual);
+            const esMio = String(dueño) === String(jugadorLocal);
+            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
 
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isSelected) isVivoState = true;
-              if (dueño) {
-                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+              if (dueño && esMiTurnoLocal) {
+                if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) isVivoState = true;
               }
             }
 
@@ -459,6 +494,8 @@ const Tablero = (props) => {
               if (isHovered || isSelected || isVivoState) {
                 if (isOrigin) {
                   strokeFicha = 'var(--color-text-primary)';
+                } else if (!esMiTurnoLocal) {
+                  strokeFicha = 'var(--color-border-gold)';
                 } else {
                   strokeFicha = 'var(--color-border-gold-vivo)';
                 }
@@ -478,6 +515,32 @@ const Tablero = (props) => {
               />
             );
           })}
+
+          {/* ────── FLECHAS DE ATAQUE ────── */}
+          {faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && (
+            <g pointerEvents="none">
+              {comarcasResaltadas.map(destinoId => {
+                 const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
+                 const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
+                 if (orig && dest) {
+                   return (
+                     <line 
+                       key={`arrow-${origenSeleccionado}-${destinoId}`}
+                       x1={orig.centro[0]} 
+                       y1={orig.centro[1]} 
+                       x2={dest.centro[0]} 
+                       y2={dest.centro[1]} 
+                       stroke="var(--color-border-gold-vivo)" 
+                       strokeWidth="4" 
+                       strokeDasharray="8 4"
+                       markerEnd="url(#arrowhead)" 
+                     />
+                   );
+                 }
+                 return null;
+              })}
+            </g>
+          )}
 
           {etiquetasRegiones}
         </g>
