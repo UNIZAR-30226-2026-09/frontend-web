@@ -9,7 +9,7 @@ import { obtenerColorRegion, obtenerColorFuerteRegion } from '../../utils/colorU
  * @param {Object} props
  * @returns {JSX.Element} El elemento path.
  */
-const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
+const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes }) => {
     const isHovered = hovered === id;
 
     // Estado global necesario para interactuar con la comarca
@@ -44,7 +44,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
 
         // 1. Interacciones tácticas tienen prioridad absoluta
         if (isDestination) {
-            return { color: 'var(--color-map-select-target)', opacidad: 1, isVivoState: true };
+            return { color: colorBase || 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: true };
         }
 
         if (isOrigin || isHighlighted) {
@@ -70,11 +70,15 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered }) => {
             }
 
             if (esMio && esMiTurnoLocal && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
-                return { color: colorBase, opacidad: 1, isVivoState: true };
+                if (adyacentes && adyacentes.some(adj => propietarios[adj] !== jugadorLocal)) {
+                    return { color: colorBase, opacidad: 1, isVivoState: true };
+                }
             }
 
             if (esMio && esMiTurnoLocal && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
-                return { color: colorBase, opacidad: 1, isVivoState: true };
+                if (adyacentes && adyacentes.some(adj => propietarios[adj] === jugadorLocal)) {
+                    return { color: colorBase, opacidad: 1, isVivoState: true };
+                }
             }
 
             return { color: colorApagado, opacidad: 1, isVivoState: false };

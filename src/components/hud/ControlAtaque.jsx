@@ -29,6 +29,7 @@ const ControlAtaque = () => {
         try {
             const res = await estado.ejecutarAtaque(origen, destino, maxAtaque);
             setResultadoBack(res);
+            setAtacando(false);
         } catch (error) {
             console.error('Error al atacar:', error);
             alert("No se pudo efectuar el ataque. Asegúrese de que es su turno.");
@@ -37,12 +38,21 @@ const ControlAtaque = () => {
         }
     };
 
-    const cerrarResultado = () => {
+    const cerrarResultado = async () => {
         if (resultadoBack?.victoria_atacante) {
-            estado.prepararTrasladoConquista(origen, destino);
+            setAtacando(true);
+            try {
+                await estado.moverTropasConquista(cantidad);
+            } catch (err) {
+                console.error('Error al trasladar:', err);
+                alert("Ocurrió un error al mover tus tropas imperiales.");
+                setAtacando(false);
+                return;
+            }
         }
         setResultadoBack(null);
-        useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
+        estado.limpiarSeleccion();
+        setAtacando(false);
     };
 
     const cancelar = () => {
@@ -53,22 +63,36 @@ const ControlAtaque = () => {
         position: 'fixed',
         top: popupCoords ? popupCoords.y : '50%',
         left: popupCoords ? popupCoords.x : '50%',
-        transform: 'translate(-50%, +15px)',
+        transform: popupCoords ? `translate(-50%, ${popupCoords.orientacionArriba ? '-100%' : '15px'})` : 'translate(-50%, +15px)',
         zIndex: 9999
     };
 
     if (resultadoBack) {
         return (
-            <div style={modalPosition}>
-                <div style={styles.modal}>
-                    <h3>Reporte de Batalla</h3>
+            <div style={styles.overlayCentral}>
+                <div style={styles.modalCentral}>
+                    <h3 style={{ color: resultadoBack.victoria_atacante ? '#48BB78' : '#E53E3E' }}>
+                        {resultadoBack.victoria_atacante ? '¡Victoria!' : 'Reporte de Batalla'}
+                    </h3>
                     <div style={styles.sliderContainer}>
                         <p style={{ margin: '10px 0' }}>Has causado <b>{resultadoBack.bajas_defensor}</b> bajas.</p>
                         <p style={{ margin: '10px 0' }}>Has sufrido <b>{resultadoBack.bajas_atacante}</b> bajas.</p>
                         {resultadoBack.victoria_atacante && (
-                            <p style={{ color: '#48BB78', fontWeight: 'bold' }}>
-                                ¡Conquista exitosa! Territorio bajo tu control.
-                            </p>
+                            <>
+                                <p style={{ color: '#48BB78', fontWeight: 'bold' }}>
+                                    ¡Conquista exitosa! Territorio bajo tu control.
+                                </p>
+                                <label style={{marginTop: '15px', color: '#FFF'}}>Traslada fuerzas de ocupación (mínimo 1): {cantidad}</label>
+                                <input 
+                                    type="range" 
+                                    min="1" 
+                                    max={maxAtaque} 
+                                    value={cantidad} 
+                                    onChange={e => setCantidad(Number(e.target.value))} 
+                                    style={styles.slider}
+                                    disabled={atacando}
+                                />
+                            </>
                         )}
                         {!resultadoBack.victoria_atacante && (
                             <p style={{ color: '#E53E3E', fontWeight: 'bold' }}>
@@ -77,8 +101,8 @@ const ControlAtaque = () => {
                         )}
                     </div>
                     <div style={styles.botones}>
-                        <button style={{ ...styles.btnAtaque, backgroundColor: '#48BB78' }} onClick={cerrarResultado}>
-                            Continuar
+                        <button style={{ ...styles.btnAtaque, backgroundColor: '#48BB78', width: '100%' }} onClick={cerrarResultado} disabled={atacando}>
+                            {atacando ? "Procesando..." : (resultadoBack.victoria_atacante ? "Ocupar Territorio" : "Continuar")}
                         </button>
                     </div>
                 </div>
@@ -111,6 +135,24 @@ const ControlAtaque = () => {
 };
 
 const styles = {
+    overlayCentral: {
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000
+    },
+    modalCentral: {
+        backgroundColor: '#2D3748',
+        color: '#FFF',
+        padding: '30px',
+        borderRadius: '12px',
+        width: '350px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+        textAlign: 'center'
+    },
     modal: {
         backgroundColor: 'var(--color-ui-bg-secondary)',
         color: '#FFF',

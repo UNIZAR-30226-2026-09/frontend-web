@@ -252,6 +252,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             destinoSeleccionado: null,
             comarcasResaltadas: [],
             popupCoords: null,
+            preparandoAtaque: false,
+            preparandoFortificacion: false,
         }),
 
     cerrarAnimacionRefuerzos: () => set({ mostrarAnimacionRefuerzos: false }),
@@ -515,11 +517,18 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         RANGO_ATAQUE
                     );
                     const propietarioOrigen = estado.propietarios[comarcaId];
+                    const enemigosAlcanzables = Array.from(alcanzables).filter(
+                        (id) => estado.propietarios[id] !== propietarioOrigen
+                    );
+
+                    if (enemigosAlcanzables.length === 0) {
+                        console.log('[manejarClickComarca] Origen rodeado por aliados.');
+                        return;
+                    }
+
                     set({
                         origenSeleccionado: comarcaId,
-                        comarcasResaltadas: Array.from(alcanzables).filter(
-                            (id) => estado.propietarios[id] !== propietarioOrigen
-                        ),
+                        comarcasResaltadas: enemigosAlcanzables,
                         popupCoords: coords || null,
                     });
                     return;
@@ -556,6 +565,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         Infinity, // Rango infinito para buscar por todo el mapa conectado
                         (id) => estado.propietarios[id] === estado.jugadorLocal
                     );
+
+                    if (alcanzables.size === 0) {
+                        console.log('[manejarClickComarca] Ningún territorio aliado conectado.');
+                        return;
+                    }
 
                     set({
                         origenSeleccionado: comarcaId,

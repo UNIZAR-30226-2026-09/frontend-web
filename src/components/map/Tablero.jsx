@@ -144,8 +144,14 @@ const Tablero = (props) => {
         [50, 300]
       ])
       .on('start', () => {
-         // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups limipiando su estado
-         useGameStore.setState({ comarcaRefuerzo: null, popupCoords: null });
+         // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups
+         useGameStore.setState({ 
+             comarcaRefuerzo: null, 
+             popupCoords: null,
+             preparandoAtaque: false,
+             destinoSeleccionado: null,
+             preparandoFortificacion: false
+         });
       })
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
@@ -313,6 +319,7 @@ const Tablero = (props) => {
               regionId={comarca.region_id}
               hovered={hovered}
               setHovered={setHovered}
+              adyacentes={comarca.adjacent_to}
             />
           ))}
 
@@ -390,8 +397,14 @@ const Tablero = (props) => {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
               if (propietarioId && esMiTurnoLocal) {
                 if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
-                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) isVivoState = true;
+                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                  const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                  if (hasEnemyAdjacent) isVivoState = true;
+                }
+                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                  const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                  if (hasAlliedAdjacent) isVivoState = true;
+                }
               }
             }
 
@@ -458,6 +471,38 @@ const Tablero = (props) => {
             </g>
           ))}
 
+          {/* ────── FLECHAS DE ATAQUE ────── */}
+          {faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && (
+            <g pointerEvents="none">
+              {comarcasResaltadas.map(destinoId => {
+                 const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
+                 const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
+                 if (orig && dest) {
+                   return (
+                     <line 
+                       key={`arrow-${origenSeleccionado}-${destinoId}`}
+                       x1={orig.centro[0]} 
+                       y1={orig.centro[1]} 
+                       x2={dest.centro[0]} 
+                       y2={dest.centro[1]} 
+                       stroke="var(--color-border-gold-vivo)" 
+                       strokeWidth="4" 
+                       strokeDasharray="8 6"
+                     >
+                       <animate 
+                         attributeName="stroke-dashoffset" 
+                         values="14;0" 
+                         dur="0.8s" 
+                         repeatCount="indefinite" 
+                       />
+                     </line>
+                   );
+                 }
+                 return null;
+              })}
+            </g>
+          )}
+
           {mostrarTropas && sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0;
@@ -482,8 +527,14 @@ const Tablero = (props) => {
               if (isSelected) isVivoState = true;
               if (dueño && esMiTurnoLocal) {
                 if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
-                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) isVivoState = true;
+                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                  const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                  if (hasEnemyAdjacent) isVivoState = true;
+                }
+                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                  const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                  if (hasAlliedAdjacent) isVivoState = true;
+                }
               }
             }
 
@@ -515,32 +566,6 @@ const Tablero = (props) => {
               />
             );
           })}
-
-          {/* ────── FLECHAS DE ATAQUE ────── */}
-          {faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && (
-            <g pointerEvents="none">
-              {comarcasResaltadas.map(destinoId => {
-                 const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
-                 const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
-                 if (orig && dest) {
-                   return (
-                     <line 
-                       key={`arrow-${origenSeleccionado}-${destinoId}`}
-                       x1={orig.centro[0]} 
-                       y1={orig.centro[1]} 
-                       x2={dest.centro[0]} 
-                       y2={dest.centro[1]} 
-                       stroke="var(--color-border-gold-vivo)" 
-                       strokeWidth="4" 
-                       strokeDasharray="8 4"
-                       markerEnd="url(#arrowhead)" 
-                     />
-                   );
-                 }
-                 return null;
-              })}
-            </g>
-          )}
 
           {etiquetasRegiones}
         </g>
