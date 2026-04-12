@@ -10,7 +10,9 @@ const ControlAtaque = () => {
 
     const origen = estado.origenSeleccionado;
     const destino = estado.destinoSeleccionado;
-    const maxAtaque = origen ? Math.max(1, (estado.tropas[origen] || 0) - 1) : 1;
+    const maxAtaque = resultadoBack?.victoria_atacante 
+        ? Math.max(1, (resultadoBack.tropas_restantes_origen || 0) - 1)
+        : (origen ? Math.max(1, (estado.tropas[origen] || 0) - 1) : 1);
     const popupCoords = estado.popupCoords;
 
     useEffect(() => {
@@ -20,6 +22,13 @@ const ControlAtaque = () => {
             setAtacando(false);
         }
     }, [estado.preparandoAtaque, maxAtaque]);
+
+    // Forcefully reset the troops selector to the newly calculated max once combat finishes
+    useEffect(() => {
+        if (resultadoBack?.victoria_atacante) {
+            setCantidad(maxAtaque);
+        }
+    }, [resultadoBack]);
 
     if (!estado.preparandoAtaque && !resultadoBack) return null;
 
@@ -42,7 +51,8 @@ const ControlAtaque = () => {
         if (resultadoBack?.victoria_atacante) {
             setAtacando(true);
             try {
-                await estado.moverTropasConquista(cantidad);
+                const aMover = Math.min(cantidad, maxAtaque);
+                await estado.moverTropasConquista(aMover);
             } catch (err) {
                 console.error('Error al trasladar:', err);
                 alert("Ocurrió un error al mover tus tropas imperiales.");
@@ -82,12 +92,12 @@ const ControlAtaque = () => {
                                 <p style={{ color: '#48BB78', fontWeight: 'bold' }}>
                                     ¡Conquista exitosa! Territorio bajo tu control.
                                 </p>
-                                <label style={{marginTop: '15px', color: '#FFF'}}>Traslada fuerzas de ocupación (mínimo 1): {cantidad}</label>
+                                <label style={{marginTop: '15px', color: '#FFF'}}>Traslada fuerzas de ocupación (mínimo 1): {Math.min(cantidad, maxAtaque)}</label>
                                 <input 
                                     type="range" 
                                     min="1" 
                                     max={maxAtaque} 
-                                    value={cantidad} 
+                                    value={Math.min(cantidad, maxAtaque)} 
                                     onChange={e => setCantidad(Number(e.target.value))} 
                                     style={styles.slider}
                                     disabled={atacando}
@@ -113,14 +123,10 @@ const ControlAtaque = () => {
     return (
         <div style={modalPosition}>
             <div style={styles.modal}>
-                <h3>Planear Ataque</h3>
-                <p>
+                <h3>Ataque</h3>
+                <p style={{ marginBottom: '24px' }}>
                     Desde <b>{origen}</b> hacia <b>{destino}</b>.
                 </p>
-                <div style={styles.sliderContainer}>
-                    <label>Fuerza Total: {maxAtaque} Tropas</label>
-                    <p style={{ fontSize: '0.8rem', color: '#CBD5E0' }}>Se realizará un ataque con todas tus tropas disponibles.</p>
-                </div>
                 <div style={styles.botones}>
                     <button style={styles.btnAtaque} onClick={confirmarAtaque} disabled={atacando || maxAtaque < 1}>
                         {atacando ? "Atacando..." : "¡Ataque Total!"}
