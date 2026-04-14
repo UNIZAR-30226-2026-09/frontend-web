@@ -65,6 +65,18 @@ const ControlAtaque = () => {
         setAtacando(false);
     };
 
+    const incrementar = () => {
+        if (Math.min(cantidad, maxAtaque) < maxAtaque) {
+            setCantidad(Math.min(cantidad + 1, maxAtaque));
+        }
+    };
+
+    const decrementar = () => {
+        if (Math.min(cantidad, maxAtaque) > 1) {
+            setCantidad(Math.min(cantidad - 1, maxAtaque));
+        }
+    };
+
     const cancelar = () => {
         useGameStore.setState({ preparandoAtaque: false, destinoSeleccionado: null });
     };
@@ -81,7 +93,7 @@ const ControlAtaque = () => {
         return (
             <div style={styles.overlayCentral}>
                 <div style={styles.modalCentral}>
-                    <h3 style={{ color: resultadoBack.victoria_atacante ? '#48BB78' : '#E53E3E' }}>
+                    <h3 style={{ color: resultadoBack.victoria_atacante ? '#F6E05E' : '#E53E3E' }}>
                         {resultadoBack.victoria_atacante ? '¡Victoria!' : 'Reporte de Batalla'}
                     </h3>
                     <div style={styles.sliderContainer}>
@@ -89,19 +101,35 @@ const ControlAtaque = () => {
                         <p style={{ margin: '10px 0' }}>Has sufrido <b>{resultadoBack.bajas_atacante}</b> bajas.</p>
                         {resultadoBack.victoria_atacante && (
                             <>
-                                <p style={{ color: '#48BB78', fontWeight: 'bold' }}>
+                                <p style={{ color: '#F6E05E', fontWeight: 'bold' }}>
                                     ¡Conquista exitosa! Territorio bajo tu control.
                                 </p>
-                                <label style={{marginTop: '15px', color: '#FFF'}}>Traslada fuerzas de ocupación (mínimo 1): {Math.min(cantidad, maxAtaque)}</label>
-                                <input 
-                                    type="range" 
-                                    min="1" 
-                                    max={maxAtaque} 
-                                    value={Math.min(cantidad, maxAtaque)} 
-                                    onChange={e => setCantidad(Number(e.target.value))} 
-                                    style={styles.slider}
-                                    disabled={atacando}
-                                />
+                                <label style={{marginTop: '15px', color: '#FFF'}}>Tropas de ocupación: {Math.min(cantidad, maxAtaque)}</label>
+                                <div style={styles.sliderGroup}>
+                                    <button 
+                                        style={styles.btnMathGolden} 
+                                        onClick={decrementar}
+                                        disabled={Math.min(cantidad, maxAtaque) <= 1 || atacando}
+                                    >
+                                        -
+                                    </button>
+                                    <input 
+                                        type="range" 
+                                        min="1" 
+                                        max={maxAtaque} 
+                                        value={Math.min(cantidad, maxAtaque)} 
+                                        onChange={e => setCantidad(Number(e.target.value))} 
+                                        style={styles.sliderGolden}
+                                        disabled={atacando}
+                                    />
+                                    <button 
+                                        style={styles.btnMathGolden} 
+                                        onClick={incrementar}
+                                        disabled={Math.min(cantidad, maxAtaque) >= maxAtaque || atacando}
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </>
                         )}
                         {!resultadoBack.victoria_atacante && (
@@ -111,7 +139,7 @@ const ControlAtaque = () => {
                         )}
                     </div>
                     <div style={styles.botones}>
-                        <button style={{ ...styles.btnAtaque, backgroundColor: '#48BB78', width: '100%' }} onClick={cerrarResultado} disabled={atacando}>
+                        <button style={{ ...styles.btnGolden, width: '100%' }} onClick={cerrarResultado} disabled={atacando}>
                             {atacando ? "Procesando..." : (resultadoBack.victoria_atacante ? "Ocupar Territorio" : "Continuar")}
                         </button>
                     </div>
@@ -156,8 +184,9 @@ const styles = {
         padding: '30px',
         borderRadius: '12px',
         width: '350px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-        textAlign: 'center'
+        boxShadow: '0 8px 32px rgba(236,201,75,0.2)',
+        textAlign: 'center',
+        border: '2px solid #F6E05E'
     },
     modal: {
         backgroundColor: 'var(--color-ui-bg-secondary)',
@@ -176,9 +205,20 @@ const styles = {
         flexDirection: 'column',
         gap: '10px'
     },
+    sliderGroup: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        margin: '15px 0',
+        justifyContent: 'center'
+    },
     slider: {
         width: '100%',
         accentColor: '#E53E3E'
+    },
+    sliderGolden: {
+        flex: 1,
+        accentColor: '#F6E05E'
     },
     botones: {
         display: 'flex',
@@ -194,6 +234,27 @@ const styles = {
         borderRadius: '6px',
         cursor: 'pointer',
         fontWeight: 'bold'
+    },
+    btnGolden: {
+        backgroundColor: '#ECC94B',
+        color: '#1A202C',
+        border: 'none',
+        padding: '10px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        transition: 'all 0.3s ease'
+    },
+    btnMathGolden: {
+        backgroundColor: '#F6E05E',
+        color: '#1A202C',
+        border: 'none',
+        padding: '8px 14px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        fontSize: '16px',
+        transition: 'all 0.3s ease'
     },
     btnCancelar: {
         flex: 1,

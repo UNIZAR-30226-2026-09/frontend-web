@@ -33,8 +33,8 @@ const ControlRefuerzo = () => {
 
     const handleValidChange = (e) => {
         let val = parseInt(e.target.value, 10);
-        if (isNaN(val)) val = 0;
-        if (val < 0) val = 0;
+        if (isNaN(val)) val = 1;
+        if (val < 1) val = 1;
         if (val > (tropasDisponibles ?? 0)) val = (tropasDisponibles ?? 0);
         setTropasAAsignar(val);
     };
@@ -46,7 +46,7 @@ const ControlRefuerzo = () => {
     };
 
     const decrementar = () => {
-        if (tropasAAsignar > 0) {
+        if (tropasAAsignar > 1) {
             setTropasAAsignar(tropasAAsignar - 1);
         }
     };
@@ -75,35 +75,49 @@ const ControlRefuerzo = () => {
                 <h3 className="control-refuerzo-header">Reforzar en {nombreComarca}</h3>
 
                 <div className="control-refuerzo-body">
-                    <div className="refuerzo-input-group">
-                        <button
-                            className="refuerzo-btn-math"
-                            onClick={decrementar}
-                            disabled={tropasAAsignar <= 0}
-                        >
-                            -
-                        </button>
-                        <input
-                            type="number"
-                            className="refuerzo-input"
-                            value={tropasAAsignar}
-                            onChange={handleValidChange}
-                            min="0"
-                            max={tropasDisponibles ?? 0}
-                        />
-                        <button
-                            className="refuerzo-btn-math"
-                            onClick={incrementar}
-                            disabled={tropasAAsignar >= (tropasDisponibles ?? 0)}
-                        >
-                            +
-                        </button>
-                    </div>
+                    {(tropasDisponibles ?? 0) > 1 ? (
+                        <div className="refuerzo-input-group">
+                            <button
+                                className="refuerzo-btn-math"
+                                onClick={decrementar}
+                                disabled={tropasAAsignar <= 1}
+                            >
+                                -
+                            </button>
+                            <input
+                                type="range"
+                                className="refuerzo-slider"
+                                min="1"
+                                max={tropasDisponibles ?? 0}
+                                value={tropasAAsignar}
+                                onChange={handleValidChange}
+                            />
+                            <input
+                                type="number"
+                                className="refuerzo-input"
+                                value={tropasAAsignar}
+                                onChange={handleValidChange}
+                                min="1"
+                                max={tropasDisponibles ?? 0}
+                            />
+                            <button
+                                className="refuerzo-btn-math"
+                                onClick={incrementar}
+                                disabled={tropasAAsignar >= (tropasDisponibles ?? 0)}
+                            >
+                                +
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="refuerzo-simple-group">
+                            <span className="refuerzo-simple-text"> Colocar 1 tropa </span>
+                        </div>
+                    )}
 
                     <button
                         className="refuerzo-btn-confirmar"
                         onClick={confirmarRefuerzo}
-                        disabled={tropasAAsignar === 0 || !esMiTurno}
+                        disabled={tropasAAsignar < 1 || !esMiTurno}
                     >
                         Confirmar
                     </button>

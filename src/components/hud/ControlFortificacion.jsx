@@ -36,6 +36,18 @@ const ControlFortificacion = () => {
         useGameStore.setState({ preparandoFortificacion: false, destinoSeleccionado: null });
     };
 
+    const incrementar = () => {
+        if (cantidad < maxTropas) {
+            setCantidad(cantidad + 1);
+        }
+    };
+
+    const decrementar = () => {
+        if (cantidad > 1) {
+            setCantidad(cantidad - 1);
+        }
+    };
+
     return (
         <div style={styles.overlay}>
             <div style={styles.modal}>
@@ -45,15 +57,31 @@ const ControlFortificacion = () => {
                 </p>
                 <div style={styles.sliderContainer}>
                     <label>Fuerzas enviadas: {cantidad}</label>
-                    <input 
-                        type="range" 
-                        min="1" 
-                        max={maxTropas} 
-                        value={cantidad} 
-                        onChange={e => setCantidad(Number(e.target.value))} 
-                        style={styles.slider}
-                        disabled={fortificando}
-                    />
+                    <div style={styles.sliderGroup}>
+                        <button 
+                            style={styles.btnMath} 
+                            onClick={decrementar}
+                            disabled={cantidad <= 1 || fortificando}
+                        >
+                            -
+                        </button>
+                        <input 
+                            type="range" 
+                            min="1" 
+                            max={maxTropas} 
+                            value={cantidad} 
+                            onChange={e => setCantidad(Number(e.target.value))} 
+                            style={styles.slider}
+                            disabled={fortificando}
+                        />
+                        <button 
+                            style={styles.btnMath} 
+                            onClick={incrementar}
+                            disabled={cantidad >= maxTropas || fortificando}
+                        >
+                            +
+                        </button>
+                    </div>
                 </div>
                 <div style={styles.botones}>
                     <button style={styles.btnConfirmar} onClick={confirmarFortificacion} disabled={fortificando}>
@@ -85,7 +113,8 @@ const styles = {
         borderRadius: '12px',
         width: '320px',
         boxShadow: '0 8px 32px rgba(236,201,75,0.2)',
-        textAlign: 'center'
+        textAlign: 'center',
+        border: '2px solid #F6E05E'
     },
     sliderContainer: {
         margin: '20px 0',
@@ -93,14 +122,31 @@ const styles = {
         flexDirection: 'column',
         gap: '10px'
     },
+    sliderGroup: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        justifyContent: 'center'
+    },
     slider: {
-        width: '100%',
+        flex: 1,
         accentColor: '#F6E05E'
     },
     botones: {
         display: 'flex',
         justifyContent: 'space-between',
         gap: '12px'
+    },
+    btnMath: {
+        backgroundColor: '#F6E05E',
+        color: '#1A202C',
+        border: 'none',
+        padding: '8px 14px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        fontSize: '16px',
+        transition: 'all 0.3s ease'
     },
     btnConfirmar: {
         flex: 1,

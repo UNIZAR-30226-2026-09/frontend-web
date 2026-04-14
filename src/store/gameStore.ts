@@ -283,7 +283,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     setTropasAAsignar: (cantidad: number) => {
         set((state) => {
             const disponibles = state.tropasDisponibles ?? 0;
-            if (cantidad < 0 || cantidad > disponibles) return state;
+            if (cantidad < 1 || cantidad > disponibles) return state;
             return { tropasAAsignar: cantidad };
         });
     },
@@ -299,8 +299,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             console.warn('[confirmarRefuerzo] Falta comarca o sala activa.');
             return;
         }
-        if (estado.tropasAAsignar <= 0) {
-            console.warn('[confirmarRefuerzo] Tropas a asignar deben ser > 0.');
+        if (estado.tropasAAsignar < 1) {
+            console.warn('[confirmarRefuerzo] Tropas a asignar deben ser >= 1.');
             return;
         }
         if (String(estado.turnoActual) !== String(estado.jugadorLocal)) {
@@ -315,10 +315,15 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         const comarca = estado.comarcaRefuerzo;
         const cantidad = estado.tropasAAsignar;
 
-        // Descuento optimista: el jugador ve el gasto inmediatamente sin
-        // esperar al round-trip de red. ACTUALIZACION_MAPA lo corregirá si hay
-        // diferencia con el servidor.
+        // Actualización optimista completa: el jugador ve INMEDIATAMENTE el incremento de tropas
+        // en el territorio Y la disminución en la reserva sin esperar al round-trip de red.
+        // Si hay error, revertimos ambos cambios. TROPAS_COLOCADAS simplemente confirma lo que
+        // el usuario ya vio, por lo que es idempotente.
         set((state) => ({
+            tropas: {
+                ...state.tropas,
+                [comarca]: (state.tropas[comarca] ?? 0) + cantidad,
+            },
             tropasDisponibles: (state.tropasDisponibles ?? 0) - cantidad,
             comarcaRefuerzo: null,
             tropasAAsignar: 0,
@@ -331,6 +336,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         } catch (error) {
             console.error('[confirmarRefuerzo] Error al colocar tropas:', error);
             set((state) => ({
+                tropas: {
+                    ...state.tropas,
+                    [comarca]: (state.tropas[comarca] ?? 0) - cantidad,
+                },
                 tropasDisponibles: (state.tropasDisponibles ?? 0) + cantidad,
                 comarcaRefuerzo: comarca,
                 tropasAAsignar: cantidad,
@@ -457,12 +466,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         switch (estado.faseActual) {
 
             case 'REFUERZO': {
-                if ((estado.tropasDisponibles ?? 0) <= 0) {
-                    console.log('[manejarClickComarca] Sin tropas disponibles en reserva.');
-                    return;
-                }
                 if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
-                    set({ comarcaRefuerzo: comarcaId, tropasAAsignar: 0, popupCoords: coords || null });
+                    set({ comarcaRefuerzo: comarcaId, tropasAAsignar: Math.max(1, estado.tropasDisponibles ?? 0), popupCoords: coords || null });
                 }
                 break;
             }
