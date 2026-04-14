@@ -161,8 +161,9 @@ const Tablero = (props) => {
     // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
     svgElement.call(zoomBehavior).on('dblclick.zoom', null);
 
-    // Centrar inicialmente el tablero
-    svgElement.call(zoomBehavior.transform, zoomIdentity);
+    // Movemos el mapa 0 píxeles en horizontal (X) y -110 píxeles en vertical (Y, hacia arriba)
+    const transformInicial = zoomIdentity.translate(0, -55).scale(1);
+    svgElement.call(zoomBehavior.transform, transformInicial);
   }, [mapaEstatico]);
 
   // --- ZONA DE GUARD CLAUSES ---
