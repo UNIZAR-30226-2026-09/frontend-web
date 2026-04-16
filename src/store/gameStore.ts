@@ -185,18 +185,28 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      *
      * Se usa para:
      *   - Recargar estado tras reconexión WebSocket.
+     *   - Recuperar partida tras F5 (recarga de página).
      *   - Resolver inconsistencias entre UI y servidor.
+     * 
+     * @param {number|string} [overrideId] - ID Forzado para recuperar partida tras recarga.
      */
-    sincronizarEstadoPartida: async () => {
-        const { salaActiva } = get();
-        if (!salaActiva?.id) return;
+    sincronizarEstadoPartida: async (overrideId?: number | string) => {
+        const idToSync = overrideId || get().salaActiva?.id;
+        if (!idToSync) return;
+
+        // Si es una reconexión por F5, aseguramos que el ID se guarde en el store
+        if (overrideId && get().salaActiva?.id !== overrideId) {
+            set((state) => ({
+                salaActiva: { ...state.salaActiva, id: Number(overrideId) }
+            }));
+        }
 
         try {
-            const data = await fetchApi(`/v1/partidas/${salaActiva.id}/estado`);
+            const data = await fetchApi(`/v1/partidas/${idToSync}/estado`);
             get().setEstadoDinamico(data);
-            console.log('[sincronizarEstadoPartida] Estado sincronizado.');
+            console.log('[sincronizarEstadoPartida] Estado sincronizado con éxito.');
         } catch (error) {
-            console.error('[sincronizarEstadoPartida] Error:', error);
+            console.error('[sincronizarEstadoPartida] Error al sincronizar:', error);
         }
     },
 

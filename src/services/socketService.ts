@@ -54,6 +54,9 @@ class SocketService {
             console.log('[WebSocket] Conectado con éxito.');
             this.retryCount = 0;
             useGameStore.getState().setSocketConnection(true);
+            
+            // Sincronizar estado al reconectar para recuperar cambios perdidos durante el downtime
+            useGameStore.getState().sincronizarEstadoPartida();
         };
 
         this.socket.onmessage = (event) => {
