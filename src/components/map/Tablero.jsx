@@ -6,7 +6,10 @@ import { useGameStore } from '../../store/gameStore';
 import ComarcaPath from './ComarcaPath';
 import FichaTropas from './FichaTropas';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
+import BotonArbolTecnologico from '../ui/BotonArbolTecnologico';
+import PanelArbolTecnologico from '../ui/PanelArbolTecnologico';
 import ControlRefuerzo from '../hud/ControlRefuerzo';
+import ControlGestion from '../hud/ControlGestion';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 import '../../styles/Tablero.css';
@@ -91,6 +94,9 @@ const Tablero = (props) => {
   const mapaEstatico = useGameStore((state) => state.mapaEstatico);
   const cargarMapaEstatico = useGameStore((state) => state.cargarMapaEstatico);
   const errorMapaEstatico = useGameStore((state) => state.errorMapaEstatico);
+
+  const territorioTrabajando = useGameStore((state) => state.territorioTrabajando);
+  const territorioInvestigando = useGameStore((state) => state.territorioInvestigando);
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
   useEffect(() => {
@@ -620,6 +626,9 @@ const Tablero = (props) => {
                   const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
                   if (hasAlliedAdjacent) isVivoState = true;
                 }
+                // En GESTION todos los territorios propios son interactuables
+                if (esMio && faseActual === 'GESTION') isVivoState = true;
+
               }
             }
 
@@ -648,6 +657,8 @@ const Tablero = (props) => {
                 zoomScale={zoomScale}
                 colorFondo={colorActual}
                 strokeFondo={strokeFicha}
+                isTrabajando={comarca.id === territorioTrabajando}
+                isInvestigando={comarca.id === territorioInvestigando}
               />
             );
           })}
@@ -657,7 +668,10 @@ const Tablero = (props) => {
       </svg>
       
       <BotonVistaRegiones />
+      <BotonArbolTecnologico />
+      <PanelArbolTecnologico />
       <ControlRefuerzo />
+      <ControlGestion />
       <AnimacionRefuerzos />
     </div>
   );

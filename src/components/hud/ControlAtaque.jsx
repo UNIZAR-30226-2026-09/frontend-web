@@ -9,6 +9,16 @@ const ControlAtaque = () => {
     const [resultadoBack, setResultadoBack] = useState(null);
 
     const origen = estado.origenSeleccionado;
+
+    // Bloqueo de ataque si el territorio está en gestión
+    const territorioOcupado =
+        origen === estado.territorioTrabajando ||
+        origen === estado.territorioInvestigando;
+    const motivoOcupado = origen === estado.territorioTrabajando
+        ? 'Este territorio está trabajando y no puede atacar este turno.'
+        : origen === estado.territorioInvestigando
+            ? 'Este territorio está investigando y no puede atacar este turno.'
+            : null;
     const destino = estado.destinoSeleccionado;
     const maxAtaque = resultadoBack?.victoria_atacante 
         ? Math.max(1, (resultadoBack.tropas_restantes_origen || 0) - 1)
@@ -158,11 +168,16 @@ const ControlAtaque = () => {
         <div style={modalPosition}>
             <div style={styles.modal}>
                 <h3>Ataque</h3>
-                <p style={{ marginBottom: '24px' }}>
+                <p style={{ marginBottom: '12px' }}>
                     Desde <b>{estado.grafoGlobal?.get(origen)?.nombre || origen}</b> hacia <b>{estado.grafoGlobal?.get(destino)?.nombre || destino}</b>.
                 </p>
+                {territorioOcupado && (
+                    <p style={{ color: '#FC8181', fontSize: '0.82rem', marginBottom: '12px', padding: '6px 8px', background: 'rgba(229,62,62,0.12)', borderRadius: '4px' }}>
+                        ⚠️ {motivoOcupado}
+                    </p>
+                )}
                 <div style={styles.botones}>
-                    <button style={styles.btnAtaque} onClick={confirmarAtaque} disabled={atacando || maxAtaque < 1}>
+                    <button style={styles.btnAtaque} onClick={confirmarAtaque} disabled={atacando || maxAtaque < 1 || territorioOcupado}>
                         {atacando ? "Atacando..." : "¡Ataque Total!"}
                     </button>
                     <button style={styles.btnCancelar} onClick={cancelar} disabled={atacando}>
