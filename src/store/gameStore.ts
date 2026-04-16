@@ -388,6 +388,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         try {
             await gameApi.pasarFase(estado.salaActiva.id);
             await get().sincronizarEstadoPartida();
+            socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_PHASE@@' });
         } catch (error) {
             console.error('[pasarFaseBackend] Error:', error);
         }
@@ -468,7 +469,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      * @param {string} comarcaId - Identificador de la comarca pulsada.
      * @param {{x: number, y: number}} [coords] - Posición en la pantalla.
      */
-    manejarClickComarca: (comarcaId: string, coords?: {x: number, y: number}) => {
+    manejarClickComarca: (comarcaId: string, coords?: { x: number, y: number }) => {
         const estado = get();
 
         if (estado.estadoPartidaLocal === 'ESPECTANDO') {
@@ -779,6 +780,17 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
+            case 'CHAT': {
+                const msj = mensaje.mensaje ?? mensaje.data?.mensaje ?? '';
+                if (msj === '@@SYS_SYNC_PHASE@@') {
+                    const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
+                    if (emisor !== get().jugadorLocal) {
+                        get().sincronizarEstadoPartida();
+                    }
+                }
+                break;
+            }
+
             case 'FASE_CAMBIADA':
             case 'CAMBIO_FASE': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
@@ -1012,7 +1024,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     // Fallo silencioso
                 }
             }
-            
+
             configMaxPlayers = configMaxPlayers || 4;
 
             if (!realPartidaId) {

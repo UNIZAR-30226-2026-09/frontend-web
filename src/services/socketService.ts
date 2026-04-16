@@ -54,7 +54,7 @@ class SocketService {
             console.log('[WebSocket] Conectado con éxito.');
             this.retryCount = 0;
             useGameStore.getState().setSocketConnection(true);
-            
+
             // Sincronizar estado al reconectar para recuperar cambios perdidos durante el downtime
             useGameStore.getState().sincronizarEstadoPartida();
         };
@@ -116,6 +116,14 @@ class SocketService {
             this.socket.send(JSON.stringify({ type, payload }));
         } else {
             console.error('[WebSocket] Socket no disponible. Tipo:', type);
+        }
+    }
+
+    public sendRaw(data: any) {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify(data));
+        } else {
+            console.error('[WebSocket] Socket no disponible');
         }
     }
 }
