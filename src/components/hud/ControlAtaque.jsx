@@ -153,7 +153,7 @@ const ControlAtaque = () => {
             <div style={styles.modal}>
                 <h3>Ataque</h3>
                 <p style={{ marginBottom: '24px' }}>
-                    Desde <b>{origen}</b> hacia <b>{destino}</b>.
+                    Desde <b>{estado.grafoGlobal?.get(origen)?.nombre || origen}</b> hacia <b>{estado.grafoGlobal?.get(destino)?.nombre || destino}</b>.
                 </p>
                 <div style={styles.botones}>
                     <button style={styles.btnAtaque} onClick={confirmarAtaque} disabled={atacando || maxAtaque < 1}>

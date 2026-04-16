@@ -121,14 +121,14 @@
 }
 
 .btn-finalizar-turno {
-  background: var(--color-state-danger);
+  background: var(--color-ui-bg-secondary);
   border-color: var(--color-text-primary);
 }
 
 .btn-finalizar-turno:hover {
-  background: var(--color-state-danger);
-  filter: brightness(1.2);
-  box-shadow: 0 0 12px rgba(211, 47, 47, 0.8);
+  background: var(--color-state-success);
+  filter: brightness(1.1);
+  box-shadow: 0 0 12px rgba(56, 142, 60, 0.8);
 }
 
 .btn-bloqueado,

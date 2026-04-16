@@ -146,8 +146,8 @@ const CabeceraJuego = () => {
                 disabled={isSiguienteBloqueado}
                 title={titleSiguiente}
                 style={{
-                  boxShadow: debeBrillar ? `0 0 15px ${turnPlayerColor}, inset 0 0 8px ${turnPlayerColor}` : undefined,
-                  borderColor: debeBrillar ? turnPlayerColor : undefined,
+                  backgroundColor: debeBrillar ? turnPlayerColor : undefined,
+                  border: debeBrillar ? `2px solid ${turnPlayerColor}` : undefined,
                   animation: debeBrillar ? 'pulse 1.5s infinite alternate' : 'none'
                 }}
               >

@@ -9,6 +9,7 @@ import BotonVistaRegiones from '../ui/BotonVistaRegiones';
 import ControlRefuerzo from '../hud/ControlRefuerzo';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
+import '../../styles/Tablero.css';
 
 /**
  * Agrupa las comarcas por región, calcula el dominio del jugador local
@@ -111,9 +112,12 @@ const Tablero = (props) => {
   }, [mapaEstatico, inicializarJuego]);
 
   const comarcasCompletas = useMemo(() => {
-    if (!mapaEstatico || !mapaEstatico.comarcas) return [];
+    if (!mapaEstatico || !mapaEstatico.comarcas) {
+      console.warn('❌ mapaEstatico o comarcas no están disponibles', {mapaEstatico});
+      return [];
+    }
     
-    return COMARCAS_SVG_DATA.map((svgItem) => {
+    const resultado = COMARCAS_SVG_DATA.map((svgItem) => {
       const serverInfo = mapaEstatico.comarcas[svgItem.id];
       if (serverInfo) {
         return {
@@ -123,8 +127,16 @@ const Tablero = (props) => {
           adjacent_to: serverInfo.adjacent_to
         };
       }
+      console.warn(`⚠️ No encontrado en servidor: ${svgItem.id}`);
       return svgItem;
     });
+    
+    console.log('📍 comarcasCompletas construidas:', resultado.length, 'comarcas con region_id:', resultado.filter(c => c.region_id).length);
+    if (resultado.length > 0) {
+      console.log('Primer comarca:', resultado[0]);
+    }
+    
+    return resultado;
   }, [mapaEstatico]);
 
   const modoVista = useGameStore((state) => state.modoVista);
@@ -300,9 +312,9 @@ const Tablero = (props) => {
           />
 
 
-          {/*imagen de fondo, ELIMINAR SI HAY LAG AL AMPLIAR*/}
+          {/*imagen de fondo del tablero, centrada para mantener el mapa alineado*/}
           <image
-            href="/fondoPrueba2.png"
+            href="/fondoTablero.png"
             x="-900"
             y="-390"
             width="1440"
@@ -310,6 +322,50 @@ const Tablero = (props) => {
             preserveAspectRatio="xMidYMid slice"
           />
 
+          {/* GRUPO 1: CONTINENTES APAGADOS (no dominados) - ATRÁS */}
+          {CONTINENTES_SVG_DATA.map((continente) => {
+            let strokeColor = 'var(--color-border-gold)';
+            let strokeWidth = 1.5 * 2;
+            let filterStyle = 'none';
+            let isDominado = false;
+
+            if (modoVista === 'REGIONES') {
+              return null; // En modo REGIONES no mostrar aquí, se muestran al final
+            }
+
+            // Comprobar si un solo jugador domina TODO el continente
+            const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
+            
+            if (comarcasDelContinente.length > 0 && propietarios) {
+              const primerDueño = propietarios[comarcasDelContinente[0].id];
+              
+              if (primerDueño !== undefined && primerDueño !== null) {
+                const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
+                
+                if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
+                  isDominado = true;
+                }
+              }
+            }
+
+            // SOLO renderizar si NO está dominado
+            if (isDominado) return null;
+
+            return (
+              <path
+                key={`continente-apagado-${continente.id}`}
+                d={continente.d}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                clipPath={`url(#clip-${continente.id})`}
+                style={{ transition: 'all 0.5s ease' }}
+                pointerEvents="none"
+              />
+            );
+          })}
 
           {sortedComarcas.map((comarca) => (
             <ComarcaPath
@@ -341,39 +397,67 @@ const Tablero = (props) => {
             ))}
           </defs>
 
-          {/* DIBUJAR CONTORNOS DE LOS CONTINENTES POR ENCIMA DE TODO EL TABLERO */}
+
+
+          {/* DIBUJAR CONTORNOS DE LOS CONTINENTES ENCENDIDOS ANTES DE BORDES DE SELECCIÓN (GRUPO 3) */}
           {CONTINENTES_SVG_DATA.map((continente) => {
             let strokeColor = 'var(--color-border-gold)';
-            // Damos el doble de grosor. Al recortarlo con clipPath por su propia forma, 
-            // desaparece el 50% exterior y se queda el 50% interior (simulando border-inside de 1.5)
             let strokeWidth = 1.5 * 2;
             let filterStyle = 'none';
+            let isDominado = false;
 
             if (modoVista === 'REGIONES') {
               strokeColor = `var(--color-region-${continente.id}-fuerte)`;
-            } else {
-              // Comprobar si un solo jugador domina TODO el continente
-              const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
-              if (comarcasDelContinente.length > 0) {
-                 const primerDueño = propietarios[comarcasDelContinente[0].id];
-                 if (primerDueño && comarcasDelContinente.every(c => propietarios[c.id] === primerDueño)) {
-                   if (coloresJugadores && coloresJugadores[primerDueño]) {
-                     strokeColor = coloresJugadores[primerDueño];
-                     strokeWidth = 2.5 * 2; // Borde más presente
-                     filterStyle = `drop-shadow(0 0 6px ${strokeColor})`;
-                   }
-                 }
+              // En modo REGIONES renderizar todos
+              return (
+                <path
+                  key={`continente-regiones-${continente.id}`}
+                  d={continente.d}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  clipPath={`url(#clip-${continente.id})`}
+                  style={{ filter: filterStyle, transition: 'all 0.5s ease' }}
+                  pointerEvents="none"
+                />
+              );
+            }
+
+            // En modo COMARCAS: Comprobar si un solo jugador domina TODO el continente
+            const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
+            
+            if (comarcasDelContinente.length > 0 && propietarios) {
+              const primerDueño = propietarios[comarcasDelContinente[0].id];
+              
+              // Verificar que el primer dueño existe y todos los territorios pertenecen al mismo jugador
+              if (primerDueño !== undefined && primerDueño !== null) {
+                const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
+                
+                if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
+                  strokeColor = coloresJugadores[primerDueño];
+                  strokeWidth = 3.5 * 2;
+                  filterStyle = 'none';
+                  isDominado = true;
+                }
               }
             }
 
+            // SOLO renderizar si ESTÁ dominado
+            if (!isDominado) return null;
+
             return (
               <path
-                key={`continente-${continente.id}`}
+                key={`continente-encendido-${continente.id}`}
                 d={continente.d}
                 fill="none"
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 clipPath={`url(#clip-${continente.id})`}
+                className={isDominado ? 'continente-dominado' : ''}
                 style={{ filter: filterStyle, transition: 'all 0.5s ease' }}
                 pointerEvents="none"
               />
@@ -571,6 +655,7 @@ const Tablero = (props) => {
           {etiquetasRegiones}
         </g>
       </svg>
+      
       <BotonVistaRegiones />
       <ControlRefuerzo />
       <AnimacionRefuerzos />

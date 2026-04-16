@@ -101,9 +101,9 @@ const Lobby = () => {
         position: 'relative',
         width: '100%',
         height: '100%',
-        backgroundImage: 'url(/mesa-mando.png)',
+        backgroundImage: 'url(/fondoLobby.png)',
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center top',
         overflow: 'hidden'
       }}>
 
