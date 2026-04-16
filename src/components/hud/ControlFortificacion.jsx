@@ -53,35 +53,41 @@ const ControlFortificacion = () => {
             <div style={styles.modal}>
                 <h3 style={{ color: '#F6E05E' }}>Fortificar</h3>
                 <p>
-                    Reubica tus tropas de <b>{origen}</b> a <b>{destino}</b>.
+                    Reubica tus tropas de <b>{estado.grafoGlobal?.get(origen)?.nombre || origen}</b> a <b>{estado.grafoGlobal?.get(destino)?.nombre || destino}</b>.
                 </p>
                 <div style={styles.sliderContainer}>
                     <label>Fuerzas enviadas: {cantidad}</label>
-                    <div style={styles.sliderGroup}>
-                        <button 
-                            style={styles.btnMath} 
-                            onClick={decrementar}
-                            disabled={cantidad <= 1 || fortificando}
-                        >
-                            -
-                        </button>
-                        <input 
-                            type="range" 
-                            min="1" 
-                            max={maxTropas} 
-                            value={cantidad} 
-                            onChange={e => setCantidad(Number(e.target.value))} 
-                            style={styles.slider}
-                            disabled={fortificando}
-                        />
-                        <button 
-                            style={styles.btnMath} 
-                            onClick={incrementar}
-                            disabled={cantidad >= maxTropas || fortificando}
-                        >
-                            +
-                        </button>
-                    </div>
+                    {maxTropas > 1 ? (
+                        <div style={styles.sliderGroup}>
+                            <button 
+                                style={styles.btnMath} 
+                                onClick={decrementar}
+                                disabled={cantidad <= 1 || fortificando}
+                            >
+                                -
+                            </button>
+                            <input 
+                                type="range" 
+                                min="1" 
+                                max={maxTropas} 
+                                value={cantidad} 
+                                onChange={e => setCantidad(Number(e.target.value))} 
+                                style={styles.slider}
+                                disabled={fortificando}
+                            />
+                            <button 
+                                style={styles.btnMath} 
+                                onClick={incrementar}
+                                disabled={cantidad >= maxTropas || fortificando}
+                            >
+                                +
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={styles.simpleGroup}>
+                            <span style={styles.simpleText}>Mover 1 tropa</span>
+                        </div>
+                    )}
                 </div>
                 <div style={styles.botones}>
                     <button style={styles.btnConfirmar} onClick={confirmarFortificacion} disabled={fortificando}>
@@ -166,6 +172,16 @@ const styles = {
         padding: '10px',
         borderRadius: '6px',
         cursor: 'pointer'
+    },
+    simpleGroup: {
+        margin: '10px 0',
+        display: 'flex',
+        justifyContent: 'center'
+    },
+    simpleText: {
+        color: '#FFF',
+        fontSize: '16px',
+        fontWeight: 'bold'
     }
 };
 

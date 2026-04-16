@@ -57,7 +57,7 @@ const ControlRefuerzo = () => {
     }
 
     let controlesUI = null;
-    if (comarcaRefuerzo) {
+    if (comarcaRefuerzo && (tropasDisponibles ?? 0) > 0) {
         // Si por alguna razón perdemos las coordenadas, no renderizamos el popup en el medio de la nada
         if (!popupCoords) return null;
 
@@ -110,7 +110,7 @@ const ControlRefuerzo = () => {
                         </div>
                     ) : (
                         <div className="refuerzo-simple-group">
-                            <span className="refuerzo-simple-text"> Colocar 1 tropa </span>
+                            <span className="refuerzo-simple-text">" Colocar 1 tropa "</span>
                         </div>
                     )}
 

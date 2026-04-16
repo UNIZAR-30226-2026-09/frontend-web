@@ -242,6 +242,14 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     toggleModoVista: () =>
         set((state) => ({
             modoVista: state.modoVista === 'COMARCAS' ? 'REGIONES' : 'COMARCAS',
+            // Limpiar todas las selecciones al cambiar de modo visual
+            origenSeleccionado: null,
+            destinoSeleccionado: null,
+            comarcasResaltadas: [],
+            popupCoords: null,
+            preparandoAtaque: false,
+            preparandoFortificacion: false,
+            comarcaRefuerzo: null,
         })),
 
     setRegionHover: (regionId: string | null) => set({ regionHover: regionId }),

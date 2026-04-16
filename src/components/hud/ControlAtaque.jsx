@@ -105,31 +105,37 @@ const ControlAtaque = () => {
                                     ¡Conquista exitosa! Territorio bajo tu control.
                                 </p>
                                 <label style={{marginTop: '15px', color: '#FFF'}}>Tropas de ocupación: {Math.min(cantidad, maxAtaque)}</label>
-                                <div style={styles.sliderGroup}>
-                                    <button 
-                                        style={styles.btnMathGolden} 
-                                        onClick={decrementar}
-                                        disabled={Math.min(cantidad, maxAtaque) <= 1 || atacando}
-                                    >
-                                        -
-                                    </button>
-                                    <input 
-                                        type="range" 
-                                        min="1" 
-                                        max={maxAtaque} 
-                                        value={Math.min(cantidad, maxAtaque)} 
-                                        onChange={e => setCantidad(Number(e.target.value))} 
-                                        style={styles.sliderGolden}
-                                        disabled={atacando}
-                                    />
-                                    <button 
-                                        style={styles.btnMathGolden} 
-                                        onClick={incrementar}
-                                        disabled={Math.min(cantidad, maxAtaque) >= maxAtaque || atacando}
-                                    >
-                                        +
-                                    </button>
-                                </div>
+                                {maxAtaque > 1 ? (
+                                    <div style={styles.sliderGroup}>
+                                        <button 
+                                            style={styles.btnMathGolden} 
+                                            onClick={decrementar}
+                                            disabled={Math.min(cantidad, maxAtaque) <= 1 || atacando}
+                                        >
+                                            -
+                                        </button>
+                                        <input 
+                                            type="range" 
+                                            min="1" 
+                                            max={maxAtaque} 
+                                            value={Math.min(cantidad, maxAtaque)} 
+                                            onChange={e => setCantidad(Number(e.target.value))} 
+                                            style={styles.sliderGolden}
+                                            disabled={atacando}
+                                        />
+                                        <button 
+                                            style={styles.btnMathGolden} 
+                                            onClick={incrementar}
+                                            disabled={Math.min(cantidad, maxAtaque) >= maxAtaque || atacando}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={styles.simpleGroup}>
+                                        <span style={styles.simpleText}>Mover 1 tropa</span>
+                                    </div>
+                                )}
                             </>
                         )}
                         {!resultadoBack.victoria_atacante && (
@@ -264,6 +270,16 @@ const styles = {
         padding: '10px',
         borderRadius: '6px',
         cursor: 'pointer'
+    },
+    simpleGroup: {
+        margin: '15px 0',
+        display: 'flex',
+        justifyContent: 'center'
+    },
+    simpleText: {
+        color: '#FFF',
+        fontSize: '16px',
+        fontWeight: 'bold'
     }
 };
 
