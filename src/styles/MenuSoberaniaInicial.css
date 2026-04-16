@@ -1,0 +1,440 @@
+/* ================================================================
+   Menú Inicial (Soberanía) — estilos dedicados
+   ================================================================ */
+
+.soberania-inicial {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.soberania-inicial__grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-areas:
+    "top center friends";
+  grid-template-columns: minmax(260px, 380px) 1fr minmax(260px, 380px);
+  gap: 24px;
+  align-items: stretch;
+  justify-items: stretch;
+  padding: 4vh 8vw;
+  box-sizing: border-box;
+}
+
+.soberania-inicial__topglobal {
+  grid-area: top;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.soberania-inicial__center {
+  grid-area: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.soberania-inicial__friends {
+  grid-area: friends;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.soberania-inicial__panel {
+  width: 100%;
+  background: var(--color-ui-panel-overlay);
+  border: 2px solid var(--color-border-gold);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+}
+
+.soberania-inicial__panel-inner {
+  padding: 1rem 1rem 0.8rem 1rem;
+}
+
+.soberania-inicial__titulo {
+  font-family: var(--font-family-title);
+  color: var(--color-border-gold);
+  font-size: 1.1rem;
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0 0 0.8rem 0;
+  text-align: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(140, 115, 34, 0.25);
+}
+
+/* -------------------------
+   Perfil (centro)
+   ------------------------- */
+.soberania-perfil-card {
+  appearance: none;
+  border: 2px solid var(--color-border-gold);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--color-ui-bg-primary);
+  border-radius: 12px;
+  width: 240px;
+  height: 260px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1rem;
+  cursor: pointer;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  transition: transform 0.18s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.soberania-perfil-card:hover {
+  transform: translate(-50%, -50%) translateY(-3px) scale(1.01);
+  background: var(--color-ui-panel-overlay);
+}
+
+.soberania-perfil-card:hover .soberania-perfil-nombre {
+  color: rgba(248, 245, 232, 0.95);
+}
+
+.soberania-perfil-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.soberania-perfil-avatar {
+  width: 200px;
+  height: 200px;
+  border-radius: 999px;
+  border: 2px solid rgba(140, 115, 34, 0.65);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.soberania-perfil-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.soberania-perfil-avatar__inicial {
+  font-family: monospace;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--color-border-gold);
+}
+
+.soberania-perfil-nombre {
+  font-family: var(--font-family-title);
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+/* -------------------------
+   Jugar (centro debajo)
+   ------------------------- */
+.soberania-jugar-card {
+  appearance: none;
+  border: 2px solid var(--color-border-bronze);
+  background: var(--color-ui-bg-secondary);
+  color: var(--color-border-gold);
+  border-radius: 12px;
+  width: 300px;
+  max-width: 80vw;
+  position: absolute;
+  bottom: 18vh;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1rem 1rem;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  transition: transform 0.18s ease, filter 0.2s ease, border-color 0.2s ease;
+  backdrop-filter: blur(5px);
+}
+
+.soberania-jugar-card:hover {
+  transform: translateX(-50%) translateY(-3px);
+  filter: brightness(1.08);
+  border-color: var(--color-border-gold-vivo);
+}
+
+.soberania-jugar-titulo {
+  font-family: var(--font-family-title);
+  font-size: 1.1rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+  font-weight: bold;
+  color: var(--color-border-gold);
+}
+
+.soberania-jugar-sub {
+  margin: 0.55rem 0 0 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+}
+
+/* -------------------------
+   Top global (izquierda)
+   ------------------------- */
+.soberania-top-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.soberania-top-scroll {
+  overflow-y: auto; /* scroll SOLO top 10 */
+  padding-right: 6px;
+  /* altura para que se vean ~3 jugadores a la vez */
+  height: clamp(150px, 22vh, 205px);
+  box-sizing: border-box;
+}
+
+.soberania-top-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.soberania-top-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+
+.soberania-top-scroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 115, 34, 0.45);
+  border-radius: 10px;
+}
+
+.soberania-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.55rem 0.1rem;
+  border-bottom: 1px solid rgba(140, 115, 34, 0.18);
+}
+
+.soberania-top-row:last-child {
+  border-bottom: none;
+}
+
+.soberania-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.soberania-top-rank {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 115, 34, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-border-gold);
+  font-weight: bold;
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+.soberania-top-user {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-weight: bold;
+  color: var(--color-text-primary);
+}
+
+.soberania-top-victorias {
+  font-family: monospace;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.soberania-top-separador {
+  margin: 0.9rem 0;
+  height: 1px;
+  background: rgba(140, 115, 34, 0.35);
+}
+
+.soberania-top-you .soberania-top-rank {
+  border-color: var(--color-border-gold-vivo);
+  color: var(--color-border-gold-vivo);
+}
+
+.soberania-top-you {
+  background: rgba(140, 115, 34, 0.12);
+  border-radius: 10px;
+  padding: 0.5rem 0.55rem;
+}
+
+.soberania-top-you-fixed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 0.65rem;
+}
+
+.soberania-amigos-cta {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  align-items: center;
+  margin-right: 0;
+}
+
+.soberania-ver-alianzas-btn {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* centro del texto dentro del botón */
+  text-align: center;
+}
+
+/* -------------------------
+   Amigos (derecha)
+   ------------------------- */
+.soberania-friends-scroll {
+  overflow-y: auto;
+  /* altura para que se vean ~3 amigos a la vez */
+  height: clamp(150px, 22vh, 205px);
+  padding-right: 6px;
+  box-sizing: border-box;
+}
+
+.soberania-friends-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.soberania-friends-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.soberania-friends-scroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 115, 34, 0.45);
+  border-radius: 10px;
+}
+
+.soberania-friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.soberania-friends-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.6rem 0.7rem;
+  background: rgba(20, 15, 10, 0.55);
+  border: 1px solid rgba(140, 115, 34, 0.25);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.soberania-friends-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(140, 115, 34, 0.6);
+  background: rgba(20, 15, 10, 0.7);
+}
+
+.soberania-friends-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.soberania-friends-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 115, 34, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  font-family: monospace;
+  font-weight: bold;
+  color: var(--color-border-gold);
+  flex-shrink: 0;
+}
+
+.soberania-friends-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-weight: bold;
+  color: var(--color-text-primary);
+}
+
+.soberania-friends-estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* -------------------------
+   Responsive
+   ------------------------- */
+@media (max-width: 1100px) {
+  .soberania-inicial__grid {
+    grid-template-columns: minmax(200px, 280px) minmax(240px, 1fr) minmax(200px, 280px);
+  }
+}
+
+@media (max-width: 900px) {
+  .soberania-inicial__grid {
+    grid-template-areas:
+      "center"
+      "top"
+      "friends";
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 4vh 4vw;
+  }
+
+  .soberania-inicial__center {
+    padding-top: 0;
+  }
+}
+

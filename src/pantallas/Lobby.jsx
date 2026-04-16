@@ -9,6 +9,7 @@ import SalaLobby from '../components/lobby/SalaLobby';
 import MenuUnirsePartida from '../components/lobby/MenuUnirsePartida';
 import PanelInteligencia from '../components/lobby/PanelInteligencia';
 import PanelAlianzas from '../components/lobby/PanelAlianzas';
+import MenuInicialSoberania from '../components/lobby/MenuInicialSoberania';
 import '../styles/Lobby.css';
 
 /**
@@ -57,26 +58,6 @@ const Lobby = () => {
     }
   };
 
-  const estiloBotonMesa = {
-    background: 'var(--color-ui-bg-secondary)',
-    color: 'var(--color-border-gold)',
-    border: '2px solid var(--color-border-bronze)',
-    padding: '1rem',
-    fontFamily: 'var(--font-family-title)',
-    fontSize: '1.2vw',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-    transition: 'all 0.3s ease',
-    backdropFilter: 'blur(3px)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    height: '6vw'
-  };
-
   const estiloTarjeta = {
     background: 'var(--color-map-land-neutral)',
     border: '2px solid var(--color-border-bronze)',
@@ -109,37 +90,11 @@ const Lobby = () => {
 
         {vistaActual === 'mando' && (
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-
-            {/* IZQUIERDA: Archivos de Inteligencia */}
-            <button
-              onClick={() => setVistaActual('inteligencia')}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '15%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Archivos de Inteligencia
-            </button>
-
-            {/* CENTRO: Operaciones */}
-            <button
-              onClick={() => { setVistaActual('operaciones'); setErrorRapida(null); }}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '41%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Operaciones
-            </button>
-
-            {/* DERECHA: Alianzas */}
-            <button
-              onClick={() => setVistaActual('amigos')}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', right: '15%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Alianzas
-            </button>
-
+            <MenuInicialSoberania
+              onAbrirPerfil={() => setVistaActual('inteligencia')}
+              onAbrirOperaciones={() => { setVistaActual('operaciones'); setErrorRapida(null); }}
+              onAbrirAmigos={() => setVistaActual('amigos')}
+            />
           </div>
         )}
 
