@@ -57,5 +57,26 @@ export const gameApi = {
 
     getPartida: async (partidaId: number | string) => {
         return fetchApi(`/v1/partidas/${partidaId}/estado`);
+    },
+
+    getTecnologias: async (partidaId: number | string) => {
+        return fetchApi(`/v1/partidas/${partidaId}/tecnologia`);
+    },
+
+    trabajarTerritorio: async (partidaId: number | string, territorioId: string) => {
+        const url = `/v1/partidas/${partidaId}/territorios/${territorioId}/trabajar`;
+        console.log('[gameApi.trabajarTerritorio] Llamando a:', url);
+        return fetchApi(url, {
+            method: 'POST'
+        });
+    },
+
+    investigarTecnologia: async (partidaId: number | string, territorioId: string, tecnologiaId: string) => {
+        return fetchApi(`/v1/partidas/${partidaId}/territorios/${territorioId}/investigar`, {
+            method: 'POST',
+            body: JSON.stringify({
+                tecnologia_id: tecnologiaId
+            })
+        });
     }
 };

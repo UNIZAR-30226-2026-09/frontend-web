@@ -1,0 +1,32 @@
+.btn-arbol-tecnologico {
+  position: absolute;
+  bottom: 140px; /* Sobre btn-toggle-mapa (que esta en bottom 30 + alto 100) */
+  left: 30px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--color-ui-bg-primary);
+  border: 2px solid var(--color-border-bronze);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+.btn-arbol-tecnologico:hover {
+  background-color: var(--color-ui-bg-secondary);
+  border-color: var(--color-border-gold);
+  transform: scale(1.05);
+}
+
+.btn-arbol-tecnologico:active {
+  transform: scale(0.95);
+}
+
+.btn-arbol-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}

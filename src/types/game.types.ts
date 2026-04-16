@@ -6,7 +6,8 @@ import { GrafoSoberania } from './mapa.types';
 export type FaseJuego =
     | 'REFUERZO'
     | 'ATAQUE_CONVENCIONAL'
-    | 'FORTIFICACION';
+    | 'FORTIFICACION'
+    | 'GESTION';
 
 export type ModoVista = 'COMARCAS' | 'REGIONES';
 
@@ -80,6 +81,14 @@ export interface EstadoJuego {
     regionHover: string | null;
 
     movimientoRealizadoEnTurno: boolean;
+
+    // Árbol Tecnológico y Gestión
+    isArbolTecnologicoOpen: boolean;
+    tecnologiasDesbloqueadas: string[];
+    territorioTrabajando: string | null;
+    territorioInvestigando: string | null;
+    /** ID del territorio que abrió el árbol para investigar (antes de limpiar selección) */
+    territorioInvestigandoPendiente: string | null;
 
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.
@@ -238,4 +247,27 @@ export interface EstadoJuego {
      * Define el estado local de la partida (victoria, derrota, espectador).
      */
     setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO') => void;
+
+    /**
+     * Alterna la visibilidad del panel del árbol tecnológico.
+     */
+    toggleArbolTecnologico: () => void;
+
+    /**
+     * Establece el listado de tecnologías desbloqueadas.
+     */
+    setTecnologiasDesbloqueadas: (techs: string[]) => void;
+
+    /**
+     * Llama al backend para investigar una nueva tecnología en el territorio actual.
+     * @param {string} tecnologiaId 
+     * @param {string} territorioId 
+     */
+    investigarBackend: (tecnologiaId: string, territorioId: string) => Promise<void>;
+
+    /**
+     * Llama al backend para poner un territorio a trabajar y generar dinero.
+     * @param {string} territorioId 
+     */
+    trabajarBackend: (territorioId: string) => Promise<void>;
 }

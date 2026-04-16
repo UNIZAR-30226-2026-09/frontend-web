@@ -5,7 +5,7 @@ import React from 'react';
  * @param {Object} props
  * @returns {JSX.Element} El SVG group con la ficha.
  */
-const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, strokeFondo }) => {
+const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, strokeFondo, isTrabajando, isInvestigando }) => {
     // Calcular escala inversa para mantener la legibilidad al hacer zoom
     const escalaInversa = Math.max(0.4, 1 / (zoomScale * 0.75));
 
@@ -95,6 +95,9 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
             >
                 {tropas}
             </text>
+
+            {isTrabajando && <text x={cx + 12} y={cy - 10} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">⚒️</text>}
+            {isInvestigando && <text x={cx + 12} y={cy + 8} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">🎓</text>}
         </g>
     );
 };

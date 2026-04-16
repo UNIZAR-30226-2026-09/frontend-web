@@ -81,6 +81,11 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
                 }
             }
 
+            // En GESTION todos los territorios propios están activos e interactuables
+            if (esMio && esMiTurnoLocal && faseActual === 'GESTION') {
+                return { color: colorBase, opacidad: 1, isVivoState: true };
+            }
+
             return { color: colorApagado, opacidad: 1, isVivoState: false };
         }
 

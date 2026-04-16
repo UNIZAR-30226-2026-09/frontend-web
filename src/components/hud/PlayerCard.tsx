@@ -10,6 +10,7 @@ interface PlayerCardProps {
     isTurnoActual: boolean;
     isLocal: boolean;
     isDisconnected?: boolean;
+    dinero?: number;
 }
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({
@@ -20,7 +21,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     tropas,
     isTurnoActual,
     isLocal,
-    isDisconnected
+    isDisconnected,
+    dinero
 }) => {
     return (
         <div 
@@ -43,6 +45,12 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                     <span className="stat-icon">⚔️</span>
                     <span className="stat-value">{tropas}</span>
                 </div>
+                {isLocal && dinero !== undefined && (
+                    <div className="stat" title="Dinero Privado">
+                        <span className="stat-icon" style={{filter: 'grayscale(0)'}}>🪙</span>
+                        <span className="stat-value" style={{color: '#F6E05E'}}>{dinero}</span>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -139,6 +139,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     tropasAAsignar: 0,
     mostrarAnimacionRefuerzos: false,
     refuerzosRecibidos: 0,
+    isArbolTecnologicoOpen: false,
+    tecnologiasDesbloqueadas: [],
+    territorioTrabajando: null,
+    territorioInvestigando: null,
+    territorioInvestigandoPendiente: null,
     isSocketConnected: false,
 
     preparandoAtaque: false,
@@ -242,6 +247,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             jugadores: payload.jugadores
                 ? Object.keys(payload.jugadores)
                 : state.jugadores,
+            dinero: typeof payload.dinero === 'number' ? payload.dinero : (payload.recursos?.dinero ?? state.dinero),
+            tecnologiasDesbloqueadas: payload.tecnologias_desbloqueadas ?? state.tecnologiasDesbloqueadas,
+            territorioTrabajando: payload.territorio_trabajando ?? state.territorioTrabajando,
+            territorioInvestigando: payload.territorio_investigando ?? state.territorioInvestigando,
         }));
     },
 
@@ -261,6 +270,46 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             preparandoFortificacion: false,
             comarcaRefuerzo: null,
         })),
+
+    toggleArbolTecnologico: () =>
+        set((state) => ({
+            isArbolTecnologicoOpen: !state.isArbolTecnologicoOpen,
+        })),
+
+    setTecnologiasDesbloqueadas: (techs: string[]) =>
+        set({ tecnologiasDesbloqueadas: techs }),
+
+    investigarBackend: async (tecnologiaId: string, territorioId?: string) => {
+        const estado = get();
+        if (!estado.salaActiva?.id) return;
+        // Usar el territorio pasado directamente, o el que se guardó al abrir el árbol
+        const territorio = territorioId || estado.territorioInvestigandoPendiente;
+        if (!territorio) {
+            console.warn('[investigarBackend] No hay territorio asignado para investigar.');
+            return;
+        }
+        try {
+            await gameApi.investigarTecnologia(estado.salaActiva.id, territorio, tecnologiaId);
+            set({ territorioInvestigando: territorio, territorioInvestigandoPendiente: null });
+            await get().sincronizarEstadoPartida();
+        } catch (error) {
+            console.error('[investigarBackend] Error al investigar tecnología:', error);
+            alert("No se pudo investigar. Asegúrate de ser tu turno.");
+        }
+    },
+
+    trabajarBackend: async (territorioId: string) => {
+        const estado = get();
+        if (!estado.salaActiva?.id) return;
+        try {
+            await gameApi.trabajarTerritorio(estado.salaActiva.id, territorioId);
+            set({ territorioTrabajando: territorioId });
+            await get().sincronizarEstadoPartida();
+        } catch (error) {
+            console.error('[trabajarBackend] Error al ordenar trabajo:', error);
+            alert("El territorio no puede trabajar en este momento.");
+        }
+    },
 
     setRegionHover: (regionId: string | null) => set({ regionHover: regionId }),
 
@@ -388,6 +437,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         try {
             await gameApi.pasarFase(estado.salaActiva.id);
             await get().sincronizarEstadoPartida();
+            socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_PHASE@@' });
         } catch (error) {
             console.error('[pasarFaseBackend] Error:', error);
         }
@@ -468,7 +518,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
      * @param {string} comarcaId - Identificador de la comarca pulsada.
      * @param {{x: number, y: number}} [coords] - Posición en la pantalla.
      */
-    manejarClickComarca: (comarcaId: string, coords?: {x: number, y: number}) => {
+    manejarClickComarca: (comarcaId: string, coords?: { x: number, y: number }) => {
         const estado = get();
 
         if (estado.estadoPartidaLocal === 'ESPECTANDO') {
@@ -616,6 +666,21 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         comarcasResaltadas: [],
                         popupCoords: null,
                     });
+                }
+                break;
+            }
+
+            case 'GESTION': {
+                // Solo permitimos seleccionar territorios propios
+                if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
+                    // Toggle selección
+                    if (estado.origenSeleccionado === comarcaId) {
+                        set({ origenSeleccionado: null, popupCoords: null });
+                    } else {
+                        set({ origenSeleccionado: comarcaId, popupCoords: coords || null });
+                    }
+                } else {
+                    set({ origenSeleccionado: null, popupCoords: null });
                 }
                 break;
             }
@@ -779,6 +844,17 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
+            case 'CHAT': {
+                const msj = mensaje.mensaje ?? mensaje.data?.mensaje ?? '';
+                if (msj === '@@SYS_SYNC_PHASE@@') {
+                    const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
+                    if (emisor !== get().jugadorLocal) {
+                        get().sincronizarEstadoPartida();
+                    }
+                }
+                break;
+            }
+
             case 'FASE_CAMBIADA':
             case 'CAMBIO_FASE': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
@@ -791,10 +867,18 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     const jugadorActivo = jugadorRaw || state.turnoActual;
                     const esRefuerzo = nuevaFase === 'REFUERZO';
                     const esMiTurno = jugadorActivo === state.jugadorLocal;
+                    
+                    // Si cambia de jugador reseteamos marcadores de gestion
+                    const cambioTurno = jugadorActivo !== state.turnoActual;
 
                     return {
                         faseActual: nuevaFase,
                         turnoActual: jugadorActivo,
+
+                        ...(cambioTurno && {
+                            territorioTrabajando: null,
+                            territorioInvestigando: null
+                        }),
 
                         // Sincronización de tropas disponibles: ahora se actualiza para todos
                         // para que el rival vea cuántas tropas tiene el activo.
@@ -1012,7 +1096,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     // Fallo silencioso
                 }
             }
-            
+
             configMaxPlayers = configMaxPlayers || 4;
 
             if (!realPartidaId) {
