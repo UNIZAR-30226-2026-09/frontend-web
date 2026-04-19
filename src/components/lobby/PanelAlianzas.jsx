@@ -12,22 +12,23 @@ const PanelAlianzas = ({ onCerrar }) => {
     const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
 
     useEffect(() => {
-        const cargarAmigos = async () => {
-            try {
-                const data = await socialApi.obtenerAmigos();
-                if (data && data.length > 0) {
-                    setAmigos(data.map(a => ({ ...a, estado: a.estado || 'ONLINE' })));
-                } else {
+        if (tabActiva === 'lista') {
+            const cargarAmigos = async () => {
+                try {
+                    const data = await socialApi.obtenerAmigos();
+                    if (data && data.length > 0) {
+                        setAmigos(data.map(a => ({ ...a, estado: a.estado || 'ONLINE' })));
+                    } else {
+                        setAmigos([]);
+                    }
+                } catch (error) {
+                    console.error("Error al cargar amigos (activando simulación):", error);
                     setAmigos([]);
                 }
-            } catch (error) {
-                console.error("Error al cargar amigos (activando simulación):", error);
-                setAmigos([]);
-            }
-        };
-
-        cargarAmigos();
-    }, []);
+            };
+            cargarAmigos();
+        }
+    }, [tabActiva]);
 
     // Cargar solicitudes solo cuando se abre su pestaña
     useEffect(() => {
@@ -122,14 +123,22 @@ const PanelAlianzas = ({ onCerrar }) => {
                 <div className="alianzas-lista">
                     {tabActiva === 'lista' && amigos.map((amigo, idx) => {
                         const config = getEstadoConfig(amigo.estado);
+                        const userDataStr = localStorage.getItem('soberania_user');
+                        const miUsuario = userDataStr ? (JSON.parse(userDataStr).nombre_usuario || '').trim().toLowerCase() : '';
+                        let nombreAmigo = amigo.username;
+                        if (!nombreAmigo) {
+                            const u1 = (amigo.user_1 || '').trim().toLowerCase();
+                            nombreAmigo = (u1 === miUsuario) ? amigo.user_2 : amigo.user_1;
+                        }
+                        nombreAmigo = nombreAmigo || 'Desconocido';
                         return (
                             <div key={idx} className={`alianzas-card ${config.claseCard}`}>
                                 <div className="alianzas-info">
                                     <div className="alianzas-avatar">
-                                        {amigo.username.charAt(0).toUpperCase()}
+                                        {nombreAmigo.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="alianzas-detalles">
-                                        <span className="alianzas-nombre">{amigo.username}</span>
+                                        <span className="alianzas-nombre">{nombreAmigo}</span>
                                         <span className="alianzas-estado">
                                             <span className={`estado-dot ${config.claseDot}`}></span>
                                             {config.texto}
