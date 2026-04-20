@@ -9,11 +9,10 @@ import { EstadisticasJugador, Amigo } from '../types/social.types';
 export const socialApi = {
     /**
      * Obtiene las estadísticas históricas de un jugador.
-     * @param {number} userId - Identificador numérico del jugador.
      * @returns {Promise<EstadisticasJugador>} JSON con las estadísticas calculadas.
      */
-    obtenerEstadisticas: async (userId: number): Promise<EstadisticasJugador> => {
-        return await fetchApi(`/v1/usuarios/${userId}/estadisticas`, {
+    obtenerEstadisticas: async (): Promise<EstadisticasJugador> => {
+        return await fetchApi(`/v1/estadisticas/me`, {
             method: 'GET',
         });
     },
