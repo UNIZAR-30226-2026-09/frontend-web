@@ -96,8 +96,8 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
                 {tropas}
             </text>
 
-            {isTrabajando && <text x={cx + 12} y={cy - 10} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">⚒️</text>}
-            {isInvestigando && <text x={cx + 12} y={cy + 8} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">🎓</text>}
+            {isTrabajando && <text x={cx + 12} y={cy - 10} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">⚙️</text>}
+            {isInvestigando && <text x={cx + 12} y={cy + 8} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">🔬</text>}
         </g>
     );
 };

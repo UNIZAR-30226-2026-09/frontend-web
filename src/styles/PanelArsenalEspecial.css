@@ -1,0 +1,314 @@
+/* ============================================================
+   PANEL ARSENAL — Barra lateral izquierda de ataques especiales
+   ============================================================ */
+
+.panel-arsenal-lateral {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(26, 26, 36, 0.97) 0%,
+    rgba(37, 37, 48, 0.99) 100%
+  );
+  border: 1px solid var(--color-border-gold);
+  border-left: none;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 0.6rem 0.5rem;
+  box-shadow:
+    4px 0 24px rgba(0, 0, 0, 0.7),
+    inset 0 0 20px rgba(197, 160, 89, 0.04);
+  min-width: 54px;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+/* ─── CABECERA DEL PANEL ─── */
+.arsenal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--color-border-bronze);
+  width: 100%;
+}
+
+.arsenal-titulo-icono {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.arsenal-titulo-texto {
+  font-size: 0.52rem;
+  color: var(--color-border-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-family-title, 'Cinzel', serif);
+}
+
+/* ─── BANNER MODO OBJETIVO ─── */
+.arsenal-modo-objetivo-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(229, 62, 62, 0.15);
+  border: 1px solid rgba(229, 62, 62, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  margin-bottom: 0.5rem;
+  font-size: 0.58rem;
+  color: #FC8181;
+  text-align: center;
+  animation: pulso-rojo 1.2s infinite alternate;
+}
+
+@keyframes pulso-rojo {
+  from { border-color: rgba(229, 62, 62, 0.3); box-shadow: none; }
+  to   { border-color: rgba(229, 62, 62, 0.9); box-shadow: 0 0 8px rgba(229, 62, 62, 0.35); }
+}
+
+.btn-arsenal-cancelar-pequeño {
+  background: rgba(229, 62, 62, 0.3);
+  border: 1px solid rgba(229, 62, 62, 0.6);
+  color: #FC8181;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s;
+}
+.btn-arsenal-cancelar-pequeño:hover {
+  background: rgba(229, 62, 62, 0.6);
+}
+
+/* ─── LISTA DE HABILIDADES ─── */
+.arsenal-lista {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.arsenal-lista::-webkit-scrollbar { display: none; }
+
+/* ─── WRAPPER DE CADA ÍTEM (posición relativa para el popover) ─── */
+.arsenal-item-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.arsenal-item-wrapper.arsenal-item-activo .btn-arsenal-icono {
+  border-color: #FC8181;
+  box-shadow: 0 0 10px rgba(229, 62, 62, 0.6);
+  animation: pulso-activo 0.8s infinite alternate;
+}
+
+@keyframes pulso-activo {
+  from { box-shadow: 0 0 6px rgba(229, 62, 62, 0.4); }
+  to   { box-shadow: 0 0 14px rgba(229, 62, 62, 0.8); }
+}
+
+/* ─── BOTÓN ICONO ─── */
+.btn-arsenal-icono {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--color-ui-bg-secondary);
+  border: 1.5px solid var(--color-border-bronze);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  position: relative;
+}
+
+.btn-arsenal-icono:hover:not(:disabled) {
+  border-color: var(--color-border-gold);
+  background: color-mix(in srgb, var(--color-ui-bg-secondary) 80%, #c5a059 20%);
+  transform: translateX(3px);
+  box-shadow: 2px 0 10px rgba(197, 160, 89, 0.3);
+}
+
+.btn-arsenal-icono.sin-fondos {
+  opacity: 0.45;
+  filter: grayscale(60%);
+}
+
+.btn-arsenal-icono.sin-fondos:hover {
+  transform: none;
+  border-color: var(--color-border-bronze);
+  box-shadow: none;
+}
+
+.arsenal-emoji {
+  font-size: 1.3rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ─── POPOVER ─── */
+.arsenal-popover {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 230px;
+  background: var(--color-ui-bg-secondary);
+  border: 1.5px solid var(--color-border-gold);
+  border-radius: var(--radius-md);
+  padding: 1rem 0.9rem;
+  box-shadow:
+    6px 6px 24px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(197, 160, 89, 0.1);
+  z-index: 2000;
+  animation: fadeSlideIn 0.15s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(-6px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* Flecha del popover hacia la izquierda */
+.arsenal-popover::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 7px solid var(--color-border-gold);
+}
+
+.arsenal-popover::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid var(--color-ui-bg-secondary);
+}
+
+.arsenal-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--color-border-bronze);
+}
+
+.arsenal-popover-icono {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.arsenal-popover-nombre {
+  color: var(--color-border-gold-vivo);
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  font-family: var(--font-family-title, 'Cinzel', serif);
+  line-height: 1.2;
+}
+
+.arsenal-popover-desc {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-bottom: 0.6rem;
+  line-height: 1.4;
+}
+
+.arsenal-popover-precio {
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  margin-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.arsenal-popover-precio strong {
+  color: #F6E05E;
+  font-size: 1rem;
+}
+
+.arsenal-fondos-insuf {
+  color: #FC8181;
+  font-size: 0.72rem;
+  font-style: italic;
+}
+
+.arsenal-popover-botones {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn-arsenal-comprar {
+  flex: 1;
+  background: linear-gradient(135deg, #c53030 0%, #9b2c2c 100%);
+  color: white;
+  border: 1px solid #FC8181;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.78rem;
+  transition: all 0.2s;
+  font-family: var(--font-family-base);
+}
+
+.btn-arsenal-comprar:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-arsenal-comprar:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-arsenal-cerrar-pop {
+  background: var(--color-ui-bg-primary);
+  border: 1px solid var(--color-border-bronze);
+  color: var(--color-text-secondary);
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+}
+
+.btn-arsenal-cerrar-pop:hover {
+  background: var(--color-ui-bg-secondary);
+  color: var(--color-text-primary);
+}

@@ -7,9 +7,21 @@ export type FaseJuego =
     | 'REFUERZO'
     | 'ATAQUE_CONVENCIONAL'
     | 'FORTIFICACION'
-    | 'GESTION';
+    | 'GESTION'
+    | 'ATAQUE_ESPECIAL';
 
 export type ModoVista = 'COMARCAS' | 'REGIONES';
+
+/**
+ * Catalog entry for a single technology from GET /api/v1/partidas/tecnologias.
+ */
+export interface CatalogoTecnologia {
+    nombre: string;
+    descripcion: string;
+    requisitos: string[];
+    precio: number;
+}
+
 
 /**
  * Interfaz principal que define el almacén global de estado del juego.
@@ -27,7 +39,7 @@ export interface EstadoJuego {
     modoVista: ModoVista;
     estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO';
 
-    dinero: number;
+    monedas: number;
     tropasDisponibles: number | null;
 
     // Control de jugadores
@@ -85,10 +97,19 @@ export interface EstadoJuego {
     // Árbol Tecnológico y Gestión
     isArbolTecnologicoOpen: boolean;
     tecnologiasDesbloqueadas: string[];
+    /** Mapeo de territorio_id -> estado de tarea (trabajando, investigando, etc) global */
+    estadosBloqueo: Record<string, string | null>;
     territorioTrabajando: string | null;
     territorioInvestigando: string | null;
+    ramaInvestigando: string | null;
     /** ID del territorio que abrió el árbol para investigar (antes de limpiar selección) */
     territorioInvestigandoPendiente: string | null;
+
+    // Arsenal / Ataques Especiales
+    /** Catálogo global de tecnologías descargado de /api/v1/partidas/tecnologias */
+    catalogoTecnologias: Record<string, CatalogoTecnologia> | null;
+    /** ID de la habilidad comprada, esperando selección de objetivo en el mapa */
+    preparandoAtaqueEspecial: string | null;
 
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.
@@ -270,4 +291,28 @@ export interface EstadoJuego {
      * @param {string} territorioId 
      */
     trabajarBackend: (territorioId: string) => Promise<void>;
+
+    // ARSENAL — Acciones de Ataques Especiales
+
+    /**
+     * Descarga el catálogo global de tecnologías con nombres, descripciones y precios.
+     */
+    cargarCatalogoTecnologias: () => Promise<void>;
+
+    /**
+     * Compra una habilidad tecnológica y activa el modo de selección de objetivo en el mapa.
+     * @param tecnologiaId - ID de la tecnología a comprar.
+     */
+    comprarYPrepararAtaque: (tecnologiaId: string) => Promise<void>;
+
+    /**
+     * Cancela el modo de selección de objetivo del ataque especial.
+     */
+    cancelarAtaqueEspecial: () => void;
+
+    /**
+     * Ejecuta el ataque especial sobre el territorio destino seleccionado.
+     * @param destinoId - ID del territorio objetivo.
+     */
+    ejecutarAtaqueEspecialBackend: (destinoId: string) => Promise<void>;
 }

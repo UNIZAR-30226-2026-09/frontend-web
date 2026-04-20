@@ -13,7 +13,7 @@ export const PlayerList: React.FC = () => {
         coloresJugadores,
         diccionarioJugadores,
         getEstadisticasJugador,
-        dinero
+        monedas
     } = useGameStore();
 
     // Escuchamos la capa de propietarios y tropas para forzar re-renderizado
@@ -42,7 +42,7 @@ export const PlayerList: React.FC = () => {
                         isTurnoActual={String(jugadorId) === String(turnoActual)}
                         isLocal={String(jugadorId) === String(jugadorLocal) || (miUsername && String(nombre).toLowerCase() === String(miUsername).toLowerCase())}
                         isDisconnected={info?.esta_desconectado}
-                        dinero={String(jugadorId) === String(jugadorLocal) ? dinero : undefined}
+                        monedas={String(jugadorId) === String(jugadorLocal) ? monedas : undefined}
                     />
                 );
             })}

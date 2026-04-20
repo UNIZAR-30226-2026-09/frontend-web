@@ -26,11 +26,22 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const turnoActual          = useGameStore((state) => state.turnoActual);
     const cantidadTropas       = useGameStore((state) => state.tropas[id] || 0);
     const tropasDisponibles    = useGameStore((state) => state.tropasDisponibles);
+    const estadosBloqueo       = useGameStore((state) => state.estadosBloqueo) || {};
+
+    const comarcaOcupada = !!estadosBloqueo[id];
+    const isRestriccionFase = faseActual === 'REFUERZO' || faseActual === 'FORTIFICACION';
+    const territorioBloqueadoVisual = comarcaOcupada && isRestriccionFase;
 
     const isOrigin      = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
     const isHighlighted = comarcasResaltadas.includes(id);
     const isSelected    = isOrigin || isDestination || isHighlighted;
+
+    // Helper para comparar jugadores ignorando mayúsculas
+    const esMismoJugador = (j1, j2) => {
+        if (!j1 || !j2) return false;
+        return String(j1).toLowerCase() === String(j2).toLowerCase();
+    };
 
     /**
      * Evalúa el color de relleno y la opacidad según el contexto actual.
@@ -41,6 +52,11 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         const propietarioId = propietarios[id];
         const colorBase = propietarioId && coloresJugadores[propietarioId] ? coloresJugadores[propietarioId] : null;
         const colorApagado = colorBase ? colorBase.replace(')', '-apagado)') : 'var(--color-ui-bg-secondary)';
+
+        // 0. Si el territorio está bloqueado visualmente por una tarea activa
+        if (territorioBloqueadoVisual) {
+            return { color: colorApagado, opacidad: 0.5, isVivoState: false };
+        }
 
         // 1. Interacciones tácticas tienen prioridad absoluta
         if (isDestination) {
@@ -53,7 +69,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
 
         // 2. Modo de visualización por regiones
         if (modoVista === 'REGIONES' && regionId) {
-            const esDelJugador = String(propietarios[id]) === String(jugadorLocal);
+            const esDelJugador = esMismoJugador(propietarios[id], jugadorLocal);
             const color        = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
             const opacidad     = 1;
@@ -62,21 +78,21 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
 
         // 3. Color del jugador propietario
         if (colorBase) {
-            const esMio = String(propietarioId) === String(jugadorLocal);
-            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
+            const esMio = esMismoJugador(propietarioId, jugadorLocal);
+            const esMiTurnoLocal = esMismoJugador(turnoActual, jugadorLocal);
 
             if (esMio && esMiTurnoLocal && faseActual === 'REFUERZO' && tropasDisponibles > 0) {
                 return { color: colorBase, opacidad: 1, isVivoState: true };
             }
 
             if (esMio && esMiTurnoLocal && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
-                if (adyacentes && adyacentes.some(adj => propietarios[adj] !== jugadorLocal)) {
+                if (adyacentes && adyacentes.some(adj => !esMismoJugador(propietarios[adj], jugadorLocal))) {
                     return { color: colorBase, opacidad: 1, isVivoState: true };
                 }
             }
 
             if (esMio && esMiTurnoLocal && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
-                if (adyacentes && adyacentes.some(adj => propietarios[adj] === jugadorLocal)) {
+                if (adyacentes && adyacentes.some(adj => esMismoJugador(propietarios[adj], jugadorLocal))) {
                     return { color: colorBase, opacidad: 1, isVivoState: true };
                 }
             }
@@ -98,7 +114,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     let strokeColor = 'var(--color-border-gold)'; // Base golden border
     let strokeWidthSize = 1.5;
 
-    const esMiTurnoLocalGlobal = String(turnoActual) === String(jugadorLocal);
+    const esMiTurnoLocalGlobal = esMismoJugador(turnoActual, jugadorLocal);
 
     if (modoVista === 'REGIONES') {
         if (regionId) {
@@ -126,7 +142,14 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     }
 
     let cursorStyle = 'pointer';
-    if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
+    let pointerEvents = 'auto';
+    let filterStyle = 'none';
+
+    if (territorioBloqueadoVisual) {
+        cursorStyle = 'not-allowed';
+        pointerEvents = 'none'; // Bloqueo físico de interacciones del navegador
+        filterStyle = 'grayscale(1)'; // Feedback visual de inactividad total
+    } else if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
         cursorStyle = 'default';
     }
 
@@ -166,6 +189,12 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
             fillOpacity={fillOpacity}
             stroke={strokeColor}
             strokeWidth={strokeWidthSize}
+            style={{ 
+                cursor: cursorStyle, 
+                pointerEvents: pointerEvents,
+                filter: filterStyle,
+                transition: 'fill 0.3s, stroke 0.3s, filter 0.3s'
+            }}
             clipPath={`url(#clip-comarca-${id})`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -179,10 +208,6 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
                     y: orientacionArriba ? rect.top - 10 : rect.bottom + 10,
                     orientacionArriba
                 });
-            }}
-            style={{
-                cursor: cursorStyle,
-                transition: 'fill 0.25s ease-in-out, fill-opacity 0.25s ease-in-out'
             }}
         />
     );

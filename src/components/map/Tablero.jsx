@@ -11,6 +11,7 @@ import PanelArbolTecnologico from '../ui/PanelArbolTecnologico';
 import ControlRefuerzo from '../hud/ControlRefuerzo';
 import ControlGestion from '../hud/ControlGestion';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
+import PanelArsenalEspecial from '../ui/PanelArsenalEspecial';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 import '../../styles/Tablero.css';
 
@@ -97,6 +98,8 @@ const Tablero = (props) => {
 
   const territorioTrabajando = useGameStore((state) => state.territorioTrabajando);
   const territorioInvestigando = useGameStore((state) => state.territorioInvestigando);
+  const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+  const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
   useEffect(() => {
@@ -305,7 +308,7 @@ const Tablero = (props) => {
         preserveAspectRatio="xMidYMid meet"
         {...props}
         onClick={handleFondoClick}
-        style={{ width: '100%', height: '100%', cursor: 'grab' }}
+        style={{ width: '100%', height: '100%', cursor: preparandoAtaqueEspecial ? 'crosshair' : 'grab' }}
       >
         <g ref={gRef}>
           <rect
@@ -496,6 +499,9 @@ const Tablero = (props) => {
                   const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
                   if (hasAlliedAdjacent) isVivoState = true;
                 }
+                if (esMio && (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL')) isVivoState = true;
+                // En modo ataque especial, los territorios ENEMIGOS son objetivos válidos
+                if (preparandoAtaqueEspecial && !esMio && propietarioId) isVivoState = true;
               }
             }
 
@@ -626,8 +632,10 @@ const Tablero = (props) => {
                   const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
                   if (hasAlliedAdjacent) isVivoState = true;
                 }
-                // En GESTION todos los territorios propios son interactuables
-                if (esMio && faseActual === 'GESTION') isVivoState = true;
+                // En GESTION y ATAQUE_ESPECIAL todos los territorios propios son interactuables
+                if (esMio && (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL')) isVivoState = true;
+                // En modo ataque especial, los territorios ENEMIGOS son objetivos
+                if (preparandoAtaqueEspecial && !esMio && dueño) isVivoState = true;
 
               }
             }
@@ -657,8 +665,8 @@ const Tablero = (props) => {
                 zoomScale={zoomScale}
                 colorFondo={colorActual}
                 strokeFondo={strokeFicha}
-                isTrabajando={comarca.id === territorioTrabajando}
-                isInvestigando={comarca.id === territorioInvestigando}
+                isTrabajando={estadosBloqueo[comarca.id] === 'trabajando'}
+                isInvestigando={estadosBloqueo[comarca.id] && estadosBloqueo[comarca.id].startsWith('investigando')}
               />
             );
           })}
@@ -672,6 +680,7 @@ const Tablero = (props) => {
       <PanelArbolTecnologico />
       <ControlRefuerzo />
       <ControlGestion />
+      <PanelArsenalEspecial />
       <AnimacionRefuerzos />
     </div>
   );

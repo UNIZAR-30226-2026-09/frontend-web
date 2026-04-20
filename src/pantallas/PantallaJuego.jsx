@@ -18,6 +18,7 @@ import GameOverModal from '../components/hud/GameOverModal';
 const PantallaJuego = () => {
     const { id } = useParams();
     const sincronizarEstadoPartida = useGameStore((state) => state.sincronizarEstadoPartida);
+    const cargarCatalogoTecnologias = useGameStore((state) => state.cargarCatalogoTecnologias);
     const salaId = useGameStore((state) => state.salaActiva?.id);
     const user = useAuthStore((state) => state.user);
 
@@ -31,6 +32,9 @@ const PantallaJuego = () => {
                 console.log(`[PantallaJuego] Detectada recarga en partida ${id}. Recuperando estado...`);
                 await sincronizarEstadoPartida(id);
             }
+
+            // Cargar catálogo de tecnologías para el Panel Arsenal
+            cargarCatalogoTecnologias();
 
             // Una vez sincronizado (o si ya lo estaba), conectamos el WebSocket
             const currentSalaId = useGameStore.getState().salaActiva?.id;
@@ -46,7 +50,7 @@ const PantallaJuego = () => {
             // las reconexiones automáticamente incluso tras un desmontaje/montaje accidental (StrictMode, re-renders).
             // socketService.disconnect();
         };
-    }, [id, salaId, user, sincronizarEstadoPartida]); 
+    }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias]); 
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>

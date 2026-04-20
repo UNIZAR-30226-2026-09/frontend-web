@@ -15,7 +15,9 @@ const formatearFase = (fase) => {
   const fasesMap = {
     'REFUERZO': 'Fase de Refuerzo',
     'ATAQUE_CONVENCIONAL': 'Fase de Ataque',
-    'FORTIFICACION': 'Fase de Fortificación'
+    'FORTIFICACION': 'Fase de Fortificación',
+    'GESTION': 'Fase de Gestión',
+    'ATAQUE_ESPECIAL': 'Ataque Especial'
   };
   return fasesMap[fase] || fase;
 };
@@ -29,7 +31,7 @@ const formatearFase = (fase) => {
  */
 const CabeceraJuego = () => {
   const {
-    dinero,
+    monedas,
     tropasDisponibles,
     faseActual,
     pasarFaseBackend,
@@ -56,7 +58,7 @@ const CabeceraJuego = () => {
 
   const { esMiTurno } = useTurno();
   const isFaseRefuerzo = faseActual === 'REFUERZO';
-  const isUltimaFase = faseActual === 'FORTIFICACION';
+  const isUltimaFase = faseActual === 'ATAQUE_ESPECIAL';
 
   // Bloqueamos el paso de turno si todavía tiene tropas sin colocar o si no es su turno
   const isSiguienteBloqueado = !esMiTurno || (isFaseRefuerzo && (tropasDisponibles ?? 0) > 0);
@@ -154,7 +156,7 @@ const CabeceraJuego = () => {
                 {textoSiguiente}
               </button>
             ) : (
-              <span style={{color: 'var(--color-ui-bg-primary)', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', textShadow: 'none', backgroundColor: turnPlayerColor, padding: '4px 12px', borderRadius: '4px'}}>
+              <span style={{ color: 'var(--color-ui-bg-primary)', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', textShadow: 'none', backgroundColor: turnPlayerColor, padding: '4px 12px', borderRadius: '4px' }}>
                 Turno de: {turnoActual}
               </span>
             )}
