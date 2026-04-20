@@ -55,6 +55,9 @@ const PanelAlianzas = ({ onCerrar }) => {
             // Si sale bien, quitamos la solicitud de la lista visualmente
             setSolicitudes(prev => prev.filter(sol => sol.id !== solicitudId));
             alert(`Solicitud ${accion.toLowerCase()} con éxito.`);
+            if (accion === 'ACEPTADA') {
+                setTabActiva('lista');
+            }
         } catch (error) {
             console.error("Fallo al procesar alianza:", error);
             alert(`Error del cuartel general (Backend): ${error.message || 'Error desconocido'}`);
@@ -122,7 +125,9 @@ const PanelAlianzas = ({ onCerrar }) => {
 
                 <div className="alianzas-lista">
                     {tabActiva === 'lista' && amigos.map((amigo, idx) => {
-                        const config = getEstadoConfig(amigo.estado);
+                        // const config = getEstadoConfig(amigo.estado);
+                        const estadoUI = (amigo.estado === 'ACEPTADA') ? 'ONLINE' : (amigo.estado || 'ONLINE');
+                        const config = getEstadoConfig(estadoUI);
                         const userDataStr = localStorage.getItem('soberania_user');
                         const miUsuario = userDataStr ? (JSON.parse(userDataStr).nombre_usuario || '').trim().toLowerCase() : '';
                         let nombreAmigo = amigo.username;

@@ -43,22 +43,20 @@ const PanelInteligencia = ({ onCerrar }) => {
 
   // Cargar estadísticas al abrir el panel
   useEffect(() => {
-    const cargarStats = async () => {
-      if (!user?.id) {
-        setIsLoadingStats(false);
-        return;
-      }
+    const cargarEstadisticas = async () => {
+      setIsLoadingStats(true);
       try {
-        setIsLoadingStats(true);
-        const data = await socialApi.obtenerEstadisticas(user.id);
+        const data = await socialApi.obtenerEstadisticas();
         setEstadisticas(data);
       } catch (error) {
-        console.error('Error al obtener estadísticas:', error);
+        console.error("Error al obtener las estadísticas:", error);
+        setEstadisticas(null);
       } finally {
         setIsLoadingStats(false);
       }
     };
-    cargarStats();
+
+    cargarEstadisticas();
   }, [user]);
 
 
