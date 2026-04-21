@@ -33,21 +33,30 @@ const normalizarFase = (faseBackend: string): FaseJuego =>
  */
 const parsearMapa = (
     mapa: Record<string, any>
-): { 
-    tropas: Record<string, number>; 
+): {
+    tropas: Record<string, number>;
     propietarios: Record<string, string>;
     estadosBloqueo: Record<string, string | null>;
+    estadosAlterados: Record<string, string[]>;
 } => {
     const tropas: Record<string, number> = {};
     const propietarios: Record<string, string> = {};
     const estadosBloqueo: Record<string, string | null> = {};
+    const estadosAlterados: Record<string, string[]> = {};
 
     for (const [id, t] of Object.entries(mapa)) {
         tropas[id] = t.units;
         propietarios[id] = t.owner_id;
         estadosBloqueo[id] = t.estado_bloqueo || null;
+
+        // El backend manda un array de objetos en "efectos". Extraemos solo el "tipo_efecto".
+        if (t.efectos && Array.isArray(t.efectos)) {
+            estadosAlterados[id] = t.efectos.map((e: any) => e.tipo_efecto);
+        } else {
+            estadosAlterados[id] = [];
+        }
     }
-    return { tropas, propietarios, estadosBloqueo };
+    return { tropas, propietarios, estadosBloqueo, estadosAlterados };
 };
 
 
@@ -147,6 +156,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     estadoPartidaLocal: 'JUGANDO',
     monedas: 0,
     estadosBloqueo: {},
+    estadosAlterados: {},
     tropasDisponibles: null,
     movimientoRealizadoEnTurno: false,
 
@@ -260,10 +270,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             ? parsearMapa(payload.mapa)
             : { tropas: get().tropas, propietarios: get().propietarios };
 
-        const { 
-            coloresJugadores, 
-            tropasReservaLocal: _, 
-            tropasReservaActivo, 
+        const {
+            coloresJugadores,
+            tropasReservaLocal: _,
+            tropasReservaActivo,
             jugadorLocalId,
             monedasLocal,
             tecnologiasLocal,
@@ -271,18 +281,18 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             territorioInvestigandoLocal,
             ramaInvestigandoLocal
         } = payload.jugadores
-            ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
-            : {
-                coloresJugadores: get().coloresJugadores,
-                tropasReservaLocal: null,
-                tropasReservaActivo: null,
-                jugadorLocalId: get().jugadorLocal,
-                monedasLocal: null,
-                tecnologiasLocal: null,
-                territorioTrabajandoLocal: null,
-                territorioInvestigandoLocal: null,
-                ramaInvestigandoLocal: null,
-            };
+                ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
+                : {
+                    coloresJugadores: get().coloresJugadores,
+                    tropasReservaLocal: null,
+                    tropasReservaActivo: null,
+                    jugadorLocalId: get().jugadorLocal,
+                    monedasLocal: null,
+                    tecnologiasLocal: null,
+                    territorioTrabajandoLocal: null,
+                    territorioInvestigandoLocal: null,
+                    ramaInvestigandoLocal: null,
+                };
 
         set((state) => ({
             faseActual: payload.fase_actual
@@ -1178,6 +1188,44 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             case 'ACTUALIZACION_MAPA': {
                 const payload = mensaje.data ?? mensaje.payload ?? mensaje;
                 get().setEstadoDinamico(payload);
+                break;
+            }
+
+            case 'ATAQUE_ESPECIAL':
+            case 'ataque_especial': {
+                const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                const afectados = data.resultado?.afectados || [];
+
+                console.log(`Ataque Especial detectado: ${data.tipo} por ${data.atacante}`);
+
+                set((state) => {
+                    const nuevasTropas = { ...state.tropas };
+                    const nuevosEstadosAlterados = { ...state.estadosAlterados };
+
+                    afectados.forEach((afectado: any) => {
+                        const id = afectado.territorio_id;
+                        if (!id) return; // Si es un ataque a jugador (Sanción/Propaganda), lo ignoramos aquí
+
+                        // 1. Impacto directo: Aplicar bajas inmediatas (Misiles, Bombas, Coronavirus inicial)
+                        if (afectado.bajas || afectado.bajas_iniciales) {
+                            const bajas = afectado.bajas || afectado.bajas_iniciales;
+                            nuevasTropas[id] = Math.max(0, (nuevasTropas[id] ?? 0) - bajas);
+                        }
+
+                        // 2. Efecto persistente: Aplicar el icono al instante (Gripe, Inhibidor)
+                        if (afectado.efecto_añadido) {
+                            const actuales = nuevosEstadosAlterados[id] || [];
+                            if (!actuales.includes(afectado.efecto_añadido)) {
+                                nuevosEstadosAlterados[id] = [...actuales, afectado.efecto_añadido];
+                            }
+                        }
+                    });
+
+                    return {
+                        tropas: nuevasTropas,
+                        estadosAlterados: nuevosEstadosAlterados
+                    };
+                });
                 break;
             }
 

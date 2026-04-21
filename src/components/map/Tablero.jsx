@@ -99,6 +99,7 @@ const Tablero = (props) => {
   const territorioTrabajando = useGameStore((state) => state.territorioTrabajando);
   const territorioInvestigando = useGameStore((state) => state.territorioInvestigando);
   const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+  const estadosAlterados = useGameStore((state) => state.estadosAlterados) || {};
   const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
@@ -112,9 +113,9 @@ const Tablero = (props) => {
   useEffect(() => {
     if (mapaEstatico && mapaEstatico.comarcas) {
       const rawData = Object.entries(mapaEstatico.comarcas).map(([id, info]) => ({
-          id,
-          nombre: info.name,
-          adyacentes: info.adjacent_to
+        id,
+        nombre: info.name,
+        adyacentes: info.adjacent_to
       }));
       inicializarJuego(rawData);
     }
@@ -122,10 +123,10 @@ const Tablero = (props) => {
 
   const comarcasCompletas = useMemo(() => {
     if (!mapaEstatico || !mapaEstatico.comarcas) {
-      console.warn('❌ mapaEstatico o comarcas no están disponibles', {mapaEstatico});
+      console.warn('❌ mapaEstatico o comarcas no están disponibles', { mapaEstatico });
       return [];
     }
-    
+
     const resultado = COMARCAS_SVG_DATA.map((svgItem) => {
       const serverInfo = mapaEstatico.comarcas[svgItem.id];
       if (serverInfo) {
@@ -139,12 +140,12 @@ const Tablero = (props) => {
       console.warn(`⚠️ No encontrado en servidor: ${svgItem.id}`);
       return svgItem;
     });
-    
+
     console.log('📍 comarcasCompletas construidas:', resultado.length, 'comarcas con region_id:', resultado.filter(c => c.region_id).length);
     if (resultado.length > 0) {
       console.log('Primer comarca:', resultado[0]);
     }
-    
+
     return resultado;
   }, [mapaEstatico]);
 
@@ -165,14 +166,14 @@ const Tablero = (props) => {
         [50, 300]
       ])
       .on('start', () => {
-         // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups
-         useGameStore.setState({ 
-             comarcaRefuerzo: null, 
-             popupCoords: null,
-             preparandoAtaque: false,
-             destinoSeleccionado: null,
-             preparandoFortificacion: false
-         });
+        // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups
+        useGameStore.setState({
+          comarcaRefuerzo: null,
+          popupCoords: null,
+          preparandoAtaque: false,
+          destinoSeleccionado: null,
+          preparandoFortificacion: false
+        });
       })
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
@@ -188,7 +189,7 @@ const Tablero = (props) => {
   }, [mapaEstatico]);
 
   // --- ZONA DE GUARD CLAUSES ---
-  
+
   // ESTADOS DE CARGA / ERROR QUE BLOQUEAN LA PANTALLA PRINCIPAL
   if (errorMapaEstatico) {
     return (
@@ -344,13 +345,13 @@ const Tablero = (props) => {
 
             // Comprobar si un solo jugador domina TODO el continente
             const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
-            
+
             if (comarcasDelContinente.length > 0 && propietarios) {
               const primerDueño = propietarios[comarcasDelContinente[0].id];
-              
+
               if (primerDueño !== undefined && primerDueño !== null) {
                 const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
-                
+
                 if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
                   isDominado = true;
                 }
@@ -436,14 +437,14 @@ const Tablero = (props) => {
 
             // En modo COMARCAS: Comprobar si un solo jugador domina TODO el continente
             const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
-            
+
             if (comarcasDelContinente.length > 0 && propietarios) {
               const primerDueño = propietarios[comarcasDelContinente[0].id];
-              
+
               // Verificar que el primer dueño existe y todos los territorios pertenecen al mismo jugador
               if (primerDueño !== undefined && primerDueño !== null) {
                 const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
-                
+
                 if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
                   strokeColor = coloresJugadores[primerDueño];
                   strokeWidth = 3.5 * 2;
@@ -572,30 +573,30 @@ const Tablero = (props) => {
           {faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && (
             <g pointerEvents="none">
               {comarcasResaltadas.map(destinoId => {
-                 const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
-                 const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
-                 if (orig && dest) {
-                   return (
-                     <line 
-                       key={`arrow-${origenSeleccionado}-${destinoId}`}
-                       x1={orig.centro[0]} 
-                       y1={orig.centro[1]} 
-                       x2={dest.centro[0]} 
-                       y2={dest.centro[1]} 
-                       stroke="var(--color-border-gold-vivo)" 
-                       strokeWidth="4" 
-                       strokeDasharray="8 6"
-                     >
-                       <animate 
-                         attributeName="stroke-dashoffset" 
-                         values="14;0" 
-                         dur="0.8s" 
-                         repeatCount="indefinite" 
-                       />
-                     </line>
-                   );
-                 }
-                 return null;
+                const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
+                const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
+                if (orig && dest) {
+                  return (
+                    <line
+                      key={`arrow-${origenSeleccionado}-${destinoId}`}
+                      x1={orig.centro[0]}
+                      y1={orig.centro[1]}
+                      x2={dest.centro[0]}
+                      y2={dest.centro[1]}
+                      stroke="var(--color-border-gold-vivo)"
+                      strokeWidth="4"
+                      strokeDasharray="8 6"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        values="14;0"
+                        dur="0.8s"
+                        repeatCount="indefinite"
+                      />
+                    </line>
+                  );
+                }
+                return null;
               })}
             </g>
           )}
@@ -667,6 +668,7 @@ const Tablero = (props) => {
                 strokeFondo={strokeFicha}
                 isTrabajando={estadosBloqueo[comarca.id] === 'trabajando'}
                 isInvestigando={estadosBloqueo[comarca.id] && estadosBloqueo[comarca.id].startsWith('investigando')}
+                estadosAlterados={estadosAlterados[comarca.id] || []}
               />
             );
           })}
@@ -674,7 +676,7 @@ const Tablero = (props) => {
           {etiquetasRegiones}
         </g>
       </svg>
-      
+
       <BotonVistaRegiones />
       <BotonArbolTecnologico />
       <PanelArbolTecnologico />

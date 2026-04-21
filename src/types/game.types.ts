@@ -28,10 +28,10 @@ export interface CatalogoTecnologia {
  */
 export interface EstadoJuego {
     grafoGlobal: GrafoSoberania | null;
-    mapaEstatico: { 
+    mapaEstatico: {
         metadata?: any;
         regions?: Record<string, { name: string; bonus_troops: number; comarcas: string[] }>;
-        comarcas: Record<string, { name: string; region_id: string; adjacent_to: string[] }> 
+        comarcas: Record<string, { name: string; region_id: string; adjacent_to: string[] }>
     } | null;
     errorMapaEstatico: string | null;
 
@@ -99,6 +99,7 @@ export interface EstadoJuego {
     tecnologiasDesbloqueadas: string[];
     /** Mapeo de territorio_id -> estado de tarea (trabajando, investigando, etc) global */
     estadosBloqueo: Record<string, string | null>;
+    estadosAlterados: Record<string, string[]>;
     territorioTrabajando: string | null;
     territorioInvestigando: string | null;
     ramaInvestigando: string | null;
@@ -199,7 +200,7 @@ export interface EstadoJuego {
      * @param {string} comarcaId Clave identificadora del nodo presionado.
      * @param {{x: number, y: number, orientacionArriba?: boolean}} [coords] Coordenadas en pantalla del territorio.
      */
-    manejarClickComarca: (comarcaId: string, coords?: {x: number, y: number, orientacionArriba?: boolean}) => void;
+    manejarClickComarca: (comarcaId: string, coords?: { x: number, y: number, orientacionArriba?: boolean }) => void;
 
     /**
      * Obtiene el total de territorios y tropas de un jugador específico.

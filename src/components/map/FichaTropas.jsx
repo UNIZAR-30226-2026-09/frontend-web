@@ -5,7 +5,7 @@ import React from 'react';
  * @param {Object} props
  * @returns {JSX.Element} El SVG group con la ficha.
  */
-const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, strokeFondo, isTrabajando, isInvestigando }) => {
+const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, strokeFondo, isTrabajando, isInvestigando, estadosAlterados = [] }) => {
     // Calcular escala inversa para mantener la legibilidad al hacer zoom
     const escalaInversa = Math.max(0.4, 1 / (zoomScale * 0.75));
 
@@ -61,6 +61,14 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
     // Establecer el color de la ficha
     const fillColorFondo = colorFondo || 'var(--color-ui-panel-overlay)';
 
+    const iconosEfectos = {
+        'gripe_aviar': '🦠',
+        'coronavirus': '☣️',
+        'fatiga': '🥱',
+        'inhibidor_senal': '📡',
+        'muro': '🧱'
+    };
+
     return (
         <g
             pointerEvents="none"
@@ -98,6 +106,22 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
 
             {isTrabajando && <text x={cx + 12} y={cy - 10} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">⚙️</text>}
             {isInvestigando && <text x={cx + 12} y={cy + 8} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">🔬</text>}
+            {/* Iconos de Estados Alterados/Ataques Especiales (Arriba a la izquierda) */}
+            {estadosAlterados.length > 0 && (
+                <g transform={`translate(${cx - 18}, ${cy - 18})`}>
+                    {estadosAlterados.map((efecto, index) => {
+                        const emoji = iconosEfectos[efecto] || '⚠️';
+                        // Desplazamos ligeramente si hay más de 1 efecto para que no se superpongan
+                        const offsetX = index === 1 ? -12 : index === 2 ? 12 : 0;
+                        const offsetY = index === 2 ? -10 : 0;
+                        return (
+                            <text key={efecto} x={offsetX} y={offsetY} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">
+                                {emoji}
+                            </text>
+                        );
+                    })}
+                </g>
+            )}
         </g>
     );
 };
