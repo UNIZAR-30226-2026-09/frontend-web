@@ -64,15 +64,20 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
     // ya que el estado llega por WebSocket.
     let fillCirculo;
     let strokeCirculo = strokeFondo || 'var(--color-border-gold)';
+    let colorTexto = 'var(--color-text-primary)';
+    let strokeTexto = 'var(--color-ui-bg-primary)';
 
     if (isInvestigando) {
-        // Azul/índigo: investigación en curso
-        fillCirculo = 'var(--color-estado-investigando, #4C51BF)';
-        strokeCirculo = 'var(--color-estado-investigando-borde, #667EEA)';
+        // Investigando: Fondo blanco, texto y borde del color del jugador
+        fillCirculo = 'var(--color-text-primary)';
+        strokeCirculo = colorFondo || 'var(--color-estado-investigando-borde, #667EEA)';
+        colorTexto = colorFondo || 'var(--color-estado-investigando, #4C51BF)';
+        strokeTexto = 'none'; // Mejor legibilidad sobre blanco
     } else if (isTrabajando) {
-        // Dorado/ámbar: generando economía
-        fillCirculo = 'var(--color-estado-trabajando, #B7791F)';
+        // Trabajando: Fondo del color del jugador, texto y borde dorado
+        fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
         strokeCirculo = 'var(--color-estado-trabajando-borde, #F6E05E)';
+        colorTexto = strokeCirculo; // Del mismo color que el borde amarillo
     } else {
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
     }
@@ -110,8 +115,8 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
                 dominantBaseline="central"
                 fontSize="13px"
                 fontWeight="900"
-                fill="var(--color-text-primary)"
-                stroke="var(--color-ui-bg-primary)"
+                fill={colorTexto}
+                stroke={strokeTexto}
                 strokeWidth="0.5"
                 paintOrder="stroke fill"
                 style={{
@@ -121,8 +126,7 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
                 {tropas}
             </text>
 
-            {isTrabajando && <text x={cx + 12} y={cy - 10} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">⚙️</text>}
-            {isInvestigando && <text x={cx + 12} y={cy + 8} fontSize="14px" filter="drop-shadow(0px 2px 2px var(--color-ui-bg-primary))">🔬</text>}
+
             {/* Iconos de Estados Alterados/Ataques Especiales (Arriba a la izquierda) */}
             {estadosAlterados.length > 0 && (
                 <g transform={`translate(${cx - 18}, ${cy - 18})`}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
 import { zoom, zoomIdentity } from 'd3-zoom';
 import { useGameStore } from '../../store/gameStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import ComarcaPath from './ComarcaPath';
 import FichaTropas from './FichaTropas';
@@ -101,6 +102,7 @@ const Tablero = (props) => {
   const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
   const estadosAlterados = useGameStore((state) => state.estadosAlterados) || {};
   const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
+  const mensajeErrorGlobal = useGameStore((state) => state.mensajeErrorGlobal);
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
   useEffect(() => {
@@ -504,11 +506,20 @@ const Tablero = (props) => {
                 // En modo ataque especial, los territorios ENEMIGOS son objetivos válidos
                 if (preparandoAtaqueEspecial && !esMio && propietarioId) isVivoState = true;
               }
+              
+              // Evitar que se ilumine si está bloqueado por una tarea (en cualquier fase)
+              if (estadosBloqueo[comarca.id] && esMio) {
+                isVivoState = false;
+              }
             }
 
             if (modoVista === 'REGIONES') {
               if (!isHovered && !isSelected) return null;
             } else {
+              // Si está bloqueado y es nuestro, ignoramos el hover/selected para no iluminarlo
+              const estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+              if (estaBloqueadoVisualmente) return null;
+              
               if (!isHovered && !isSelected && !isVivoState) return null;
             }
 
@@ -639,13 +650,19 @@ const Tablero = (props) => {
                 if (preparandoAtaqueEspecial && !esMio && dueño) isVivoState = true;
 
               }
+              
+              // Evitar que se ilumine el borde de la ficha si está bloqueado por una tarea
+              if (estadosBloqueo[comarca.id] && esMio) {
+                isVivoState = false;
+              }
             }
 
             let strokeFicha = 'var(--color-border-gold)';
             if (modoVista === 'REGIONES') {
               if (isHovered || isSelected) strokeFicha = 'var(--color-text-primary)';
             } else {
-              if (isHovered || isSelected || isVivoState) {
+              const estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+              if (!estaBloqueadoVisualmente && (isHovered || isSelected || isVivoState)) {
                 if (isOrigin) {
                   strokeFicha = 'var(--color-text-primary)';
                 } else if (!esMiTurnoLocal) {
@@ -684,6 +701,42 @@ const Tablero = (props) => {
       <ControlGestion />
       <ControlAtaqueEspecial />
       <AnimacionRefuerzos />
+
+      {/* Notificación Global de Error */}
+      <AnimatePresence>
+        {mensajeErrorGlobal && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            style={{
+              position: 'fixed',
+              top: '0',
+              left: '50%',
+              zIndex: 9999,
+              background: 'rgba(20, 20, 20, 0.95)',
+              border: '2px solid var(--color-border-error, #E53E3E)',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              color: 'var(--color-text-primary, white)',
+              fontFamily: 'var(--font-family-base)',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              boxShadow: '0 8px 32px rgba(229, 62, 62, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              pointerEvents: 'none',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+          >
+            <span style={{ fontSize: '18px' }}>⚠️</span>
+            {mensajeErrorGlobal}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

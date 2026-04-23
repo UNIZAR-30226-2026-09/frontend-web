@@ -30,8 +30,8 @@ const Lobby = () => {
 
   useEffect(() => {
     const handleSalaCerrada = (e) => {
-        setVistaActual('mando');
-        setPopupSalaCerrada(e.detail?.mensaje || "El host ha abandonado la sala y la partida ha sido cancelada.");
+      setVistaActual('mando');
+      setPopupSalaCerrada(e.detail?.mensaje || "El host ha abandonado la sala y la partida ha sido cancelada.");
     };
     window.addEventListener('sala_cerrada', handleSalaCerrada);
     return () => window.removeEventListener('sala_cerrada', handleSalaCerrada);
@@ -219,12 +219,12 @@ const Lobby = () => {
               {popupSalaCerrada}
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
+              <button
                 onClick={() => setPopupSalaCerrada(null)}
-                style={{ 
-                  flex: 1, padding: '0.6rem', background: 'var(--color-state-danger)', 
-                  border: '1px solid transparent', color: 'white', borderRadius: 'var(--radius-md)', 
-                  cursor: 'pointer', fontWeight: 'bold', fontSize: 'var(--font-size-sm)', textTransform: 'uppercase' 
+                style={{
+                  flex: 1, padding: '0.6rem', background: 'var(--color-state-danger)',
+                  border: '1px solid transparent', color: 'white', borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer', fontWeight: 'bold', fontSize: 'var(--font-size-sm)', textTransform: 'uppercase'
                 }}
               >
                 Cerrar

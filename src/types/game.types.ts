@@ -94,6 +94,9 @@ export interface EstadoJuego {
 
     movimientoRealizadoEnTurno: boolean;
 
+    // Error global
+    mensajeErrorGlobal: string | null;
+
     // Árbol Tecnológico y Gestión
     isArbolTecnologicoOpen: boolean;
     tecnologiasDesbloqueadas: string[];
@@ -122,6 +125,12 @@ export interface EstadoJuego {
      * Descarga el mapa estático del backend y lo guarda en el store.
      */
     cargarMapaEstatico: () => Promise<void>;
+
+    /**
+     * Muestra un mensaje de error global en la UI.
+     * @param {string} mensaje El texto del error.
+     */
+    mostrarErrorGlobal: (mensaje: string) => void;
 
     /**
      * Obliga a la máquina de estados a saltar a una fase específica y limpia la UI.

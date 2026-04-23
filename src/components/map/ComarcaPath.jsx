@@ -13,24 +13,22 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const isHovered = hovered === id;
 
     // Estado global necesario para interactuar con la comarca
-    const origenSeleccionado   = useGameStore((state) => state.origenSeleccionado);
-    const destinoSeleccionado  = useGameStore((state) => state.destinoSeleccionado);
-    const comarcasResaltadas   = useGameStore((state) => state.comarcasResaltadas) || [];
-    const manejarClickComarca  = useGameStore((state) => state.manejarClickComarca);
-    const setRegionHover       = useGameStore((state) => state.setRegionHover);
-    const modoVista            = useGameStore((state) => state.modoVista);
-    const faseActual           = useGameStore((state) => state.faseActual);
-    const propietarios         = useGameStore((state) => state.propietarios);
-    const coloresJugadores     = useGameStore((state) => state.coloresJugadores);
-    const jugadorLocal         = useGameStore((state) => state.jugadorLocal);
-    const turnoActual          = useGameStore((state) => state.turnoActual);
-    const cantidadTropas       = useGameStore((state) => state.tropas[id] || 0);
-    const tropasDisponibles    = useGameStore((state) => state.tropasDisponibles);
-    const estadosBloqueo       = useGameStore((state) => state.estadosBloqueo) || {};
+    const origenSeleccionado = useGameStore((state) => state.origenSeleccionado);
+    const destinoSeleccionado = useGameStore((state) => state.destinoSeleccionado);
+    const comarcasResaltadas = useGameStore((state) => state.comarcasResaltadas) || [];
+    const manejarClickComarca = useGameStore((state) => state.manejarClickComarca);
+    const setRegionHover = useGameStore((state) => state.setRegionHover);
+    const modoVista = useGameStore((state) => state.modoVista);
+    const faseActual = useGameStore((state) => state.faseActual);
+    const propietarios = useGameStore((state) => state.propietarios);
+    const coloresJugadores = useGameStore((state) => state.coloresJugadores);
+    const jugadorLocal = useGameStore((state) => state.jugadorLocal);
+    const turnoActual = useGameStore((state) => state.turnoActual);
+    const cantidadTropas = useGameStore((state) => state.tropas[id] || 0);
+    const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
+    const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
 
     const comarcaOcupada = !!estadosBloqueo[id];
-    // Bloqueo visual activo en REFUERZO, ATAQUE_CONVENCIONAL y FORTIFICACION para territorios propios ocupados
-    const isRestriccionFase = faseActual === 'REFUERZO' || faseActual === 'ATAQUE_CONVENCIONAL' || faseActual === 'FORTIFICACION';
     // Solo bloqueamos visualmente los territorios del jugador local (los ajenos no podemos interactuarlos de todas formas)
     const propietarioEsLocal = (() => {
         // Necesitamos jugadorLocal aquí — lo leemos del cierre de los hooks
@@ -38,12 +36,12 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         if (!propietarioId || !jugadorLocal) return false;
         return String(propietarioId).toLowerCase() === String(jugadorLocal).toLowerCase();
     })();
-    const territorioBloqueadoVisual = comarcaOcupada && isRestriccionFase && propietarioEsLocal;
+    const territorioBloqueadoVisual = comarcaOcupada && propietarioEsLocal;
 
-    const isOrigin      = origenSeleccionado === id;
+    const isOrigin = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
     const isHighlighted = comarcasResaltadas.includes(id);
-    const isSelected    = isOrigin || isDestination || isHighlighted;
+    const isSelected = isOrigin || isDestination || isHighlighted;
 
     // Helper para comparar jugadores ignorando mayúsculas
     const esMismoJugador = (j1, j2) => {
@@ -63,7 +61,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
 
         // 0. Si el territorio está bloqueado visualmente por una tarea activa
         if (territorioBloqueadoVisual) {
-            return { color: colorApagado, opacidad: 0.5, isVivoState: false };
+            return { color: colorApagado, opacidad: 1, isVivoState: false };
         }
 
         // 1. Interacciones tácticas tienen prioridad absoluta
@@ -78,9 +76,9 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         // 2. Modo de visualización por regiones
         if (modoVista === 'REGIONES' && regionId) {
             const esDelJugador = esMismoJugador(propietarios[id], jugadorLocal);
-            const color        = obtenerColorRegion(regionId, esDelJugador);
+            const color = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
-            const opacidad     = 1;
+            const opacidad = 1;
             return { color, opacidad, isVivoState: false };
         }
 
@@ -130,7 +128,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         } else {
             strokeColor = currentColor;
         }
-        
+
         // Mantener hover selectivo en blanco original
         if (isHovered || isSelected) {
             strokeColor = 'var(--color-text-primary)';
@@ -139,12 +137,12 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     } else {
         if (isOrigin) {
             strokeColor = 'var(--color-text-primary)';
-        } else if (isHovered || isSelected || isVivoState) {
+        } else if ((isHovered || isSelected || isVivoState) && !territorioBloqueadoVisual) {
             if (!esMiTurnoLocalGlobal) strokeColor = 'var(--color-border-gold)';
             else strokeColor = 'var(--color-border-gold-vivo)';
         }
         
-        if (isOrigin || isHovered || isSelected || isVivoState) {
+        if ((isOrigin || isHovered || isSelected || isVivoState) && !territorioBloqueadoVisual) {
             strokeWidthSize = 3;
         }
     }
@@ -155,8 +153,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
 
     if (territorioBloqueadoVisual) {
         cursorStyle = 'not-allowed';
-        pointerEvents = 'none'; // Bloqueo físico de interacciones del navegador
-        filterStyle = 'grayscale(1)'; // Feedback visual de inactividad total
+        // Quitamos el pointerEvents='none' para permitir el clic y mostrar la alerta
     } else if (faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && !isHighlighted && !isOrigin && !isDestination) {
         cursorStyle = 'default';
     }
@@ -197,8 +194,8 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
             fillOpacity={fillOpacity}
             stroke={strokeColor}
             strokeWidth={strokeWidthSize}
-            style={{ 
-                cursor: cursorStyle, 
+            style={{
+                cursor: cursorStyle,
                 pointerEvents: pointerEvents,
                 filter: filterStyle,
                 transition: 'fill 0.3s, stroke 0.3s, filter 0.3s'
@@ -211,8 +208,8 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
                 e.stopPropagation();
                 const rect = e.target.getBoundingClientRect();
                 const orientacionArriba = rect.bottom > window.innerHeight - 200;
-                manejarClickComarca(id, { 
-                    x: rect.left + rect.width / 2, 
+                manejarClickComarca(id, {
+                    x: rect.left + rect.width / 2,
                     y: orientacionArriba ? rect.top - 10 : rect.bottom + 10,
                     orientacionArriba
                 });

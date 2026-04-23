@@ -159,6 +159,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     estadosAlterados: {},
     tropasDisponibles: null,
     movimientoRealizadoEnTurno: false,
+    mensajeErrorGlobal: null,
 
     // Jugador local
     jugadorLocal: null,
@@ -232,6 +233,14 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         }
     },
 
+    // Muestra un error flotante en la UI
+    mostrarErrorGlobal: (mensaje: string) => {
+        set({ mensajeErrorGlobal: mensaje });
+        setTimeout(() => {
+            set((state) => state.mensajeErrorGlobal === mensaje ? { mensajeErrorGlobal: null } : state);
+        }, 3000);
+    },
+
     // ACCIONES — SINCRONIZACIÓN CON BACKEND
 
     /**
@@ -266,9 +275,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     },
 
     setEstadoDinamico: (payload: any) => {
-        const { tropas, propietarios } = payload.mapa
+        const { tropas, propietarios, estadosBloqueo, estadosAlterados } = payload.mapa
             ? parsearMapa(payload.mapa)
-            : { tropas: get().tropas, propietarios: get().propietarios };
+            : { tropas: get().tropas, propietarios: get().propietarios, estadosBloqueo: get().estadosBloqueo, estadosAlterados: get().estadosAlterados };
 
         const {
             coloresJugadores,
@@ -300,7 +309,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 : state.faseActual,
             // Soportar múltiples claves de turno para robustez
             turnoActual: payload.turno_de ?? payload.jugador_activo ?? payload.turno_actual ?? state.turnoActual,
-            ...(payload.mapa && { tropas, propietarios }),
+            ...(payload.mapa && { tropas, propietarios, estadosBloqueo, estadosAlterados }),
             coloresJugadores: {
                 ...state.coloresJugadores,
                 ...coloresJugadores,
@@ -693,12 +702,16 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             return;
         }
 
-        // BLOQUEO ESTRICTO: Si el territorio está ocupado con una tarea, ignorar clic en REFUERZO o FORTIFICACION
-        if (estado.faseActual === 'REFUERZO' || estado.faseActual === 'FORTIFICACION') {
-            if (estado.estadosBloqueo?.[comarcaId]) {
-                console.warn(`[manejarClickComarca] Territorio ${comarcaId} bloqueado: está trabajando o investigando.`);
-                return;
-            }
+        // BLOQUEO ESTRICTO: Si el territorio propio está ocupado con una tarea, no se puede interactuar con él
+        const estadoBloqueo = estado.estadosBloqueo?.[comarcaId];
+        if (estadoBloqueo && estado.propietarios[comarcaId] === estado.jugadorLocal) {
+            const nombreFase = estado.faseActual === 'ATAQUE_CONVENCIONAL' ? 'Ataque' : 
+                               estado.faseActual === 'FORTIFICACION' ? 'Fortificación' :
+                               estado.faseActual === 'REFUERZO' ? 'Refuerzo' : 'Gestión';
+            const nombreEstado = estadoBloqueo.startsWith('investigando') ? 'investigando' : 'trabajando';
+            
+            estado.mostrarErrorGlobal(`Este territorio no puede usarse en la fase de ${nombreFase} porque está ${nombreEstado}.`);
+            return;
         }
 
         // ══ INTERCEPCIÓN ATAQUE ESPECIAL ══
@@ -720,11 +733,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
             case 'REFUERZO': {
                 if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
-                    // Bloqueo si el territorio está ocupado (trabajando o investigando)
-                    if (estado.estadosBloqueo?.[comarcaId]) {
-                        console.log(`[manejarClickComarca] Territorio ${comarcaId} ocupado, no se puede reforzar.`);
-                        return;
-                    }
                     set({ comarcaRefuerzo: comarcaId, tropasAAsignar: Math.max(1, estado.tropasDisponibles ?? 0), popupCoords: coords || null });
                 }
                 break;
@@ -770,11 +778,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         (estado.tropas[comarcaId] ?? 0) <= 1
                     ) {
                         console.log('[manejarClickComarca] Origen inválido para atacar.');
-                        return;
-                    }
-                    // BLOQUEO: territorios con tarea activa no pueden ser origen de ataque
-                    if (estado.estadosBloqueo?.[comarcaId]) {
-                        console.warn(`[manejarClickComarca] Territorio ${comarcaId} bloqueado (trabajando/investigando): no puede atacar.`);
                         return;
                     }
                     if (!estado.grafoGlobal) return;
@@ -824,11 +827,6 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     estado.propietarios[comarcaId] === estado.jugadorLocal &&
                     (estado.tropas[comarcaId] ?? 0) > 1
                 ) {
-                    // Bloqueo si el territorio está ocupado
-                    if (estado.estadosBloqueo?.[comarcaId]) {
-                        console.log(`[manejarClickComarca] Territorio ${comarcaId} ocupado, no puede ser origen de fortificación.`);
-                        return;
-                    }
 
                     if (!estado.grafoGlobal) return;
 

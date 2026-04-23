@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGameStore } from '../../store/gameStore';
 import '../../styles/ControlAtaqueEspecial.css';
 
-// ─── Iconos por ID (mismos que árbol para coherencia) ────────────────────────
+// Iconos por ID
 const ICONOS = {
     gripe_aviar: '🦠',
     vacuna_universal: '💉',
@@ -25,7 +25,7 @@ const getIcono = (id) => {
     return ICONOS[norm] || ICONOS[id] || '⚡';
 };
 
-// ─── Helper: busca en ambas formas del catálogo ───────────────────────────────
+// Helper: busca en ambas formas del catálogo
 const buscarEnCatalogo = (catalogo, id) => {
     if (!catalogo || !id) return null;
     const idLower = id.toLowerCase();
@@ -40,7 +40,7 @@ const buscarEnCatalogo = (catalogo, id) => {
     return null;
 };
 
-// ─── Recorre el catálogo y construye la lista de habilidades visibles ─────────
+// Recorre el catálogo y construye la lista de habilidades visibles
 /**
  * Una habilidad aparece en el Arsenal si:
  *   A) predesbloqueada === true  (la investigación ha avanzado, lista para comprar)
@@ -70,7 +70,7 @@ const obtenerHabilidadesDisponibles = (catalogo, desbloqueadas) => {
     return result;
 };
 
-// ─── Tooltip flotante con position:fixed que aparece a la derecha del icono ───
+// Tooltip flotante con position:fixed que aparece a la derecha del icono
 const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onCerrar, tooltipX, tooltipY }) => {
     const sinDinero = monedas !== null && monedas < (hab.precio ?? 0);
 
@@ -122,7 +122,7 @@ const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onCerrar, tooltipX
     );
 };
 
-// ─── Botón icono individual ───────────────────────────────────────────────────
+// Botón icono individual
 const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque }) => {
     const sinDinero = monedas !== null && monedas < (hab.precio ?? 0);
     const icono = getIcono(hab.id);
@@ -149,7 +149,7 @@ const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque 
     );
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// Componente principal
 /**
  * Arsenal de Ataques Especiales.
  * Barra vertical lateral izquierda visible solo en fase ATAQUE_ESPECIAL.
@@ -190,11 +190,11 @@ const ControlAtaqueEspecial = () => {
         return () => document.removeEventListener('mousedown', handleClickFuera);
     }, []);
 
-    // ── Guard clauses ──────────────────────────────────────────────────────────
+    // Guard clauses
     if (faseActual !== 'ATAQUE_ESPECIAL') return null;
     if (!esMiTurno) return null;
 
-    // ── Construir lista de habilidades visibles ────────────────────────────────
+    // Construir lista de habilidades visibles
     const habilidades = obtenerHabilidadesDisponibles(catalogoTecnologias, tecnologiasDesbloqueadas);
     if (!habilidades.length) return null;
 
@@ -202,7 +202,7 @@ const ControlAtaqueEspecial = () => {
         ? buscarEnCatalogo(catalogoTecnologias, seleccionado)
         : null;
 
-    // ── Handlers ───────────────────────────────────────────────────────────────
+    // Handlers
     const handleSeleccionar = (id, event) => {
         setError(null);
         if (seleccionado === id) {
@@ -238,12 +238,12 @@ const ControlAtaqueEspecial = () => {
     return (
         <div className="arsenal-panel-lateral" ref={panelRef} role="complementary" aria-label="Arsenal de ataques especiales">
 
-            {/* ── Cabecera ─────────────────────────────────────────────────── */}
+            {/* Cabecera */}
             <div className="arsenal-panel-header">
                 <span className="arsenal-panel-titulo-icono" aria-hidden="true">⚔️</span>
             </div>
 
-            {/* ── Modo: objetivo seleccionado (preparando ataque) ──────────── */}
+            {/* Modo: objetivo seleccionado (preparando ataque) */}
             {preparandoAtaqueEspecial && (
                 <div className="arsenal-modo-activo" title="Haz click en un territorio enemigo para lanzar el ataque">
                     <span className="arsenal-modo-icono">{getIcono(preparandoAtaqueEspecial)}</span>
@@ -259,7 +259,7 @@ const ControlAtaqueEspecial = () => {
                 </div>
             )}
 
-            {/* ── Lista de iconos ──────────────────────────────────────────── */}
+            {/* Lista de iconos */}
             <ul className="arsenal-lista-iconos" role="list">
                 {habilidades.map(hab => {
                     const esActivo = seleccionado === hab.id;
@@ -293,14 +293,14 @@ const ControlAtaqueEspecial = () => {
                 })}
             </ul>
 
-            {/* ── Error de compra ──────────────────────────────────────────── */}
+            {/* Error de compra */}
             {error && (
                 <div className="arsenal-error" role="alert">
                     ⚠️ {error}
                 </div>
             )}
 
-            {/* ── Monedas disponibles ──────────────────────────────────────── */}
+            {/* Monedas disponibles  */}
             {monedas !== null && (
                 <div className="arsenal-monedas" title="Monedas disponibles">
                     💰 {monedas}

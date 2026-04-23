@@ -1,6 +1,4 @@
-/* ============================================================
-   PANEL ARSENAL — Barra lateral izquierda de ataques especiales
-   ============================================================ */
+/* PANEL ARSENAL — Barra lateral izquierda de ataques especiales */
 
 .panel-arsenal-lateral {
   position: fixed;
@@ -12,11 +10,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(26, 26, 36, 0.97) 0%,
-    rgba(37, 37, 48, 0.99) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(26, 26, 36, 0.97) 0%,
+      rgba(37, 37, 48, 0.99) 100%);
   border: 1px solid var(--color-border-gold);
   border-left: none;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
@@ -29,7 +25,7 @@
   overflow: hidden;
 }
 
-/* ─── CABECERA DEL PANEL ─── */
+/* CABECERA DEL PANEL */
 .arsenal-header {
   display: flex;
   flex-direction: column;
@@ -54,7 +50,7 @@
   font-family: var(--font-family-title, 'Cinzel', serif);
 }
 
-/* ─── BANNER MODO OBJETIVO ─── */
+/* BANNER MODO OBJETIVO */
 .arsenal-modo-objetivo-banner {
   display: flex;
   flex-direction: column;
@@ -72,8 +68,15 @@
 }
 
 @keyframes pulso-rojo {
-  from { border-color: rgba(229, 62, 62, 0.3); box-shadow: none; }
-  to   { border-color: rgba(229, 62, 62, 0.9); box-shadow: 0 0 8px rgba(229, 62, 62, 0.35); }
+  from {
+    border-color: rgba(229, 62, 62, 0.3);
+    box-shadow: none;
+  }
+
+  to {
+    border-color: rgba(229, 62, 62, 0.9);
+    box-shadow: 0 0 8px rgba(229, 62, 62, 0.35);
+  }
 }
 
 .btn-arsenal-cancelar-pequeño {
@@ -91,11 +94,12 @@
   padding: 0;
   transition: background 0.15s;
 }
+
 .btn-arsenal-cancelar-pequeño:hover {
   background: rgba(229, 62, 62, 0.6);
 }
 
-/* ─── LISTA DE HABILIDADES ─── */
+/* LISTA DE HABILIDADES */
 .arsenal-lista {
   display: flex;
   flex-direction: column;
@@ -103,11 +107,15 @@
   gap: 0.5rem;
   width: 100%;
   overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
+  /* Firefox */
 }
-.arsenal-lista::-webkit-scrollbar { display: none; }
 
-/* ─── WRAPPER DE CADA ÍTEM (posición relativa para el popover) ─── */
+.arsenal-lista::-webkit-scrollbar {
+  display: none;
+}
+
+/* WRAPPER DE CADA ÍTEM (posición relativa para el popover) */
 .arsenal-item-wrapper {
   position: relative;
   display: flex;
@@ -121,11 +129,16 @@
 }
 
 @keyframes pulso-activo {
-  from { box-shadow: 0 0 6px rgba(229, 62, 62, 0.4); }
-  to   { box-shadow: 0 0 14px rgba(229, 62, 62, 0.8); }
+  from {
+    box-shadow: 0 0 6px rgba(229, 62, 62, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 14px rgba(229, 62, 62, 0.8);
+  }
 }
 
-/* ─── BOTÓN ICONO ─── */
+/* BOTÓN ICONO */
 .btn-arsenal-icono {
   width: 44px;
   height: 44px;
@@ -165,7 +178,7 @@
   pointer-events: none;
 }
 
-/* ─── POPOVER ─── */
+/* POPOVER */
 .arsenal-popover {
   position: absolute;
   left: calc(100% + 10px);
@@ -184,8 +197,15 @@
 }
 
 @keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(-50%) translateX(-6px); }
-  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
 /* Flecha del popover hacia la izquierda */
