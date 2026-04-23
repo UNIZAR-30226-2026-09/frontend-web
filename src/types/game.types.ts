@@ -97,6 +97,9 @@ export interface EstadoJuego {
     // Error global
     mensajeErrorGlobal: string | null;
 
+    // Log de Partida
+    historialLog: string[];
+
     // Árbol Tecnológico y Gestión
     isArbolTecnologicoOpen: boolean;
     tecnologiasDesbloqueadas: string[];
@@ -131,6 +134,11 @@ export interface EstadoJuego {
      * @param {string} mensaje El texto del error.
      */
     mostrarErrorGlobal: (mensaje: string) => void;
+
+    /**
+     * Añade un mensaje al log en tiempo real de la partida.
+     */
+    agregarMensajeLog: (mensaje: string) => void;
 
     /**
      * Obliga a la máquina de estados a saltar a una fase específica y limpia la UI.

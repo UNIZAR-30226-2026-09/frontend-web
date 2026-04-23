@@ -160,6 +160,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     tropasDisponibles: null,
     movimientoRealizadoEnTurno: false,
     mensajeErrorGlobal: null,
+    historialLog: [],
 
     // Jugador local
     jugadorLocal: null,
@@ -239,6 +240,14 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         setTimeout(() => {
             set((state) => state.mensajeErrorGlobal === mensaje ? { mensajeErrorGlobal: null } : state);
         }, 3000);
+    },
+
+    // Añade un mensaje al log de eventos (máximo 50 mensajes)
+    agregarMensajeLog: (mensaje: string) => {
+        set((state) => {
+            const nuevoHistorial = [mensaje, ...state.historialLog].slice(0, 50);
+            return { historialLog: nuevoHistorial };
+        });
     },
 
     // ACCIONES — SINCRONIZACIÓN CON BACKEND
@@ -996,6 +1005,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 // Soportar tanto "jugador" como "username"
                 const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
 
+                if (eliminadoId) {
+                    get().agregarMensajeLog(`💀 ${eliminadoId} ha sido derrotado`);
+                }
+
                 set((state) => {
                     if (!eliminadoId) return state;
 
@@ -1075,6 +1088,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
                 const tropasRecibidas: number = data.tropas_recibidas ?? 0;
 
+                if (faseRaw && jugadorRaw) {
+                    get().agregarMensajeLog(`📢 Fase: ${faseRaw} - Turno de ${jugadorRaw}`);
+                }
+
                 set((state) => {
                     const nuevaFase = faseRaw ? normalizarFase(faseRaw) : state.faseActual;
                     const jugadorActivo = jugadorRaw || state.turnoActual;
@@ -1138,6 +1155,8 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
                 const jugadorQueColoca = data.jugador || get().turnoActual;
 
+                get().agregarMensajeLog(`🪖 ${jugadorQueColoca} ha desplegado tropas en ${data.territorio}`);
+
                 set((state) => {
                     // Calculamos cuántas se han puesto comparando con el estado actual
                     const tropasPrevias = state.tropas[data.territorio] ?? 0;
@@ -1163,6 +1182,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
             case 'ATAQUE_RESULTADO': {
                 const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                const atacante = get().propietarios[data.origen] || 'Alguien';
+                const victoriaStr = data.victoria ? ' ¡Conquistado!' : '';
+                
+                get().agregarMensajeLog(`⚔️ ${atacante} atacó ${data.destino}. Bajas: ${data.bajas_atacante}/${data.bajas_defensor}.${victoriaStr}`);
+
                 set((state) => {
                     const nuevasTropas = { ...state.tropas };
                     nuevasTropas[data.origen] =
