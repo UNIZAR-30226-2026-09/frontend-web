@@ -241,6 +241,20 @@
   to { opacity: 0.5; transform: scale(0.8); }
 }
 
+/* Label de progreso de investigación dentro del nodo */
+.label-investigando {
+  display: block;
+  font-size: clamp(0.48rem, 1vw, 0.62rem);
+  color: #90CDF4;
+  background: rgba(49, 130, 206, 0.2);
+  border: 1px solid rgba(99, 179, 237, 0.4);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-top: 2px;
+  animation: pulse-simple 1.5s infinite alternate;
+  white-space: nowrap;
+}
+
 /* ========= TOOLTIP DE CONFIRMACIÓN ========= */
 .tooltip-nodo-overlay {
   position: fixed;

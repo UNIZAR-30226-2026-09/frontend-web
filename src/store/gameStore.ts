@@ -485,14 +485,21 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     // ACCIONES — ARSENAL DE ATAQUES ESPECIALES
 
     /**
-     * Descarga el catálogo global de tecnologías y lo almacena en el store.
-     * Endpoint: GET /api/v1/partidas/tecnologias
+     * Descarga el catálogo de tecnologías de la partida activa y lo almacena en el store.
+     * Endpoint: GET /v1/partidas/{partida_id}/tecnologias
+     * Acepta un overrideId para casos donde salaActiva.id aún no esté en el store
+     * (p.ej. primera carga antes de que Zustand haya hidratado el estado).
      */
-    cargarCatalogoTecnologias: async () => {
+    cargarCatalogoTecnologias: async (overrideId?: number | string) => {
+        const partidaId = overrideId ?? get().salaActiva?.id;
+        if (!partidaId) {
+            console.warn('[cargarCatalogoTecnologias] No hay partida activa, no se puede cargar el catálogo.');
+            return;
+        }
         try {
-            const data = await gameApi.getCatalogoTecnologias();
+            const data = await gameApi.getTecnologias(partidaId);
             set({ catalogoTecnologias: data });
-            console.log('[cargarCatalogoTecnologias] Catálogo cargado:', Object.keys(data).length, 'tecnologías.');
+            console.log('[cargarCatalogoTecnologias] Catálogo cargado para partida', partidaId);
         } catch (error) {
             console.error('[cargarCatalogoTecnologias] Error al cargar catálogo:', error);
         }
@@ -763,6 +770,11 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                         (estado.tropas[comarcaId] ?? 0) <= 1
                     ) {
                         console.log('[manejarClickComarca] Origen inválido para atacar.');
+                        return;
+                    }
+                    // BLOQUEO: territorios con tarea activa no pueden ser origen de ataque
+                    if (estado.estadosBloqueo?.[comarcaId]) {
+                        console.warn(`[manejarClickComarca] Territorio ${comarcaId} bloqueado (trabajando/investigando): no puede atacar.`);
                         return;
                     }
                     if (!estado.grafoGlobal) return;
@@ -1114,9 +1126,12 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                     };
                 });
 
-                // REFREZCO CRÍTICO: Sincronizar estado completo al cambiar de fase
+                // REFRESCO CRÍTICO: Sincronizar estado completo al cambiar de fase
                 // para capturar monedas generadas, tecnologías desbloqueadas, etc.
-                get().sincronizarEstadoPartida();
+                get().sincronizarEstadoPartida().then(() => {
+                    // Recargar catálogo para reflejar nuevos desbloqueos (predesbloqueada/comprada)
+                    get().cargarCatalogoTecnologias();
+                });
 
                 break;
             }

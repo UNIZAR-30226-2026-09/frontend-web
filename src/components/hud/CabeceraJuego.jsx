@@ -121,9 +121,10 @@ const CabeceraJuego = () => {
   let textoSiguiente = 'AVANZAR';
   if (!esMiTurno) {
     textoSiguiente = 'ESPERANDO...';
-  } else if (isUltimaFase) {
+  } else if (faseActual === 'FORTIFICACION') {
     textoSiguiente = 'NUEVO TURNO';
   }
+  // ATAQUE_ESPECIAL mantiene el texto genérico 'AVANZAR' (ya está por defecto)
 
   return (
     <header className="cabecera-juego">

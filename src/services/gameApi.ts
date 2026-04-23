@@ -59,15 +59,21 @@ export const gameApi = {
         return fetchApi(`/v1/partidas/${partidaId}/estado`);
     },
 
+    /**
+     * Obtiene el catálogo de tecnologías de una partida activa.
+     * Endpoint real del backend: GET /v1/partidas/{partida_id}/tecnologias
+     * Devuelve { ramas: { biologica: [...], logistica: [...], artilleria: [...] } }
+     */
     getTecnologias: async (partidaId: number | string) => {
-        return fetchApi(`/v1/partidas/${partidaId}/tecnologia`);
+        return fetchApi(`/v1/partidas/${partidaId}/tecnologias`);
     },
 
     /**
-     * Obtiene el catálogo global de tecnologías (estructura, descripciones y precios).
-     * No requiere partida_id. Devuelve Record<string, { nombre, descripcion, requisitos, precio }>.
+     * @deprecated Usar getTecnologias(partidaId) — este endpoint (/tecnologias sin ID) no existe en el backend.
+     * Se conserva por compatibilidad hasta que no haya referencias activas.
      */
     getCatalogoTecnologias: async () => {
+        console.warn('[getCatalogoTecnologias] DEPRECATED: usar getTecnologias(partidaId).');
         return fetchApi('/v1/partidas/tecnologias');
     },
 
@@ -119,29 +125,33 @@ export const gameApi = {
         });
     },
 
-    investigarTecnologia: async (partidaId: number | string, territorioId: string, tecnologiaId: string) => {
-        // En frontend tenemos el tecnología ID "BIOLOGICA_1", pero el backend pide la "rama" ("biologica", "logistica", "artilleria")
-        let rama = "biologica"; // fallback seguro
-        const idLower = tecnologiaId.toLowerCase();
-        
-        if (idLower.includes('biologica')) rama = 'biologica';
-        if (idLower.includes('operaciones') || idLower.includes('logistica')) rama = 'logistica';
-        if (idLower.includes('artilleria')) rama = 'artilleria';
-
+    /**
+     * Asigna un territorio para investigar una habilidad tecnológica.
+     * El backend (POST /investigar) espera exactamente el campo `habilidad_id`.
+     * La inconsistencia de naming con otros endpoints se absorbe aquí.
+     * @param partidaId - ID de la partida.
+     * @param territorioId - ID del territorio investigador.
+     * @param habilidadId - ID genérico de la habilidad (mismo que usa el catálogo).
+     */
+    investigarTecnologia: async (partidaId: number | string, territorioId: string, habilidadId: string) => {
         const url = `/v1/partidas/${partidaId}/investigar`;
-        console.log(`🚀 [DEBUG API INVESTIGAR] Partida: ${partidaId}, Territorio: ${territorioId}, Rama: ${rama}`);
-        console.log(`🔗 [DEBUG API INVESTIGAR] URL generada: ${url}`);
+        console.log(`🚀 [API INVESTIGAR] Partida: ${partidaId}, Territorio: ${territorioId}, Habilidad: ${habilidadId}`);
 
         if (!territorioId) {
-            console.error('❌ [DEBUG API INVESTIGAR] El territorioId es undefined o nulo.');
+            console.error('❌ [API INVESTIGAR] El territorioId es undefined o nulo.');
             throw new Error("No hay territorio seleccionado para investigar.");
         }
+        if (!habilidadId) {
+            console.error('❌ [API INVESTIGAR] El habilidadId es undefined o nulo.');
+            throw new Error("No hay habilidad seleccionada para investigar.");
+        }
 
+        // El backend exige `habilidad_id` para este endpoint específico.
         return fetchApi(url, {
             method: 'POST',
             body: JSON.stringify({
                 territorio_id: territorioId,
-                rama: rama
+                habilidad_id: habilidadId,  // campo exacto que pide el backend según OpenAPI
             })
         });
     }

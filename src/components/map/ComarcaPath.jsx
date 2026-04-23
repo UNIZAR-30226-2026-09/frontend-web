@@ -29,8 +29,16 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const estadosBloqueo       = useGameStore((state) => state.estadosBloqueo) || {};
 
     const comarcaOcupada = !!estadosBloqueo[id];
-    const isRestriccionFase = faseActual === 'REFUERZO' || faseActual === 'FORTIFICACION';
-    const territorioBloqueadoVisual = comarcaOcupada && isRestriccionFase;
+    // Bloqueo visual activo en REFUERZO, ATAQUE_CONVENCIONAL y FORTIFICACION para territorios propios ocupados
+    const isRestriccionFase = faseActual === 'REFUERZO' || faseActual === 'ATAQUE_CONVENCIONAL' || faseActual === 'FORTIFICACION';
+    // Solo bloqueamos visualmente los territorios del jugador local (los ajenos no podemos interactuarlos de todas formas)
+    const propietarioEsLocal = (() => {
+        // Necesitamos jugadorLocal aquí — lo leemos del cierre de los hooks
+        const propietarioId = propietarios[id];
+        if (!propietarioId || !jugadorLocal) return false;
+        return String(propietarioId).toLowerCase() === String(jugadorLocal).toLowerCase();
+    })();
+    const territorioBloqueadoVisual = comarcaOcupada && isRestriccionFase && propietarioEsLocal;
 
     const isOrigin      = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;

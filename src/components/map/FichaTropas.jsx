@@ -58,15 +58,32 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
         );
     }
 
-    // Establecer el color de la ficha
-    const fillColorFondo = colorFondo || 'var(--color-ui-panel-overlay)';
+    // ─ Color del círculo según estado de bloqueo ──────────────────────────────
+    // Si el territorio tiene una tarea activa, el color del círculo cambia para
+    // reflejar el tipo de actividad. Esto es visible para TODOS los jugadores
+    // ya que el estado llega por WebSocket.
+    let fillCirculo;
+    let strokeCirculo = strokeFondo || 'var(--color-border-gold)';
 
+    if (isInvestigando) {
+        // Azul/índigo: investigación en curso
+        fillCirculo = 'var(--color-estado-investigando, #4C51BF)';
+        strokeCirculo = 'var(--color-estado-investigando-borde, #667EEA)';
+    } else if (isTrabajando) {
+        // Dorado/ámbar: generando economía
+        fillCirculo = 'var(--color-estado-trabajando, #B7791F)';
+        strokeCirculo = 'var(--color-estado-trabajando-borde, #F6E05E)';
+    } else {
+        fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
+    }
+
+    // Mapa de emojis para efectos de ataques especiales
     const iconosEfectos = {
-        'gripe_aviar': '🦠',
-        'coronavirus': '☣️',
-        'fatiga': '🥱',
+        'gripe_aviar':     '🦠',
+        'coronavirus':     '☣️',
+        'fatiga':          '🥱',
         'inhibidor_senal': '📡',
-        'muro': '🧱'
+        'muro':            '🧱',
     };
 
     return (
@@ -80,9 +97,9 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
                 cx={cx}
                 cy={cy - 4}
                 r={13}
-                fill={fillColorFondo}
-                stroke={strokeFondo || "var(--color-border-gold)"}
-                strokeWidth="1.5"
+                fill={fillCirculo}
+                stroke={strokeCirculo}
+                strokeWidth={isInvestigando || isTrabajando ? '2.5' : '1.5'}
                 filter="drop-shadow(0px 2px 3px var(--color-ui-bg-primary))"
             />
 

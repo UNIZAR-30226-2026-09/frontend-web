@@ -33,8 +33,10 @@ const PantallaJuego = () => {
                 await sincronizarEstadoPartida(id);
             }
 
-            // Cargar catálogo de tecnologías para el Panel Arsenal
-            cargarCatalogoTecnologias();
+            // Cargar catálogo de tecnologías.
+            // Pasamos el id de URL como fallback por si salaActiva.id aún no está
+            // en el store en el primer render (race condition llegando desde el lobby).
+            cargarCatalogoTecnologias(id ? Number(id) : undefined);
 
             // Una vez sincronizado (o si ya lo estaba), conectamos el WebSocket
             const currentSalaId = useGameStore.getState().salaActiva?.id;

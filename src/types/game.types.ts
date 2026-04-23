@@ -297,8 +297,9 @@ export interface EstadoJuego {
 
     /**
      * Descarga el catálogo global de tecnologías con nombres, descripciones y precios.
+     * @param overrideId - ID opcional de partida como fallback si salaActiva.id no está disponible.
      */
-    cargarCatalogoTecnologias: () => Promise<void>;
+    cargarCatalogoTecnologias: (overrideId?: number | string) => Promise<void>;
 
     /**
      * Compra una habilidad tecnológica y activa el modo de selección de objetivo en el mapa.

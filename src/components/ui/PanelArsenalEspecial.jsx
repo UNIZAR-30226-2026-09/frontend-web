@@ -37,15 +37,37 @@ const getIcono = (id) => {
 };
 
 /**
+ * Helper: busca una habilidad por ID en el catálogo, que puede tener dos formas:
+ *   Forma A: Record<id, HabilidadOut>  (catálogo plano)
+ *   Forma B: { ramas: { nombre_rama: HabilidadOut[] } }  (respuesta del endpoint)
+ * @param {Object} catalogo - Catálogo de tecnologías del store
+ * @param {string} id       - ID de la habilidad a buscar
+ * @returns {Object|null}   - El objeto HabilidadOut, o null si no se encuentra
+ */
+const buscarEnCatalogo = (catalogo, id) => {
+    if (!catalogo || !id) return null;
+    const idLower = id.toLowerCase();
+    // Forma A: objeto plano { [id]: HabilidadOut }
+    if (catalogo[id]) return catalogo[id];
+    if (catalogo[idLower]) return catalogo[idLower];
+    // Forma B: { ramas: { biologica: [HabilidadOut] } }
+    if (catalogo.ramas) {
+        for (const habilidades of Object.values(catalogo.ramas)) {
+            const encontrada = habilidades.find(h => h.id?.toLowerCase() === idLower);
+            if (encontrada) return encontrada;
+        }
+    }
+    return null;
+};
+
+/**
  * Panel lateral izquierdo del Arsenal.
- * Visible durante la Fase de Gestión y Ataque Especial cuando el jugador
- * tiene al menos una tecnología desbloqueada en el catálogo.
+ * Visible SOLO durante la Fase de ATAQUE_ESPECIAL cuando el jugador
+ * tiene al menos una tecnología en `tecnologias_desbloqueadas`.
  *
- * Flujo:
- *   1. Clic en icono → popover con nombre, descripción, precio.
- *   2. Clic en "Comprar" → llama a comprarYPrepararAtaque().
- *   3. El store resalta territorios enemigos y activa preparandoAtaqueEspecial.
- *   4. Clic en territorio enemigo → ejecutarAtaqueEspecialBackend().
+ * Estas son las tecnologías que el jugador ya ha INVESTIGADO en turnos anteriores.
+ * Aquí se EJECUTAN/COMPRAN con monedas usando POST .../comprar_tecnologia.
+ * (No confundir con investigar del Árbol, que solo bloquea el territorio.)
  */
 const PanelArsenalEspecial = () => {
     const [nodoAbierto, setNodoAbierto] = useState(null);
@@ -66,12 +88,18 @@ const PanelArsenalEspecial = () => {
 
     // Solo visible en mi turno y durante la fase de ATAQUE_ESPECIAL
     if (!esMiTurno || faseActual !== 'ATAQUE_ESPECIAL') return null;
-    if (!tecnologiasDesbloqueadas.length || !catalogoTecnologias) return null;
+    if (!tecnologiasDesbloqueadas.length) return null;
 
-    // Filtrar habilidades: desbloqueadas que existan en el catálogo
-    const habilidades = tecnologiasDesbloqueadas
-        .filter(id => catalogoTecnologias[id])
-        .map(id => ({ id, ...catalogoTecnologias[id] }));
+    // Filtrar: solo las tecnologías que están en tecnologias_desbloqueadas Y en el catálogo.
+    // Soporta ambas formas del catálogo: plana y { ramas: {...} }
+    const habilidades = catalogoTecnologias
+        ? tecnologiasDesbloqueadas
+            .map(id => {
+                const datos = buscarEnCatalogo(catalogoTecnologias, id);
+                return datos ? { id, ...datos } : null;
+            })
+            .filter(Boolean)
+        : tecnologiasDesbloqueadas.map(id => ({ id, nombre: id, precio: 0, descripcion: '' }));
 
     if (!habilidades.length) return null;
 

@@ -1,0 +1,371 @@
+/* ================================================================
+   ARSENAL DE ATAQUES ESPECIALES — ControlAtaqueEspecial.css
+   Barra vertical lateral izquierda. Fase: ATAQUE_ESPECIAL.
+   ================================================================ */
+
+/* ── Contenedor principal ───────────────────────────────────────── */
+.arsenal-panel-lateral {
+    position: fixed;
+    left: 0;
+    top: 40%;
+    transform: translateY(-50%);
+    z-index: 900;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+
+    background: rgba(15, 15, 25, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    border: 1px solid var(--color-border-bronze, #8c6d3f);
+    border-left: none;
+    border-radius: 0 var(--radius-md, 8px) var(--radius-md, 8px) 0;
+
+    padding: 0.75rem 0.55rem;
+    min-width: 68px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.7);
+
+    /* Animación de entrada */
+    animation: arsenal-entrada 0.25s ease-out;
+}
+
+@keyframes arsenal-entrada {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+/* ── Cabecera (icono ⚔️) ────────────────────────────────────────── */
+.arsenal-panel-header {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--color-border-bronze, #8c6d3f);
+    width: 100%;
+    margin-bottom: 0.2rem;
+}
+
+.arsenal-panel-titulo-icono {
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 6px rgba(197, 160, 89, 0.6));
+}
+
+/* ── Modo activo (objetivo seleccionado) ────────────────────────── */
+.arsenal-modo-activo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    background: rgba(229, 62, 62, 0.15);
+    border: 1px solid rgba(229, 62, 62, 0.5);
+    border-radius: var(--radius-sm, 4px);
+    padding: 0.3rem 0.4rem;
+    width: 100%;
+    animation: pulso-rojo 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulso-rojo {
+    from {
+        border-color: rgba(229, 62, 62, 0.3);
+    }
+
+    to {
+        border-color: rgba(229, 62, 62, 0.9);
+        box-shadow: 0 0 8px rgba(229, 62, 62, 0.4);
+    }
+}
+
+.arsenal-modo-icono {
+    font-size: 1.4rem;
+}
+
+.arsenal-modo-texto {
+    font-size: 0.52rem;
+    color: #FC8181;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.arsenal-btn-cancelar-modo {
+    background: rgba(229, 62, 62, 0.25);
+    border: 1px solid rgba(229, 62, 62, 0.5);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.55rem;
+    color: #FC8181;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+
+.arsenal-btn-cancelar-modo:hover {
+    background: rgba(229, 62, 62, 0.5);
+}
+
+/* ── Lista de iconos ────────────────────────────────────────────── */
+.arsenal-lista-iconos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    
+    /* Scroll vertical cuando hay más de 4 iconos (el 5º empieza cortado) */
+    max-height: 290px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-bronze, #8c6d3f) transparent;
+    padding-right: 2px;
+}
+
+.arsenal-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* ── Botón icono circular ───────────────────────────────────────── */
+.arsenal-btn-icono {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border-bronze, #8c6d3f);
+    background: var(--color-ui-bg-secondary, #252530);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.18s ease;
+    padding: 0;
+    outline: none;
+}
+
+.arsenal-btn-icono:hover {
+    border-color: var(--color-border-gold-vivo, #FFD13B);
+    background: color-mix(in srgb, var(--color-ui-bg-secondary) 80%, #c5a059 20%);
+    transform: scale(1.08);
+    box-shadow: 0 0 10px rgba(197, 160, 89, 0.35);
+}
+
+.arsenal-btn-activo {
+    border-color: var(--color-border-gold-vivo, #FFD13B) !important;
+    background: color-mix(in srgb, var(--color-ui-bg-secondary) 70%, #c5a059 30%) !important;
+    box-shadow: 0 0 14px rgba(255, 209, 59, 0.4);
+}
+
+.arsenal-btn-pobre {
+    filter: grayscale(70%);
+    opacity: 0.55;
+}
+
+.arsenal-btn-preparando {
+    border-color: #E53E3E !important;
+    animation: pulso-rojo 1.2s infinite alternate;
+}
+
+.arsenal-icono-emoji {
+    font-size: 1.7rem;
+    line-height: 1;
+    display: block;
+}
+
+/* Badges sobre el icono (esquina superior derecha) */
+.arsenal-btn-badge-pobre,
+.arsenal-btn-badge-activo {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    font-size: 0.6rem;
+    background: var(--color-ui-bg-primary, #1a1a24);
+    border-radius: 50%;
+    padding: 1px;
+    border: 1px solid var(--color-border-bronze, #8c6d3f);
+    line-height: 1;
+}
+
+/* ── Tooltip bocadillo (aparece a la derecha) ───────────────────── */
+.arsenal-tooltip {
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 950;
+
+    background: var(--color-ui-bg-secondary, #252530);
+    border: 1.5px solid var(--color-border-gold, #c5a059);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.85rem 1rem;
+    width: 230px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75);
+
+    animation: tooltip-entrada 0.15s ease-out;
+}
+
+@keyframes tooltip-entrada {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+/* Flecha apuntando hacia el icono (izquierda del tooltip) */
+.arsenal-tooltip-flecha {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 8px solid var(--color-border-gold, #c5a059);
+}
+
+.arsenal-tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+}
+
+.arsenal-tooltip-icono {
+    font-size: 1.4rem;
+}
+
+.arsenal-tooltip-nombre {
+    margin: 0;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--color-border-gold-vivo, #FFD13B);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.arsenal-tooltip-desc {
+    font-size: 0.72rem;
+    color: var(--color-text-secondary, #a0a0b0);
+    font-style: italic;
+    margin-bottom: 0.55rem;
+    line-height: 1.35;
+}
+
+.arsenal-tooltip-precio {
+    font-size: 0.78rem;
+    color: var(--color-border-gold, #c5a059);
+    margin-bottom: 0.65rem;
+}
+
+.arsenal-tooltip-insuf {
+    color: #FC8181;
+    font-size: 0.7rem;
+    margin-left: 4px;
+}
+
+.arsenal-tooltip-botones {
+    display: flex;
+    gap: 0.45rem;
+}
+
+.btn-arsenal-comprar {
+    flex: 1;
+    background: linear-gradient(135deg, #C53030, #E53E3E);
+    color: #fff;
+    border: none;
+    padding: 0.45rem 0.3rem;
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.75rem;
+    transition: all 0.18s;
+    letter-spacing: 0.3px;
+}
+
+.btn-arsenal-comprar:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9B2C2C, #C53030);
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.4);
+}
+
+.btn-arsenal-comprar:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    background: #4A5568;
+}
+
+.btn-arsenal-cerrar {
+    width: 30px;
+    background: rgba(74, 85, 104, 0.6);
+    border: 1px solid rgba(74, 85, 104, 0.8);
+    color: var(--color-text-secondary, #a0a0b0);
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+    font-size: 0.72rem;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-arsenal-cerrar:hover {
+    background: rgba(74, 85, 104, 0.9);
+    color: #fff;
+}
+
+/* ── Error de compra ────────────────────────────────────────────── */
+.arsenal-error {
+    font-size: 0.6rem;
+    color: #FC8181;
+    background: rgba(229, 62, 62, 0.12);
+    border: 1px solid rgba(229, 62, 62, 0.35);
+    border-radius: var(--radius-sm, 4px);
+    padding: 0.25rem 0.35rem;
+    text-align: center;
+    width: 100%;
+    animation: fade-in 0.2s ease;
+}
+
+/* ── Monedas ────────────────────────────────────────────────────── */
+.arsenal-monedas {
+    font-size: 0.68rem;
+    color: var(--color-border-gold, #c5a059);
+    border-top: 1px solid var(--color-border-bronze, #8c6d3f);
+    padding-top: 0.3rem;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.1rem;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

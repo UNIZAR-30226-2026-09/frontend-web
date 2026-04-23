@@ -10,8 +10,8 @@ import BotonArbolTecnologico from '../ui/BotonArbolTecnologico';
 import PanelArbolTecnologico from '../ui/PanelArbolTecnologico';
 import ControlRefuerzo from '../hud/ControlRefuerzo';
 import ControlGestion from '../hud/ControlGestion';
+import ControlAtaqueEspecial from '../hud/ControlAtaqueEspecial';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
-import PanelArsenalEspecial from '../ui/PanelArsenalEspecial';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
 import '../../styles/Tablero.css';
 
@@ -682,7 +682,7 @@ const Tablero = (props) => {
       <PanelArbolTecnologico />
       <ControlRefuerzo />
       <ControlGestion />
-      <PanelArsenalEspecial />
+      <ControlAtaqueEspecial />
       <AnimacionRefuerzos />
     </div>
   );
