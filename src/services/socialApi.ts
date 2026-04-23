@@ -57,6 +57,16 @@ export const socialApi = {
             method: 'PUT',
             body: JSON.stringify({ estado: estado }),
         });
+    },
+
+    /**
+     * Elimina a un jugador de la lista de amigos.
+     * @param {string} username - Nombre del amigo a eliminar.
+     */
+    eliminarAmistad: async (username: string) => {
+        return await fetchApi(`/v1/amigos/${username}`, {
+            method: 'DELETE',
+        });
     }
 
 };

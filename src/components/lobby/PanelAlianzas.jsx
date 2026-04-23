@@ -1,6 +1,7 @@
-// src/components/lobby/PanelAlianzas.jsx
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { socialApi } from '../../services/socialApi';
+import PanelPerfilJugador from './PanelPerfilJugador';
 import '../../styles/PanelAlianzas.css';
 
 const PanelAlianzas = ({ onCerrar }) => {
@@ -10,6 +11,13 @@ const PanelAlianzas = ({ onCerrar }) => {
     const [busqueda, setBusqueda] = useState('');
     const [enviando, setEnviando] = useState(false);
     const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
+    const [notificacion, setNotificacion] = useState(null);
+    const [perfilViendo, setPerfilViendo] = useState(null);
+
+    const mostrarNotificacion = (msg, isError = false) => {
+        setNotificacion({ msg, isError });
+        setTimeout(() => setNotificacion(null), 3000);
+    };
 
     useEffect(() => {
         if (tabActiva === 'lista') {
@@ -22,7 +30,7 @@ const PanelAlianzas = ({ onCerrar }) => {
                         setAmigos([]);
                     }
                 } catch (error) {
-                    console.error("Error al cargar amigos (activando simulación):", error);
+                    console.error("Error al cargar amigos:", error);
                     setAmigos([]);
                 }
             };
@@ -52,30 +60,42 @@ const PanelAlianzas = ({ onCerrar }) => {
     const handleProcesarSolicitud = async (solicitudId, accion) => {
         try {
             await socialApi.procesarSolicitud(solicitudId, accion);
-            // Si sale bien, quitamos la solicitud de la lista visualmente
             setSolicitudes(prev => prev.filter(sol => sol.id !== solicitudId));
-            alert(`Solicitud ${accion.toLowerCase()} con éxito.`);
+            mostrarNotificacion(`Solicitud ${accion.toLowerCase()} con éxito.`);
             if (accion === 'ACEPTADA') {
                 setTabActiva('lista');
             }
         } catch (error) {
             console.error("Fallo al procesar alianza:", error);
-            alert(`Error del cuartel general (Backend): ${error.message || 'Error desconocido'}`);
+            mostrarNotificacion(`Error del cuartel: ${error.message || 'Error desconocido'}`, true);
         }
     };
-
 
     const handleAñadirAmigo = async () => {
         if (!busqueda) return;
         setEnviando(true);
         try {
             await socialApi.enviarSolicitudAmistad(busqueda);
-            alert(`Mensajero enviado a ${busqueda} con la propuesta de alianza.`);
+            mostrarNotificacion(`Mensajero enviado a ${busqueda} con la propuesta.`);
             setBusqueda('');
         } catch (error) {
-            alert(error.message || 'Error al enviar la propuesta.');
+            mostrarNotificacion(error.message || 'Error al enviar la propuesta.', true);
         } finally {
             setEnviando(false);
+        }
+    };
+
+    const handleCortarAmistad = async (username) => {
+        try {
+            await socialApi.eliminarAmistad(username);
+            setAmigos(prev => prev.filter(a => {
+                const n = a.username || a.user_1 || a.user_2;
+                return n !== username;
+            }));
+            mostrarNotificacion(`Alianza con ${username} revocada.`, false);
+            setPerfilViendo(null);
+        } catch (error) {
+            mostrarNotificacion(`Error al cortar alianza: ${error.message || 'Error desconocido'}`, true);
         }
     };
 
@@ -90,7 +110,7 @@ const PanelAlianzas = ({ onCerrar }) => {
 
     return (
         <div className="alianzas-overlay">
-            <div className="alianzas-panel">
+            <div className="alianzas-panel" style={{ position: 'relative' }}>
                 <button className="alianzas-cerrar" onClick={onCerrar}>✕</button>
                 <h2 className="alianzas-titulo">Tratados y Alianzas</h2>
 
@@ -125,7 +145,6 @@ const PanelAlianzas = ({ onCerrar }) => {
 
                 <div className="alianzas-lista">
                     {tabActiva === 'lista' && amigos.map((amigo, idx) => {
-                        // const config = getEstadoConfig(amigo.estado);
                         const estadoUI = (amigo.estado === 'ACEPTADA') ? 'ONLINE' : (amigo.estado || 'ONLINE');
                         const config = getEstadoConfig(estadoUI);
                         const userDataStr = localStorage.getItem('soberania_user');
@@ -137,7 +156,16 @@ const PanelAlianzas = ({ onCerrar }) => {
                         }
                         nombreAmigo = nombreAmigo || 'Desconocido';
                         return (
-                            <div key={idx} className={`alianzas-card ${config.claseCard}`}>
+                            <div 
+                                key={idx} 
+                                className={`alianzas-card ${config.claseCard}`}
+                                style={{ cursor: 'pointer' }}
+                                onClick={(e) => {
+                                    if (!e.target.closest('.alianzas-acciones')) {
+                                        setPerfilViendo(nombreAmigo);
+                                    }
+                                }}
+                            >
                                 <div className="alianzas-info">
                                     <div className="alianzas-avatar">
                                         {nombreAmigo.charAt(0).toUpperCase()}
@@ -157,7 +185,6 @@ const PanelAlianzas = ({ onCerrar }) => {
                                     {(amigo.estado === 'ONLINE' || amigo.estado === 'EN_LOBBY') && (
                                         <button className="btn-accion btn-accion-principal">Invitar</button>
                                     )}
-                                    <button className="btn-accion" onClick={() => alert('Rompiendo alianza...')}>✕</button>
                                 </div>
                             </div>
                         );
@@ -206,7 +233,35 @@ const PanelAlianzas = ({ onCerrar }) => {
                     )}
                 </div>
 
+                {notificacion && (
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '20px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: notificacion.isError ? 'var(--color-state-danger)' : 'var(--color-state-success)',
+                        color: '#fff',
+                        padding: '12px 24px',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                        zIndex: 1000,
+                        fontWeight: 'bold',
+                        animation: 'fadeIn 0.3s ease'
+                    }}>
+                        {notificacion.msg}
+                    </div>
+                )}
             </div>
+            
+            {perfilViendo && createPortal(
+                <PanelPerfilJugador 
+                    username={perfilViendo} 
+                    onCerrar={() => setPerfilViendo(null)} 
+                    esAmigo={true}
+                    onCortarAmistad={handleCortarAmistad}
+                />,
+                document.getElementById('root') || document.body
+            )}
         </div>
     );
 };

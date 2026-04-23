@@ -234,8 +234,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0.55rem 0.1rem;
+  padding: 0.55rem 0.3rem; 
   border-bottom: 1px solid rgba(140, 115, 34, 0.18);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.soberania-top-row.soberania-top-clickable:hover {
+  background: rgba(140, 115, 34, 0.15);
+  border-radius: 6px;
+  transform: translateY(-1px);
 }
 
 .soberania-top-row:last-child {

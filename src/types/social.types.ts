@@ -8,11 +8,12 @@ export interface EstadisticasJugador {
     nombre_user: string;
     num_partidas_jugadas: number;
     num_partidas_ganadas: number;
-    num_res_conquistadas: number;
+    num_continentes_conquistados: number;
+    num_regiones_conquistadas: number;
     num_soldados_matados: number;
-    conquistas_por_region: Record<string, number>; // Diccionario { "Zaragoza": 12, "Teruel": 5 }
-    winrate: number; // Porcentaje calculado (Float)
-    region_favorita: string | null;
+    winrate: number;
+    region_mas_conquistada: string;
+    ranking_mundial?: number; // Puesto en el ranking global (simulado de momento)
 }
 
 /**

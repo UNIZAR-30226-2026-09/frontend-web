@@ -73,6 +73,13 @@ const SalaLobby = ({ onVolver }) => {
   });
 
   const handleAbandonar = async () => {
+    
+    // 1. Cortamos el cable del websocket ANTES de la petición.
+    // Así, si el server envía "SALA_CERRADA", nosotros (el host) ya no lo escuchamos
+    // y no salta ningún popup indebido. El resto de jugadores sí lo escucharán.
+    socketService.disconnect();
+
+    // 2. Avisamos al servidor (quien detonará el WS de cierre a los demás)
     if (salaActiva.id) {
       try {
         await fetchApi(`/v1/partidas/${salaActiva.id}/abandonar`, { method: 'POST' });
@@ -81,8 +88,6 @@ const SalaLobby = ({ onVolver }) => {
       }
     }
     
-    // Desconexión explícita requerida aquí en lugar de hacerlo en cleanup
-    socketService.disconnect();
     
     useGameStore.setState({
       salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },

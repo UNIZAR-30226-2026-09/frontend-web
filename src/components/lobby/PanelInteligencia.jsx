@@ -41,22 +41,29 @@ const PanelInteligencia = ({ onCerrar }) => {
   const [estadisticas, setEstadisticas] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  // Cargar estadísticas al abrir el panel
+  // Cargar estadísticas y datos del perfil al abrir el panel
   useEffect(() => {
-    const cargarEstadisticas = async () => {
+    const cargarDatos = async () => {
       setIsLoadingStats(true);
       try {
-        const data = await socialApi.obtenerEstadisticas();
-        setEstadisticas(data);
+        const [statsData, userData] = await Promise.all([
+          socialApi.obtenerEstadisticas(),
+          fetchApi('/v1/usuarios/me', { method: 'GET' })
+        ]);
+        setEstadisticas(statsData);
+        if (userData) {
+          if (userData.username) setUsername(userData.username);
+          if (userData.email) setEmail(userData.email);
+        }
       } catch (error) {
-        console.error("Error al obtener las estadísticas:", error);
+        console.error("Error al obtener los datos del perfil:", error);
         setEstadisticas(null);
       } finally {
         setIsLoadingStats(false);
       }
     };
 
-    cargarEstadisticas();
+    cargarDatos();
   }, [user]);
 
 

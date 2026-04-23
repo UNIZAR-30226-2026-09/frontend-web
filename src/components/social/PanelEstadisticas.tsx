@@ -34,7 +34,12 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
             <div className="stats-grid">
                 <div className="stat-card destacado">
                     <span className="stat-label">Winrate</span>
-                    <span className="stat-value">{estadisticas.winrate}%</span>
+                    <span className="stat-value">{Math.round(estadisticas.winrate * 100) / 100}%</span>
+                </div>
+
+                <div className="stat-card destacado">
+                    <span className="stat-label">Ranking Mundial</span>
+                    <span className="stat-value">#{estadisticas.ranking_mundial || 67}</span>
                 </div>
 
                 <div className="stat-card">
@@ -48,19 +53,24 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
                 </div>
 
                 <div className="stat-card">
-                    <span className="stat-label">Bajas Inemigas</span>
+                    <span className="stat-label">Bajas Enemigas</span>
                     <span className="stat-value">{estadisticas.num_soldados_matados}</span>
                 </div>
 
                 <div className="stat-card">
-                    <span className="stat-label">Territorios Conquistados</span>
-                    <span className="stat-value">{estadisticas.num_res_conquistadas}</span>
+                    <span className="stat-label">Regiones Conquistadas</span>
+                    <span className="stat-value">{estadisticas.num_regiones_conquistadas}</span>
+                </div>
+
+                <div className="stat-card">
+                    <span className="stat-label">Continentes Conquistados</span>
+                    <span className="stat-value">{estadisticas.num_continentes_conquistados}</span>
                 </div>
 
                 <div className="stat-card favorita">
                     <span className="stat-label">Región Favorita</span>
                     <span className="stat-value">
-                        {estadisticas.region_favorita ? estadisticas.region_favorita : 'Ninguna (Aún)'}
+                        {estadisticas.region_mas_conquistada ? estadisticas.region_mas_conquistada : 'Ninguna (Aún)'}
                     </span>
                 </div>
             </div>

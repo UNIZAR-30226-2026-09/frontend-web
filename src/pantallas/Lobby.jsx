@@ -1,5 +1,5 @@
 // src/pantallas/Lobby.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/gameStore';
@@ -26,6 +26,16 @@ const Lobby = () => {
   const [vistaActual, setVistaActual] = useState('mando');
   const [cargandoRapida, setCargandoRapida] = useState(false);
   const [errorRapida, setErrorRapida] = useState(null);
+  const [popupSalaCerrada, setPopupSalaCerrada] = useState(null);
+
+  useEffect(() => {
+    const handleSalaCerrada = (e) => {
+        setVistaActual('mando');
+        setPopupSalaCerrada(e.detail?.mensaje || "El host ha abandonado la sala y la partida ha sido cancelada.");
+    };
+    window.addEventListener('sala_cerrada', handleSalaCerrada);
+    return () => window.removeEventListener('sala_cerrada', handleSalaCerrada);
+  }, []);
 
   // Datos mock de partidas de amigos (se sustituirán por llamada real)
   const [partidas] = useState([
@@ -150,8 +160,8 @@ const Lobby = () => {
                   onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Unirse con Código</h3>
-                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Introduce el código de operaciones que te ha facilitado el comandante que fundó la sala.</p>
+                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Unirse a una Partida</h3>
+                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Explora el listado de salas públicas disponibles o introduce un código de invitación directo.</p>
                   <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>INFILTRARSE ➔</button>
                 </div>
 
@@ -191,6 +201,39 @@ const Lobby = () => {
         )}
 
       </div>
+
+      {/* POPUP: SALA CERRADA */}
+      {popupSalaCerrada && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--color-ui-bg-secondary)', border: '2px solid var(--color-border-bronze)',
+            padding: '2rem', borderRadius: '12px', textAlign: 'center', maxWidth: '400px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8)'
+          }}>
+            <h3 style={{ color: 'var(--color-state-danger)', marginTop: 0 }}>Sala Cerrada</h3>
+            <p style={{ color: '#ccc', marginBottom: '1.5rem', lineHeight: 1.4 }}>
+              {popupSalaCerrada}
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setPopupSalaCerrada(null)}
+                style={{ 
+                  flex: 1, padding: '0.6rem', background: 'var(--color-state-danger)', 
+                  border: '1px solid transparent', color: 'white', borderRadius: 'var(--radius-md)', 
+                  cursor: 'pointer', fontWeight: 'bold', fontSize: 'var(--font-size-sm)', textTransform: 'uppercase' 
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

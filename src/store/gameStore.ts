@@ -1034,6 +1034,19 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
+            case 'SALA_CERRADA': {
+                const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                window.dispatchEvent(new CustomEvent('sala_cerrada', { detail: payload }));
+                
+                set({
+                    salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+                    jugadoresLobby: [],
+                    esCreadorSala: false
+                });
+                socketService.disconnect();
+                break;
+            }
+
             case 'CHAT': {
                 const msj = mensaje.mensaje ?? mensaje.data?.mensaje ?? '';
                 if (msj === '@@SYS_SYNC_PHASE@@') {
@@ -1400,6 +1413,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 preparandoFortificacion: false,
                 preparandoAtaqueEspecial: null,
                 catalogoTecnologias: null,
+                esCreadorSala: false
             });
         }
     },
