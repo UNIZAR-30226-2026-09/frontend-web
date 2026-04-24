@@ -1,7 +1,7 @@
 // src/services/socketService.ts
 import { useGameStore } from '../store/gameStore';
 
-const WS_BASE_URL: string = (import.meta as any).env?.VITE_WS_URL ?? 'ws://localhost:8000';
+const WS_BASE_URL: string = (import.meta as any).env?.VITE_WS_URL ?? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8000`;
 
 class SocketService {
     private socket: WebSocket | null = null;
