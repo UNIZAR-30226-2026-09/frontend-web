@@ -20,6 +20,7 @@ export interface CatalogoTecnologia {
     descripcion: string;
     requisitos: string[];
     precio: number;
+    rango?: number | null;
 }
 
 
@@ -115,6 +116,10 @@ export interface EstadoJuego {
     // Arsenal / Ataques Especiales
     /** Catálogo global de tecnologías descargado de /api/v1/partidas/tecnologias */
     catalogoTecnologias: Record<string, CatalogoTecnologia> | null;
+    /** Armas listas en el arsenal (compradas) */
+    armasCompradas: string[];
+    /** Arma actualmente seleccionada en el arsenal para ser usada */
+    armaEspecialSeleccionada: string | null;
     /** ID de la habilidad comprada, esperando selección de objetivo en el mapa */
     preparandoAtaqueEspecial: string | null;
 

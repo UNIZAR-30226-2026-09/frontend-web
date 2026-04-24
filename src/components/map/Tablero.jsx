@@ -91,6 +91,7 @@ const Tablero = (props) => {
   const faseActual = useGameStore((state) => state.faseActual);
   const turnoActual = useGameStore((state) => state.turnoActual);
   const jugadorLocal = useGameStore((state) => state.jugadorLocal);
+  const armaEspecialSeleccionada = useGameStore((state) => state.armaEspecialSeleccionada);
   const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
 
   const mapaEstatico = useGameStore((state) => state.mapaEstatico);
@@ -506,7 +507,7 @@ const Tablero = (props) => {
                 // En modo ataque especial, los territorios ENEMIGOS son objetivos válidos
                 if (preparandoAtaqueEspecial && !esMio && propietarioId) isVivoState = true;
               }
-              
+
               // Evitar que se ilumine si está bloqueado por una tarea (en cualquier fase)
               if (estadosBloqueo[comarca.id] && esMio) {
                 isVivoState = false;
@@ -519,7 +520,7 @@ const Tablero = (props) => {
               // Si está bloqueado y es nuestro, ignoramos el hover/selected para no iluminarlo
               const estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
               if (estaBloqueadoVisualmente) return null;
-              
+
               if (!isHovered && !isSelected && !isVivoState) return null;
             }
 
@@ -581,7 +582,7 @@ const Tablero = (props) => {
           ))}
 
           {/* ────── FLECHAS DE ATAQUE ────── */}
-          {faseActual === 'ATAQUE_CONVENCIONAL' && origenSeleccionado && (
+          {(faseActual === 'ATAQUE_CONVENCIONAL' || faseActual === 'ATAQUE_ESPECIAL') && origenSeleccionado && (
             <g pointerEvents="none">
               {comarcasResaltadas.map(destinoId => {
                 const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
@@ -647,10 +648,10 @@ const Tablero = (props) => {
                 // En GESTION y ATAQUE_ESPECIAL todos los territorios propios son interactuables
                 if (esMio && (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL')) isVivoState = true;
                 // En modo ataque especial, los territorios ENEMIGOS son objetivos
-                if (preparandoAtaqueEspecial && !esMio && dueño) isVivoState = true;
+                if (armaEspecialSeleccionada && !esMio && dueño) isVivoState = true;
 
               }
-              
+
               // Evitar que se ilumine el borde de la ficha si está bloqueado por una tarea
               if (estadosBloqueo[comarca.id] && esMio) {
                 isVivoState = false;

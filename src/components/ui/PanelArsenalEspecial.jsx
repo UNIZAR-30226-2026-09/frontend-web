@@ -78,10 +78,12 @@ const PanelArsenalEspecial = () => {
     const turnoActual              = useGameStore(s => s.turnoActual);
     const jugadorLocal             = useGameStore(s => s.jugadorLocal);
     const tecnologiasDesbloqueadas = useGameStore(s => s.tecnologiasDesbloqueadas);
+    const armasCompradas           = useGameStore(s => s.armasCompradas);
     const catalogoTecnologias      = useGameStore(s => s.catalogoTecnologias);
-    const preparandoAtaqueEspecial = useGameStore(s => s.preparandoAtaqueEspecial);
+    const armaEspecialSeleccionada = useGameStore(s => s.armaEspecialSeleccionada);
     const monedas                  = useGameStore(s => s.monedas);
-    const comprarYPrepararAtaque   = useGameStore(s => s.comprarYPrepararAtaque);
+    const comprarTecnologiaBackend = useGameStore(s => s.comprarTecnologiaBackend);
+    const prepararArmaEspecial     = useGameStore(s => s.prepararArmaEspecial);
     const cancelarAtaqueEspecial   = useGameStore(s => s.cancelarAtaqueEspecial);
 
     const esMiTurno = String(turnoActual) === String(jugadorLocal);
@@ -107,7 +109,7 @@ const PanelArsenalEspecial = () => {
         setComprando(true);
         setErrorCompra(null);
         try {
-            await comprarYPrepararAtaque(tech.id);
+            await comprarTecnologiaBackend(tech.id);
             setNodoAbierto(null);
         } catch (e) {
             const msg = e?.message || 'No se pudo realizar la compra.';
@@ -122,8 +124,8 @@ const PanelArsenalEspecial = () => {
         setErrorCompra(null);
     };
 
-    const tecActivaInfo = preparandoAtaqueEspecial
-        ? catalogoTecnologias[preparandoAtaqueEspecial]
+    const tecActivaInfo = armaEspecialSeleccionada
+        ? buscarEnCatalogo(catalogoTecnologias, armaEspecialSeleccionada)
         : null;
 
     return (
@@ -135,13 +137,15 @@ const PanelArsenalEspecial = () => {
             </div>
 
             {/* Banner: modo selección de objetivo activo */}
-            {preparandoAtaqueEspecial && (
+            {armaEspecialSeleccionada && (
                 <div className="arsenal-modo-objetivo-banner">
-                    <span>{getIcono(preparandoAtaqueEspecial)}</span>
+                    <span>{getIcono(armaEspecialSeleccionada)}</span>
                     <span style={{ fontSize: '0.55rem' }}>
-                        {tecActivaInfo?.nombre || preparandoAtaqueEspecial}
+                        {tecActivaInfo?.nombre || armaEspecialSeleccionada}
                     </span>
-                    <span style={{ fontSize: '0.5rem' }}>Selecciona objetivo</span>
+                    <span style={{ fontSize: '0.5rem' }}>
+                        {tecActivaInfo?.rango === null ? 'Selecciona objetivo' : 'Selecciona origen'}
+                    </span>
                     <button
                         className="btn-arsenal-cancelar-pequeño"
                         onClick={cancelarAtaqueEspecial}
@@ -156,9 +160,10 @@ const PanelArsenalEspecial = () => {
             <div className="arsenal-lista">
                 {habilidades.map(tech => {
                     const icono      = getIcono(tech.id);
-                    const esteActivo = preparandoAtaqueEspecial === tech.id;
+                    const esteActivo = armaEspecialSeleccionada === tech.id;
                     const sinDinero  = monedas < tech.precio;
                     const popAbierto = nodoAbierto === tech.id;
+                    const yaComprada = armasCompradas.includes(tech.id.toLowerCase());
 
                     return (
                         <div
@@ -167,10 +172,14 @@ const PanelArsenalEspecial = () => {
                         >
                             {/* Botón icono */}
                             <button
-                                className={`btn-arsenal-icono ${esteActivo ? 'activo' : ''} ${sinDinero ? 'sin-fondos' : ''}`}
-                                onClick={() => !preparandoAtaqueEspecial && handleToggleNodo(tech.id)}
-                                title={`${tech.nombre} — ${tech.precio} 💰`}
-                                disabled={!!preparandoAtaqueEspecial && !esteActivo}
+                                className={`btn-arsenal-icono ${esteActivo ? 'activo' : ''}`}
+                                style={{ 
+                                    filter: yaComprada ? 'none' : 'grayscale(100%)', 
+                                    opacity: yaComprada ? 1 : 0.75 
+                                }}
+                                onClick={() => !armaEspecialSeleccionada && handleToggleNodo(tech.id)}
+                                title={`${tech.nombre} — ${yaComprada ? 'Lista para usar' : `${tech.precio} 💰`}`}
+                                disabled={!!armaEspecialSeleccionada && !esteActivo}
                             >
                                 <span className="arsenal-emoji">{icono}</span>
                             </button>
@@ -208,14 +217,28 @@ const PanelArsenalEspecial = () => {
                                     )}
 
                                     <div className="arsenal-popover-botones">
-                                        <button
-                                            className="btn-arsenal-comprar"
-                                            onClick={() => handleComprar(tech)}
-                                            disabled={sinDinero || comprando}
-                                            title={sinDinero ? 'Monedas insuficientes' : `Activar ${tech.nombre}`}
-                                        >
-                                            {comprando ? '⏳ Comprando...' : `⚔️ Comprar`}
-                                        </button>
+                                        {!yaComprada ? (
+                                            <button
+                                                className="btn-arsenal-comprar"
+                                                onClick={() => handleComprar(tech)}
+                                                disabled={sinDinero || comprando}
+                                                title={sinDinero ? 'Monedas insuficientes' : `Comprar ${tech.nombre}`}
+                                            >
+                                                {comprando ? '⏳ Comprando...' : `💰 Comprar`}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="btn-arsenal-comprar"
+                                                onClick={() => {
+                                                    prepararArmaEspecial(tech.id);
+                                                    setNodoAbierto(null);
+                                                }}
+                                                title={`Preparar ${tech.nombre}`}
+                                                style={{ backgroundColor: '#4C51BF' }}
+                                            >
+                                                ⚔️ Usar
+                                            </button>
+                                        )}
                                         <button
                                             className="btn-arsenal-cerrar-pop"
                                             onClick={() => setNodoAbierto(null)}

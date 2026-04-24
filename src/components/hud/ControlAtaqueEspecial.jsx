@@ -71,7 +71,7 @@ const obtenerHabilidadesDisponibles = (catalogo, desbloqueadas) => {
 };
 
 // Tooltip flotante con position:fixed que aparece a la derecha del icono
-const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onCerrar, tooltipX, tooltipY }) => {
+const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onUsar, onCerrar, tooltipX, tooltipY, yaComprada }) => {
     const sinDinero = monedas !== null && monedas < (hab.precio ?? 0);
 
     return createPortal(
@@ -95,20 +95,31 @@ const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onCerrar, tooltipX
 
             <div className="arsenal-tooltip-precio">
                 💰 <strong>{hab.precio ?? '—'}</strong> monedas
-                {sinDinero && (
+                {sinDinero && !yaComprada && (
                     <span className="arsenal-tooltip-insuf"> (Insuf.)</span>
                 )}
             </div>
 
             <div className="arsenal-tooltip-botones">
-                <button
-                    className="btn-arsenal-comprar"
-                    onClick={() => onComprar(hab.id)}
-                    disabled={sinDinero || comprando}
-                    title={sinDinero ? 'Monedas insuficientes' : `Ejecutar ${hab.nombre}`}
-                >
-                    {comprando ? '⏳' : '⚔️ Comprar'}
-                </button>
+                {!yaComprada ? (
+                    <button
+                        className="btn-arsenal-comprar"
+                        onClick={() => onComprar(hab.id)}
+                        disabled={sinDinero || comprando}
+                        title={sinDinero ? 'Monedas insuficientes' : `Comprar ${hab.nombre}`}
+                    >
+                        {comprando ? '⏳' : '💰 Comprar'}
+                    </button>
+                ) : (
+                    <button
+                        className="btn-arsenal-comprar"
+                        onClick={() => onUsar(hab.id)}
+                        title={`Preparar ${hab.nombre}`}
+                        style={{ backgroundColor: '#4C51BF' }}
+                    >
+                        ⚔️ Usar
+                    </button>
+                )}
                 <button
                     className="btn-arsenal-cerrar"
                     onClick={onCerrar}
@@ -123,14 +134,14 @@ const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onCerrar, tooltipX
 };
 
 // Botón icono individual
-const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque }) => {
+const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque, yaComprada }) => {
     const sinDinero = monedas !== null && monedas < (hab.precio ?? 0);
     const icono = getIcono(hab.id);
 
     const clases = [
         'arsenal-btn-icono',
         esActivo ? 'arsenal-btn-activo' : '',
-        sinDinero ? 'arsenal-btn-pobre' : '',
+        sinDinero && !yaComprada ? 'arsenal-btn-pobre' : '',
         preparandoEsteAtaque ? 'arsenal-btn-preparando' : '',
     ].filter(Boolean).join(' ');
 
@@ -138,12 +149,16 @@ const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque 
         <button
             className={clases}
             onClick={(e) => onSeleccionar(hab.id, e)}
-            title={`${hab.nombre} — ${hab.precio ?? 0} 💰`}
+            title={`${hab.nombre} — ${yaComprada ? 'Comprada' : `${hab.precio ?? 0} 💰`}`}
             aria-pressed={esActivo}
             aria-label={hab.nombre}
+            style={{ 
+                filter: yaComprada ? 'none' : 'grayscale(100%)', 
+                opacity: yaComprada ? 1 : 0.75 
+            }}
         >
             <span className="arsenal-icono-emoji">{icono}</span>
-            {sinDinero && <span className="arsenal-btn-badge-pobre" aria-hidden="true">✕</span>}
+            {sinDinero && !yaComprada && <span className="arsenal-btn-badge-pobre" aria-hidden="true">✕</span>}
             {preparandoEsteAtaque && <span className="arsenal-btn-badge-activo" aria-hidden="true">🎯</span>}
         </button>
     );
@@ -169,9 +184,11 @@ const ControlAtaqueEspecial = () => {
     const jugadorLocal = useGameStore(s => s.jugadorLocal);
     const catalogoTecnologias = useGameStore(s => s.catalogoTecnologias);
     const tecnologiasDesbloqueadas = useGameStore(s => s.tecnologiasDesbloqueadas);
+    const armasCompradas = useGameStore(s => s.armasCompradas);
     const monedas = useGameStore(s => s.monedas);
-    const preparandoAtaqueEspecial = useGameStore(s => s.preparandoAtaqueEspecial);
-    const comprarYPrepararAtaque = useGameStore(s => s.comprarYPrepararAtaque);
+    const armaEspecialSeleccionada = useGameStore(s => s.armaEspecialSeleccionada);
+    const comprarTecnologiaBackend = useGameStore(s => s.comprarTecnologiaBackend);
+    const prepararArmaEspecial = useGameStore(s => s.prepararArmaEspecial);
     const cancelarAtaqueEspecial = useGameStore(s => s.cancelarAtaqueEspecial);
 
     const esMiTurno = String(turnoActual) === String(jugadorLocal);
@@ -221,13 +238,18 @@ const ControlAtaqueEspecial = () => {
         setComprando(true);
         setError(null);
         try {
-            await comprarYPrepararAtaque(id);
+            await comprarTecnologiaBackend(id);
             setSeleccionado(null); // cierra tooltip tras comprar
         } catch (e) {
-            setError(e?.message || 'No se pudo ejecutar la habilidad.');
+            setError(e?.message || 'No se pudo comprar la habilidad.');
         } finally {
             setComprando(false);
         }
+    };
+
+    const handleUsar = (id) => {
+        prepararArmaEspecial(id);
+        setSeleccionado(null);
     };
 
     const handleCerrarTooltip = () => {
@@ -244,10 +266,14 @@ const ControlAtaqueEspecial = () => {
             </div>
 
             {/* Modo: objetivo seleccionado (preparando ataque) */}
-            {preparandoAtaqueEspecial && (
-                <div className="arsenal-modo-activo" title="Haz click en un territorio enemigo para lanzar el ataque">
-                    <span className="arsenal-modo-icono">{getIcono(preparandoAtaqueEspecial)}</span>
-                    <span className="arsenal-modo-texto">Selecciona objetivo</span>
+            {armaEspecialSeleccionada && (
+                <div className="arsenal-modo-activo" title="Haz click en el mapa para lanzar el ataque">
+                    <span className="arsenal-modo-icono">{getIcono(armaEspecialSeleccionada)}</span>
+                    <span className="arsenal-modo-texto">
+                        {buscarEnCatalogo(catalogoTecnologias, armaEspecialSeleccionada)?.rango === null 
+                            ? 'Selecciona destino' 
+                            : 'Selecciona origen'}
+                    </span>
                     <button
                         className="arsenal-btn-cancelar-modo"
                         onClick={cancelarAtaqueEspecial}
@@ -263,8 +289,9 @@ const ControlAtaqueEspecial = () => {
             <ul className="arsenal-lista-iconos" role="list">
                 {habilidades.map(hab => {
                     const esActivo = seleccionado === hab.id;
-                    const preparandoEste = preparandoAtaqueEspecial === hab.id;
-                    const deshabilitado = !!preparandoAtaqueEspecial && !preparandoEste;
+                    const preparandoEste = armaEspecialSeleccionada === hab.id;
+                    const deshabilitado = !!armaEspecialSeleccionada && !preparandoEste;
+                    const yaComprada = armasCompradas.includes(hab.id.toLowerCase());
 
                     return (
                         <li key={hab.id} className="arsenal-item" role="listitem">
@@ -273,16 +300,19 @@ const ControlAtaqueEspecial = () => {
                                 monedas={monedas}
                                 esActivo={esActivo}
                                 preparandoEsteAtaque={preparandoEste}
+                                yaComprada={yaComprada}
                                 onSeleccionar={deshabilitado ? () => { } : handleSeleccionar}
                             />
 
                             {/* Tooltip flotante derecha con posición absoluta */}
-                            {esActivo && habSeleccionada && !preparandoAtaqueEspecial && (
+                            {esActivo && habSeleccionada && !armaEspecialSeleccionada && (
                                 <TooltipArsenal
                                     hab={habSeleccionada}
                                     monedas={monedas}
                                     comprando={comprando}
+                                    yaComprada={yaComprada}
                                     onComprar={handleComprar}
+                                    onUsar={handleUsar}
                                     onCerrar={handleCerrarTooltip}
                                     tooltipX={tooltipX}
                                     tooltipY={tooltipY}
