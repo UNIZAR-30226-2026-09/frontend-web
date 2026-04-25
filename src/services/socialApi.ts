@@ -60,6 +60,17 @@ export const socialApi = {
     },
 
     /**
+     * Obtiene la lista de amigos aceptados con su estado de conexión en tiempo real
+     * (CONECTADO, EN_PARTIDA, DESCONECTADO).
+     * Devuelve: [{ username, estado_conexion }]
+     */
+    obtenerAmigosActivos: async () => {
+        return await fetchApi(`/v1/amigos/activos`, {
+            method: 'GET',
+        });
+    },
+
+    /**
      * Elimina a un jugador de la lista de amigos.
      * @param {string} username - Nombre del amigo a eliminar.
      */

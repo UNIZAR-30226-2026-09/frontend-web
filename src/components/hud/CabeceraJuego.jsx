@@ -40,7 +40,8 @@ const CabeceraJuego = () => {
     coloresJugadores,
     turnoActual,
     jugadorLocal,
-    abandonarSoberania
+    abandonarSoberania,
+    setFaseVotacion
   } = useGameStore();
 
   const navigate = useNavigate();
@@ -82,22 +83,17 @@ const CabeceraJuego = () => {
     setMenuAbierto(!menuAbierto);
   };
 
-  const handleRendirse = async () => {
-    const confirmar = window.confirm('¿Estás seguro de que deseas rendirte? Perderás todos tus territorios y tropas.');
-    if (confirmar) {
-      await abandonarSoberania();
-      setMenuAbierto(false);
-      navigate('/lobby');
-    }
+  const handleRendirse = () => {
+    // En lugar de salir directamente, abrimos la votación de abandono
+    setFaseVotacion('confirmando_local');
+    setMenuAbierto(false); // Cerramos el menú pequeñito
   };
 
-  const handleVolverSala = async () => {
-    const confirmar = window.confirm('¿Deseas salir al Centro de Mando? Se considerará un abandono de la partida actual.');
-    if (confirmar) {
-      await abandonarSoberania();
-      setMenuAbierto(false);
-      navigate('/lobby');
-    }
+  const handleVolverSala = () => {
+    // Como volver a la sala interrumpe la partida de todos, 
+    // debe pasar también por votación o contar como rendición.
+    setFaseVotacion('confirmando_local');
+    setMenuAbierto(false);
   };
 
   // Construir renderizado condicional del botón central

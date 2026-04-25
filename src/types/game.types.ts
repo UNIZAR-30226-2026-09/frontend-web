@@ -324,6 +324,18 @@ export interface EstadoJuego {
     cargarCatalogoTecnologias: (overrideId?: number | string) => Promise<void>;
 
     /**
+     * Llama al backend para comprar una tecnología/arma y la añade al arsenal local.
+     * @param tecnologiaId - ID de la tecnología a comprar.
+     */
+    comprarTecnologiaBackend: (tecnologiaId: string) => Promise<any>;
+
+    /**
+     * Activa el modo de selección de objetivo en el mapa para un arma ya comprada.
+     * @param tecnologiaId - ID del arma a preparar.
+     */
+    prepararArmaEspecial: (tecnologiaId: string) => void;
+
+    /**
      * Compra una habilidad tecnológica y activa el modo de selección de objetivo en el mapa.
      * @param tecnologiaId - ID de la tecnología a comprar.
      */
@@ -337,6 +349,26 @@ export interface EstadoJuego {
     /**
      * Ejecuta el ataque especial sobre el territorio destino seleccionado.
      * @param destinoId - ID del territorio objetivo.
+     * @param tipoAtaque - Identificador de la tecnología/arma a usar.
+     * @param origenId - ID del territorio origen (opcional, sólo para armas con rango).
      */
-    ejecutarAtaqueEspecialBackend: (destinoId: string) => Promise<void>;
+    ejecutarAtaqueEspecialBackend: (destinoId: string, tipoAtaque: string, origenId?: string | null) => Promise<void>;
+
+    // Votación Rendición
+    /** Fase actual del flujo de rendición por consenso. */
+    faseVotacionAbandono: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando';
+    /** Username del jugador que ha iniciado la solicitud de abandono (null si ninguno). */
+    jugadorSolicitanteAbandono: string | null;
+
+    /** Cambia la fase local de la votación de rendición. */
+    setFaseVotacion: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => void;
+
+    /** Inicia el flujo de solicitud de abandono y lo emite por WebSocket. */
+    iniciarSolicitudAbandono: () => void;
+
+    /**
+     * Emite el voto del jugador local sobre la rendición.
+     * @param voto true = acepta rendirse, false = rechaza.
+     */
+    enviarVotoAbandono: (voto: boolean) => void;
 }

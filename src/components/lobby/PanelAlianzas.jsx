@@ -20,22 +20,19 @@ const PanelAlianzas = ({ onCerrar }) => {
     };
 
     useEffect(() => {
-        if (tabActiva === 'lista') {
-            const cargarAmigos = async () => {
-                try {
-                    const data = await socialApi.obtenerAmigos();
-                    if (data && data.length > 0) {
-                        setAmigos(data.map(a => ({ ...a, estado: a.estado || 'ONLINE' })));
-                    } else {
-                        setAmigos([]);
-                    }
-                } catch (error) {
-                    console.error("Error al cargar amigos:", error);
-                    setAmigos([]);
-                }
-            };
-            cargarAmigos();
-        }
+        if (tabActiva !== 'lista') return;
+
+        const cargarAmigos = async () => {
+            try {
+                const data = await socialApi.obtenerAmigosActivos();
+                setAmigos(data && data.length > 0 ? data : []);
+            } catch (error) {
+                console.error("Error al cargar amigos:", error);
+                setAmigos([]);
+            }
+        };
+
+        cargarAmigos();
     }, [tabActiva]);
 
     // Cargar solicitudes solo cuando se abre su pestaña
@@ -101,10 +98,10 @@ const PanelAlianzas = ({ onCerrar }) => {
 
     const getEstadoConfig = (estado) => {
         switch (estado) {
-            case 'ONLINE': return { texto: 'Conectado', claseCard: 'alianzas-card-online', claseDot: 'dot-online' };
-            case 'JUGANDO': return { texto: 'En Combate', claseCard: 'alianzas-card-jugando', claseDot: 'dot-jugando' };
-            case 'EN_LOBBY': return { texto: 'En Sala de Espera', claseCard: 'alianzas-card-lobby', claseDot: 'dot-lobby' };
-            default: return { texto: 'Desconectado', claseCard: 'alianzas-card-offline', claseDot: 'dot-offline' };
+            case 'CONECTADO': return { texto: 'Conectado', claseCard: 'alianzas-card-online', claseDot: 'dot-online' };
+            case 'EN_PARTIDA': return { texto: 'En Combate', claseCard: 'alianzas-card-jugando', claseDot: 'dot-jugando' };
+            case 'DESCONECTADO': return { texto: 'Desconectado', claseCard: 'alianzas-card-offline', claseDot: 'dot-offline' };
+            default: return { texto: 'Sin datos', claseCard: 'alianzas-card-offline', claseDot: 'dot-offline' };
         }
     };
 
@@ -145,7 +142,7 @@ const PanelAlianzas = ({ onCerrar }) => {
 
                 <div className="alianzas-lista">
                     {tabActiva === 'lista' && amigos.map((amigo, idx) => {
-                        const estadoUI = (amigo.estado === 'ACEPTADA') ? 'ONLINE' : (amigo.estado || 'ONLINE');
+                        const estadoUI = amigo.estado_conexion || 'DESCONECTADO';
                         const config = getEstadoConfig(estadoUI);
                         const userDataStr = localStorage.getItem('soberania_user');
                         const miUsuario = userDataStr ? (JSON.parse(userDataStr).nombre_usuario || '').trim().toLowerCase() : '';
@@ -156,8 +153,8 @@ const PanelAlianzas = ({ onCerrar }) => {
                         }
                         nombreAmigo = nombreAmigo || 'Desconocido';
                         return (
-                            <div 
-                                key={idx} 
+                            <div
+                                key={idx}
                                 className={`alianzas-card ${config.claseCard}`}
                                 style={{ cursor: 'pointer' }}
                                 onClick={(e) => {
@@ -179,10 +176,10 @@ const PanelAlianzas = ({ onCerrar }) => {
                                     </div>
                                 </div>
                                 <div className="alianzas-acciones">
-                                    {amigo.estado === 'JUGANDO' && (
+                                    {amigo.estado_conexion === 'EN_PARTIDA' && (
                                         <button className="btn-accion btn-accion-principal" onClick={() => alert('Espectando sala: ' + amigo.salaActivaId)}>Espectar</button>
                                     )}
-                                    {(amigo.estado === 'ONLINE' || amigo.estado === 'EN_LOBBY') && (
+                                    {(amigo.estado_conexion === 'CONECTADO') && (
                                         <button className="btn-accion btn-accion-principal">Invitar</button>
                                     )}
                                 </div>
@@ -252,11 +249,11 @@ const PanelAlianzas = ({ onCerrar }) => {
                     </div>
                 )}
             </div>
-            
+
             {perfilViendo && createPortal(
-                <PanelPerfilJugador 
-                    username={perfilViendo} 
-                    onCerrar={() => setPerfilViendo(null)} 
+                <PanelPerfilJugador
+                    username={perfilViendo}
+                    onCerrar={() => setPerfilViendo(null)}
                     esAmigo={true}
                     onCortarAmistad={handleCortarAmistad}
                 />,

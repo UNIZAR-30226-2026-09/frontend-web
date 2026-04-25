@@ -78,6 +78,7 @@ const parsearJugadores = (
     jugadorLocalId: string | null;
     monedasLocal: number | null;
     tecnologiasLocal: string[] | null;
+    armasCompradasLocal: string[] | null;
     territorioTrabajandoLocal: string | null;
     territorioInvestigandoLocal: string | null;
     ramaInvestigandoLocal: string | null;
@@ -208,6 +209,10 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     origenConquista: null,
     destinoConquista: null,
     preparandoFortificacion: false,
+
+    // UI - Votación Rendición
+    faseVotacionAbandono: 'ninguna' as 'ninguna' | 'confirmando_local' | 'esperando' | 'votando',
+    jugadorSolicitanteAbandono: null,
 
     // ACCIONES — MAPA ESTÁTICO
 
@@ -560,6 +565,15 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             origenSeleccionado: null,
             destinoSeleccionado: null
         });
+    },
+
+    /**
+     * Compra una habilidad tecnológica y activa inmediatamente el modo de
+     * selección de objetivo en el mapa (combina comprar + prepararArmaEspecial).
+     */
+    comprarYPrepararAtaque: async (tecnologiaId: string) => {
+        await get().comprarTecnologiaBackend(tecnologiaId);
+        get().prepararArmaEspecial(tecnologiaId);
     },
 
     /**
@@ -947,8 +961,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
-            case 'GESTION':
-            case 'ATAQUE_ESPECIAL': {
+            case 'GESTION': {
                 // Solo permitimos seleccionar territorios propios
                 if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
                     // Toggle selección
@@ -1348,6 +1361,33 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
+            case 'VOTACION_ABANDONO_INICIADA': {
+                const data = mensaje.data || mensaje.payload || mensaje;
+                const solicitante = data.jugador_solicitante;
+
+                // Verificamos si no somos nosotros para mostrar el modal de voto
+                if (solicitante !== get().jugadorLocal) {
+                    set({
+                        faseVotacionAbandono: 'votando',
+                        jugadorSolicitanteAbandono: solicitante
+                    });
+                }
+                break;
+            }
+
+            case 'VOTACION_ABANDONO_RECHAZADA': {
+                set({ faseVotacionAbandono: 'ninguna', jugadorSolicitanteAbandono: null });
+                alert('La votación de rendición ha sido rechazada. La guerra continúa.');
+                break;
+            }
+
+            case 'VOTACION_ABANDONO_APROBADA': {
+                set({ faseVotacionAbandono: 'ninguna' });
+                alert('La rendición ha sido aprobada unánimemente.');
+                window.location.href = '/lobby';
+                break;
+            }
+
             default:
                 console.warn(`[WS] Tipo de evento desconocido: "${tipo}"`);
                 break;
@@ -1522,5 +1562,33 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 esCreadorSala: false
             });
         }
+    },
+
+    // ACCIONES — VOTACIÓN RENDICIÓN
+
+    /**
+     * Cambia la fase local de la votación de rendición.
+     */
+    setFaseVotacion: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => {
+        set({ faseVotacionAbandono: fase });
+    },
+
+    /**
+     * El jugador local inicia una solicitud de abandono por consenso.
+     * Cambia la UI a "esperando" y emite SOLICITAR_ABANDONO por WebSocket.
+     */
+    iniciarSolicitudAbandono: () => {
+        set({ faseVotacionAbandono: 'esperando' });
+        socketService.sendRaw({ accion: 'SOLICITAR_ABANDONO' });
+        console.log("🚀 [WS] Enviando propuesta de rendición al servidor");
+    },
+
+    /**
+     * El jugador local emite su voto (a favor / en contra) sobre la rendición.
+     * @param {boolean} voto - true = acepta rendirse, false = rechaza.
+     */
+    enviarVotoAbandono: (voto: boolean) => {
+        set({ faseVotacionAbandono: 'esperando' });
+        socketService.sendRaw({ accion: 'VOTAR_ABANDONO', voto });
     },
 }));
