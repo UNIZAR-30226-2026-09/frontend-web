@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useTurno } from '../../hooks/useTurno';
 import { useNavigate } from 'react-router-dom';
+import BarraTiempoFase from './BarraTiempoFase';
 import '../../styles/CabeceraJuego.css';
 
 /**
@@ -159,6 +160,7 @@ const CabeceraJuego = () => {
             )}
           </div>
         </div>
+        <BarraTiempoFase />
       </div>
 
       <div className="zona-derecha">

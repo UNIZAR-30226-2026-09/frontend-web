@@ -1,0 +1,66 @@
+/* =========================================================
+   Barra de Tiempo de Fase — se posiciona debajo de la cabecera
+   ========================================================= */
+
+.barra-tiempo-contenedor {
+    width: 80%;           /* coincide con la base del polígono (clip 10%→90%) */
+    height: 5px;
+    margin-top: 6px;      /* separación respecto al polígono */
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+    overflow: visible;
+    pointer-events: none;
+    position: relative;   /* para el contador absoluto */
+}
+
+/* Relleno que encoge hacia la izquierda */
+.barra-tiempo-relleno {
+    height: 100%;
+    background: linear-gradient(90deg, #2e7d32, #66bb6a);
+    border-radius: 4px;
+    transition: width 1s linear, background 0.5s ease;
+    box-shadow: 0 0 8px rgba(102, 187, 106, 0.6);
+}
+
+/* Advertencia: amarillo/naranja (≤ 30 s) */
+.barra-tiempo-relleno.advertencia {
+    background: linear-gradient(90deg, #e65100, #ffa726);
+    box-shadow: 0 0 8px rgba(255, 167, 38, 0.7);
+}
+
+/* Urgente: rojo pulsante (≤ 15 s) */
+.barra-tiempo-relleno.urgente {
+    background: linear-gradient(90deg, #b71c1c, #ef5350);
+    box-shadow: 0 0 12px rgba(239, 83, 80, 0.9);
+    animation: pulso-urgente 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes pulso-urgente {
+    from { opacity: 1; }
+    to   { opacity: 0.55; }
+}
+
+/* Contador numérico en el extremo derecho de la barra */
+.barra-tiempo-contador {
+    position: absolute;
+    right: 8px;
+    top: 6px;           /* justo debajo de la barra */
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.65);
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    transition: color 0.3s;
+    font-family: var(--font-family-base, monospace);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.barra-tiempo-contador.urgente {
+    color: #ef5350;
+    animation: pulso-texto 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes pulso-texto {
+    from { opacity: 1; }
+    to   { opacity: 0.6; }
+}
