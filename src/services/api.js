@@ -21,7 +21,7 @@ export const fetchApi = async (endpoint, options = {}) => {
         ...options.headers,
     };
 
-    if (token) {
+    if (token && !endpoint.includes('/login') && !endpoint.includes('/registro')) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 

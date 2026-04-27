@@ -109,8 +109,10 @@ const ControlRefuerzo = () => {
                             </button>
                         </div>
                     ) : (
-                        <div className="refuerzo-simple-group">
-                            <span className="refuerzo-simple-text">" Colocar 1 tropa "</span>
+                        <div className="refuerzo-simple-group" style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <span className="refuerzo-simple-text" style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>
+                                1
+                            </span>
                         </div>
                     )}
 
