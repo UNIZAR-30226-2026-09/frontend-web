@@ -3,49 +3,59 @@ import { useGameStore } from '../../store/gameStore';
 import { useTurno } from '../../hooks/useTurno';
 import '../../styles/BarraTiempoFase.css';
 
-const DURACION_FASE_SEG = 60;
+const DURACION_FASE_SEG = 60; // duración total de referencia para el porcentaje
+
+/**
+ * Calcula los segundos restantes hasta `finFaseUtc`.
+ * Devuelve 0 si ya ha expirado o si el valor es nulo.
+ */
+const calcularSegundosRestantes = (finFaseUtc) => {
+    if (!finFaseUtc) return DURACION_FASE_SEG;
+    const ms = new Date(finFaseUtc).getTime() - Date.now();
+    return Math.max(0, Math.round(ms / 1000));
+};
 
 /**
  * Barra visual que muestra el tiempo restante de la fase actual.
- * Se posiciona justo debajo de la cabecera y se reinicia automáticamente
- * cuando cambia `faseActual`.
+ * Usa `finFaseUtc` del gameStore (ISO 8601 enviado por el backend) para
+ * que el timer sea correcto incluso tras recargar la página.
  * Al llegar a 0, fuerza el avance de fase si es el turno del jugador local.
  */
 const BarraTiempoFase = () => {
-    const faseActual = useGameStore((s) => s.faseActual);
+    const finFaseUtc    = useGameStore((s) => s.finFaseUtc);
+    const faseActual    = useGameStore((s) => s.faseActual);
     const pasarFaseBackend = useGameStore((s) => s.pasarFaseBackend);
     const { esMiTurno } = useTurno();
 
-    const [restante, setRestante] = useState(DURACION_FASE_SEG);
-    const avanzadoRef = useRef(false); // evita llamar pasarFaseBackend más de una vez
+    const [restante, setRestante] = useState(() => calcularSegundosRestantes(finFaseUtc));
+    const avanzadoRef = useRef(false);
 
-    // Reiniciar el contador cuando cambia la fase
+    // Cuando llega un nuevo finFaseUtc (nueva fase o recarga), recalcular
     useEffect(() => {
-        setRestante(DURACION_FASE_SEG);
+        setRestante(calcularSegundosRestantes(finFaseUtc));
         avanzadoRef.current = false;
-    }, [faseActual]);
+    }, [finFaseUtc, faseActual]);
 
-    // Countdown 1s y auto-avance al llegar a 0
+    // Tick cada segundo
     useEffect(() => {
         const id = setInterval(() => {
-            setRestante((prev) => {
-                const siguiente = prev > 0 ? prev - 1 : 0;
+            setRestante(() => {
+                const seg = calcularSegundosRestantes(finFaseUtc);
 
-                // Forzar avance solo una vez y solo si es mi turno
-                if (siguiente === 0 && !avanzadoRef.current && esMiTurno) {
+                if (seg === 0 && !avanzadoRef.current && esMiTurno) {
                     avanzadoRef.current = true;
                     pasarFaseBackend();
                 }
 
-                return siguiente;
+                return seg;
             });
         }, 1000);
 
         return () => clearInterval(id);
-    }, [faseActual, esMiTurno, pasarFaseBackend]); // se recrea con cada fase
+    }, [finFaseUtc, esMiTurno, pasarFaseBackend]);
 
-    const porcentaje = (restante / DURACION_FASE_SEG) * 100;
-    const urgente = restante <= 15;
+    const porcentaje  = Math.min(100, (restante / DURACION_FASE_SEG) * 100);
+    const urgente     = restante <= 15;
     const advertencia = restante <= 30 && !urgente;
 
     return (

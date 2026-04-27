@@ -156,6 +156,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
     // Estado de partida
     faseActual: null,
+    finFaseUtc: null,
     modoVista: 'COMARCAS',
     estadoPartidaLocal: 'JUGANDO',
     monedas: 0,
@@ -210,10 +211,9 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
     destinoConquista: null,
     preparandoFortificacion: false,
 
-    // UI - Votación Rendición
-    faseVotacionAbandono: 'ninguna' as 'ninguna' | 'confirmando_local' | 'esperando' | 'votando',
-    jugadorSolicitanteAbandono: null,
-
+    // UI - Votación Pausa
+    faseVotacionPausa: 'ninguna',
+    jugadorSolicitantePausa: null,
     // ACCIONES — MAPA ESTÁTICO
 
     /**
@@ -328,6 +328,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
             faseActual: payload.fase_actual
                 ? normalizarFase(payload.fase_actual)
                 : state.faseActual,
+            finFaseUtc: payload.fin_fase_utc ?? state.finFaseUtc,
             // Soportar múltiples claves de turno para robustez
             turnoActual: payload.turno_de ?? payload.jugador_activo ?? payload.turno_actual ?? state.turnoActual,
             ...(payload.mapa && { tropas, propietarios, estadosBloqueo, estadosAlterados }),
@@ -1186,6 +1187,7 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
 
                     return {
                         faseActual: nuevaFase,
+                        finFaseUtc: data.fin_fase_utc ?? null,
                         turnoActual: jugadorActivo,
 
                         // Reseteo forzado de tareas al entrar en Gestión o cambiar de turno
@@ -1361,29 +1363,38 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
                 break;
             }
 
-            case 'VOTACION_ABANDONO_INICIADA': {
+            case 'SOLICITUD_PAUSA': {
                 const data = mensaje.data || mensaje.payload || mensaje;
-                const solicitante = data.jugador_solicitante;
+                const solicitante = data.jugador_solicitante || data.solicitante || data.jugador || data.usuario_id || data.username;
 
                 // Verificamos si no somos nosotros para mostrar el modal de voto
-                if (solicitante !== get().jugadorLocal) {
+                if (!esMismoJugador(solicitante, get().jugadorLocal)) {
                     set({
-                        faseVotacionAbandono: 'votando',
-                        jugadorSolicitanteAbandono: solicitante
+                        faseVotacionPausa: 'votando',
+                        jugadorSolicitantePausa: solicitante
                     });
+                } else {
+                    // Si somos nosotros los que lo hemos pedido, nos forzamos a la pantalla de espera
+                    set({ faseVotacionPausa: 'esperando', jugadorSolicitantePausa: solicitante });
                 }
                 break;
             }
 
-            case 'VOTACION_ABANDONO_RECHAZADA': {
-                set({ faseVotacionAbandono: 'ninguna', jugadorSolicitanteAbandono: null });
-                alert('La votación de rendición ha sido rechazada. La guerra continúa.');
+            case 'VOTO_PAUSA': {
+                // El backend avisa que alguien ha votado. Lo ignoramos para que no salga el error amarillo.
                 break;
             }
 
-            case 'VOTACION_ABANDONO_APROBADA': {
-                set({ faseVotacionAbandono: 'ninguna' });
-                alert('La rendición ha sido aprobada unánimemente.');
+            case 'PAUSA_RECHAZADA': {
+                set({ faseVotacionPausa: 'ninguna', jugadorSolicitantePausa: null });
+                alert('La votación de pausa ha sido rechazada. La guerra continúa.');
+                break;
+            }
+
+            case 'PARTIDA_PAUSADA': {
+                set({ faseVotacionPausa: 'ninguna' });
+                alert('La partida ha sido pausada correctamente. Podréis reanudarla más adelante.');
+                // Aquí el juego debería cerrarse o mandarte al lobby
                 window.location.href = '/lobby';
                 break;
             }
@@ -1564,31 +1575,63 @@ export const useGameStore = create<EstadoJuego>((set, get) => ({
         }
     },
 
-    // ACCIONES — VOTACIÓN RENDICIÓN
+    // ACCIONES — VOTACIÓN PAUSA
 
     /**
-     * Cambia la fase local de la votación de rendición.
+     * Cambia la fase local de la votación de pausa.
      */
-    setFaseVotacion: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => {
-        set({ faseVotacionAbandono: fase });
+    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => {
+        set({ faseVotacionPausa: fase });
     },
 
     /**
-     * El jugador local inicia una solicitud de abandono por consenso.
-     * Cambia la UI a "esperando" y emite SOLICITAR_ABANDONO por WebSocket.
+     * El jugador local inicia una solicitud de pausa por consenso mediante API REST.
      */
-    iniciarSolicitudAbandono: () => {
-        set({ faseVotacionAbandono: 'esperando' });
-        socketService.sendRaw({ accion: 'SOLICITAR_ABANDONO' });
-        console.log("🚀 [WS] Enviando propuesta de rendición al servidor");
+    iniciarSolicitudPausa: async () => {
+        const estado = get();
+        // El endpoint requiere el código único de la partida
+        const codigo = estado.salaActiva?.codigoInvitacion;
+
+        if (!codigo) {
+            console.error("No se encontró el código de la partida activa.");
+            return;
+        }
+
+        set({ faseVotacionPausa: 'esperando' });
+
+        try {
+            await fetchApi(`/v1/partidas/${codigo}/pausa/solicitar`, {
+                method: 'POST'
+            });
+            console.log("🚀 [REST] Petición de pausa enviada al servidor");
+        } catch (error) {
+            console.error('[iniciarSolicitudPausa] Error:', error);
+            set({ faseVotacionPausa: 'ninguna' });
+            estado.mostrarErrorGlobal("No se pudo solicitar la pausa al servidor.");
+        }
     },
 
     /**
-     * El jugador local emite su voto (a favor / en contra) sobre la rendición.
-     * @param {boolean} voto - true = acepta rendirse, false = rechaza.
+     * El jugador local emite su voto (a favor / en contra) sobre la pausa.
+     * @param {boolean} voto - true = acepta pausar, false = rechaza.
      */
-    enviarVotoAbandono: (voto: boolean) => {
-        set({ faseVotacionAbandono: 'esperando' });
-        socketService.sendRaw({ accion: 'VOTAR_ABANDONO', voto });
+    enviarVotoPausa: async (voto: boolean) => {
+        const estado = get();
+        const codigo = estado.salaActiva?.codigoInvitacion;
+
+        if (!codigo) return;
+
+        set({ faseVotacionPausa: 'esperando' });
+
+        try {
+            await fetchApi(`/v1/partidas/${codigo}/pausa/votar`, {
+                method: 'POST',
+                body: JSON.stringify({ voto_a_favor: voto })
+            });
+            console.log(`🚀 [REST] Voto de pausa (${voto}) enviado al servidor`);
+        } catch (error) {
+            console.error('[enviarVotoPausa] Error:', error);
+            estado.mostrarErrorGlobal("Error al registrar tu voto.");
+        }
     },
 }));

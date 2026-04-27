@@ -23,7 +23,7 @@ const MenuCrearPartida = ({ onCreada, onCancelar }) => {
       const resultado = await crearPartidaBackend({
         config_max_players: maxJugadores,
         config_visibility: visibilidad,
-        config_timer_seconds: 1200
+        config_timer_seconds: 60
       });
       if (resultado) {
         onCreada();

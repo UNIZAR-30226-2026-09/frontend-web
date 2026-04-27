@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import ComarcaPath from './ComarcaPath';
 import FichaTropas from './FichaTropas';
-import ModalVotacionAbandono from '../ui/ModalVotacionAbandono';
+import ModalVotacionAbandono from '../ui/ModalVotacionPausa';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
 import BotonArbolTecnologico from '../ui/BotonArbolTecnologico';
 import PanelArbolTecnologico from '../ui/PanelArbolTecnologico';

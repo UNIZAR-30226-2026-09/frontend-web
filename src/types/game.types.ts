@@ -37,6 +37,7 @@ export interface EstadoJuego {
     errorMapaEstatico: string | null;
 
     faseActual: FaseJuego | null;
+    finFaseUtc: string | null;       // ISO 8601 timestamp del fin de fase enviado por el backend
     modoVista: ModoVista;
     estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO';
 
@@ -354,21 +355,21 @@ export interface EstadoJuego {
      */
     ejecutarAtaqueEspecialBackend: (destinoId: string, tipoAtaque: string, origenId?: string | null) => Promise<void>;
 
-    // Votación Rendición
-    /** Fase actual del flujo de rendición por consenso. */
-    faseVotacionAbandono: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando';
-    /** Username del jugador que ha iniciado la solicitud de abandono (null si ninguno). */
-    jugadorSolicitanteAbandono: string | null;
+    // Votación Pausa
+    /** Fase actual del flujo de pausa por consenso. */
+    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando';
+    /** Username del jugador que ha iniciado la solicitud de pausa (null si ninguno). */
+    jugadorSolicitantePausa: string | null;
 
-    /** Cambia la fase local de la votación de rendición. */
-    setFaseVotacion: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => void;
+    /** Cambia la fase local de la votación de pausa. */
+    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => void;
 
-    /** Inicia el flujo de solicitud de abandono y lo emite por WebSocket. */
-    iniciarSolicitudAbandono: () => void;
+    /** Inicia el flujo de solicitud de pausa y lo emite por WebSocket. */
+    iniciarSolicitudPausa: () => void;
 
     /**
-     * Emite el voto del jugador local sobre la rendición.
-     * @param voto true = acepta rendirse, false = rechaza.
+     * Emite el voto del jugador local sobre la pausa.
+     * @param voto true = acepta pausar, false = rechaza.
      */
-    enviarVotoAbandono: (voto: boolean) => void;
+    enviarVotoPausa: (voto: boolean) => void;
 }

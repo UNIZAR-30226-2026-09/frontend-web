@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import CabeceraJuego from '../components/hud/CabeceraJuego';
 import { PlayerList } from '../components/hud/PlayerList';
@@ -25,7 +25,7 @@ const PantallaJuego = () => {
 
     useEffect(() => {
         const username = user?.username || user?.nombre_usuario || user?.nombre;
-        
+
         // Lógica de Re-sincronización tras F5 (Recarga de página)
         // Si no tenemos salaId en el store pero sí en la URL, forzamos la carga.
         const inicializar = async () => {
@@ -53,14 +53,14 @@ const PantallaJuego = () => {
             // las reconexiones automáticamente incluso tras un desmontaje/montaje accidental (StrictMode, re-renders).
             // socketService.disconnect();
         };
-    }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias]); 
+    }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <CabeceraJuego />
             <Tablero />
             <PlayerList />
-            
+
             <ControlAtaque />
             <ControlTrasladoConquista />
             <ControlFortificacion />

@@ -42,7 +42,7 @@ const CabeceraJuego = () => {
     turnoActual,
     jugadorLocal,
     abandonarSoberania,
-    setFaseVotacion
+    setFaseVotacionPausa
   } = useGameStore();
 
   const navigate = useNavigate();
@@ -84,17 +84,10 @@ const CabeceraJuego = () => {
     setMenuAbierto(!menuAbierto);
   };
 
-  const handleRendirse = () => {
-    // En lugar de salir directamente, abrimos la votación de abandono
-    setFaseVotacion('confirmando_local');
+  const handlePausar = () => {
+    // Usamos el nuevo nombre de la función
+    setFaseVotacionPausa('confirmando_local');
     setMenuAbierto(false); // Cerramos el menú pequeñito
-  };
-
-  const handleVolverSala = () => {
-    // Como volver a la sala interrumpe la partida de todos, 
-    // debe pasar también por votación o contar como rendición.
-    setFaseVotacion('confirmando_local');
-    setMenuAbierto(false);
   };
 
   // Construir renderizado condicional del botón central
@@ -184,11 +177,8 @@ const CabeceraJuego = () => {
 
         {menuAbierto && (
           <div className="menu-desplegable">
-            <button className="btn-menu-item btn-rendirse" onClick={handleRendirse}>
-              Rendirse
-            </button>
-            <button className="btn-menu-item" onClick={handleVolverSala}>
-              Volver a la Sala
+            <button className="btn-menu-item btn-rendirse" onClick={handlePausar}>
+              Pausar Partida
             </button>
           </div>
         )}

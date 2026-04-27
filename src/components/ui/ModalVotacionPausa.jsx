@@ -1,26 +1,26 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 
-const ModalVotacionAbandono = () => {
-    const fase = useGameStore(s => s.faseVotacionAbandono);
-    const jugadorSolicitante = useGameStore(s => s.jugadorSolicitanteAbandono);
-    const setFase = useGameStore(s => s.setFaseVotacion);
-    const iniciarSolicitud = useGameStore(s => s.iniciarSolicitudAbandono);
-    const enviarVoto = useGameStore(s => s.enviarVotoAbandono);
+const ModalVotacionPausa = () => {
+    const fase = useGameStore(s => s.faseVotacionPausa);
+    const jugadorSolicitante = useGameStore(s => s.jugadorSolicitantePausa);
+    const setFase = useGameStore(s => s.setFaseVotacionPausa);
+    const iniciarSolicitud = useGameStore(s => s.iniciarSolicitudPausa);
+    const enviarVoto = useGameStore(s => s.enviarVotoPausa);
 
     if (fase === 'ninguna') return null;
 
     return (
-        <div className="modal-overlay-abandono">
-            <div className="modal-content-abandono">
+        <div className="modal-overlay-pausa">
+            <div className="modal-content-pausa">
 
-                {/* ESTADO 1: El jugador pulsa Salir y le pedimos confirmación local */}
+                {/* ESTADO 1: El jugador pulsa Pausar y le pedimos confirmación local */}
                 {fase === 'confirmando_local' && (
                     <>
-                        <h2>¿Proponer Rendición?</h2>
-                        <p>Si aceptas, se iniciará una votación con el resto de comandantes de la sala.</p>
+                        <h2>¿Proponer Pausa?</h2>
+                        <p>Si aceptas, se iniciará una votación. Todos los comandantes deben aceptar para pausar la partida.</p>
                         <div className="modal-botones-columna">
-                            <button className="btn-si" onClick={iniciarSolicitud}>SÍ, PROPONER RENDICIÓN</button>
+                            <button className="btn-si" onClick={iniciarSolicitud}>SÍ, PROPONER PAUSA</button>
                             <button className="btn-no" onClick={() => setFase('ninguna')}>CANCELAR</button>
                         </div>
                     </>
@@ -29,12 +29,12 @@ const ModalVotacionAbandono = () => {
                 {/* ESTADO 2: Alguien ha iniciado votación y nos toca votar */}
                 {fase === 'votando' && (
                     <>
-                        <h2>Votación de Rendición</h2>
-                        <p>El comandante <strong>{jugadorSolicitante}</strong> ha propuesto la rendición incondicional.</p>
-                        <p>¿Aceptas abandonar el campo de batalla?</p>
+                        <h2>Votación de Pausa</h2>
+                        <p>El comandante <strong>{jugadorSolicitante}</strong> ha propuesto pausar la partida.</p>
+                        <p>¿Estás de acuerdo en detener el combate por ahora?</p>
                         <div className="modal-botones-columna">
-                            <button className="btn-si" onClick={() => enviarVoto(true)}>SÍ, RENDIRSE</button>
-                            <button className="btn-no" onClick={() => enviarVoto(false)}>NO, LUCHAR HASTA EL FINAL</button>
+                            <button className="btn-si" onClick={() => enviarVoto(true)}>SÍ, PAUSAR</button>
+                            <button className="btn-no" onClick={() => enviarVoto(false)}>NO, CONTINUAR JUGANDO</button>
                         </div>
                     </>
                 )}
@@ -43,15 +43,16 @@ const ModalVotacionAbandono = () => {
                 {fase === 'esperando' && (
                     <>
                         <h2>Votación en Curso</h2>
-                        <p>Esperando la decisión del Alto Mando...</p>
+                        <p>Esperando el voto unánime del Alto Mando...</p>
                         <div className="spinner-espera">⏳</div>
                     </>
                 )}
 
             </div>
 
+            {/* Puedes mantener los mismos estilos, solo he cambiado los nombres de las clases principales de 'abandono' a 'pausa' */}
             <style>{`
-                .modal-overlay-abandono {
+                .modal-overlay-pausa {
                     position: fixed;
                     top: 0; left: 0; width: 100vw; height: 100vh;
                     background: rgba(0, 0, 0, 0.7);
@@ -61,7 +62,7 @@ const ModalVotacionAbandono = () => {
                     z-index: 9999;
                 }
 
-                .modal-content-abandono {
+                .modal-content-pausa {
                     background-color: #2A1F0F;
                     border: 1.4px solid var(--color-border-gold, #D4AF37);
                     border-radius: 16px;
@@ -74,14 +75,14 @@ const ModalVotacionAbandono = () => {
                     font-family: var(--font-family-base, sans-serif);
                 }
 
-                .modal-content-abandono h2 {
+                .modal-content-pausa h2 {
                     color: var(--color-border-gold, #D4AF37);
                     margin-top: 0;
                     margin-bottom: 12px;
                     font-size: 1.5rem;
                 }
 
-                .modal-content-abandono p {
+                .modal-content-pausa p {
                     font-size: 0.95rem;
                     line-height: 1.4;
                     margin-bottom: 24px;
@@ -134,4 +135,4 @@ const ModalVotacionAbandono = () => {
     );
 };
 
-export default ModalVotacionAbandono;
+export default ModalVotacionPausa;
