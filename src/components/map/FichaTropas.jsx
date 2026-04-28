@@ -1,4 +1,6 @@
 import React from 'react';
+import IconoEngranaje from './IconoEngranaje';
+import IconoProbeta from './IconoProbeta';
 
 /**
  * Renderiza el marcador circular sobre una comarca para mostrar su cantidad de tropas.
@@ -68,27 +70,22 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
     let strokeTexto = 'var(--color-ui-bg-primary)';
 
     if (isInvestigando) {
-        // Investigando: Fondo blanco, texto y borde del color del jugador
-        fillCirculo = 'var(--color-text-primary)';
-        strokeCirculo = colorFondo || 'var(--color-estado-investigando-borde, #667EEA)';
-        colorTexto = colorFondo || 'var(--color-estado-investigando, #4C51BF)';
-        strokeTexto = 'none'; // Mejor legibilidad sobre blanco
+        // Investigando: Fondo del jugador, borde dorado, texto normal
+        fillCirculo = colorFondo || 'var(--color-estado-investigando, #4C51BF)';
     } else if (isTrabajando) {
-        // Trabajando: Fondo del color del jugador, texto y borde dorado
+        // Trabajando: Fondo del jugador, borde dorado, texto normal
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
-        strokeCirculo = 'var(--color-estado-trabajando-borde, #F6E05E)';
-        colorTexto = strokeCirculo; // Del mismo color que el borde amarillo
     } else {
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
     }
 
     // Mapa de emojis para efectos de ataques especiales
     const iconosEfectos = {
-        'gripe_aviar':     '🦠',
-        'coronavirus':     '☣️',
-        'fatiga':          '🥱',
+        'gripe_aviar': '🦠',
+        'coronavirus': '☣️',
+        'fatiga': '🥱',
         'inhibidor_senal': '📡',
-        'muro':            '🧱',
+        'muro': '🧱',
     };
 
     return (
@@ -98,15 +95,35 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
         >
             {etiquetaNombre}
 
-            <circle
-                cx={cx}
-                cy={cy - 4}
-                r={13}
-                fill={fillCirculo}
-                stroke={strokeCirculo}
-                strokeWidth={isInvestigando || isTrabajando ? '2.5' : '1.5'}
-                filter="drop-shadow(0px 2px 3px var(--color-ui-bg-primary))"
-            />
+            {isInvestigando ? (
+                <IconoProbeta
+                    x={cx - 24}
+                    y={(cy - 4) - 24}
+                    size={48}
+                    fill={fillCirculo}
+                    stroke={strokeCirculo}
+                    strokeWidth="30"
+                />
+            ) : isTrabajando ? (
+                <IconoEngranaje
+                    x={cx - 20}
+                    y={(cy - 4) - 20}
+                    size={40}
+                    fill={fillCirculo}
+                    stroke={strokeCirculo}
+                    strokeWidth="30"
+                />
+            ) : (
+                <circle
+                    cx={cx}
+                    cy={cy - 4}
+                    r={13}
+                    fill={fillCirculo}
+                    stroke={strokeCirculo}
+                    strokeWidth="1.5"
+                    filter="drop-shadow(0px 2px 3px var(--color-ui-bg-primary))"
+                />
+            )}
 
             <text
                 x={cx}
