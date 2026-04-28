@@ -70,24 +70,22 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
     let strokeTexto = 'var(--color-ui-bg-primary)';
 
     if (isInvestigando) {
-        // Investigando: Fondo del jugador, borde blanco, texto normal
+        // Investigando: Fondo del jugador, borde dorado, texto normal
         fillCirculo = colorFondo || 'var(--color-estado-investigando, #4C51BF)';
-        strokeCirculo = 'var(--color-text-primary)'; // Blanco
     } else if (isTrabajando) {
-        // Trabajando: Fondo del jugador, borde blanco, texto normal
+        // Trabajando: Fondo del jugador, borde dorado, texto normal
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
-        strokeCirculo = 'var(--color-text-primary)'; // Blanco
     } else {
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
     }
 
     // Mapa de emojis para efectos de ataques especiales
     const iconosEfectos = {
-        'gripe_aviar':     '🦠',
-        'coronavirus':     '☣️',
-        'fatiga':          '🥱',
+        'gripe_aviar': '🦠',
+        'coronavirus': '☣️',
+        'fatiga': '🥱',
         'inhibidor_senal': '📡',
-        'muro':            '🧱',
+        'muro': '🧱',
     };
 
     return (
@@ -99,9 +97,9 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
 
             {isInvestigando ? (
                 <IconoProbeta
-                    x={cx - 20}
-                    y={(cy - 4) - 20}
-                    size={40}
+                    x={cx - 24}
+                    y={(cy - 4) - 24}
+                    size={48}
                     fill={fillCirculo}
                     stroke={strokeCirculo}
                     strokeWidth="30"
