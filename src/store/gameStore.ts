@@ -1522,6 +1522,9 @@ export const useGameStore = create<EstadoJuego>()(
                         ],
                         jugadorLocal: creadorId,
                         esCreadorSala: true,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null,
                     });
 
                     return data;
@@ -1603,6 +1606,9 @@ export const useGameStore = create<EstadoJuego>()(
                         jugadoresLobby,
                         jugadorLocal,
                         esCreadorSala: false,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null,
                     }));
 
                     return data;
@@ -1645,7 +1651,10 @@ export const useGameStore = create<EstadoJuego>()(
                         preparandoFortificacion: false,
                         preparandoAtaqueEspecial: null,
                         catalogoTecnologias: null,
-                        esCreadorSala: false
+                        esCreadorSala: false,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null
                     });
                 }
             },
