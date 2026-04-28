@@ -70,17 +70,13 @@ const FichaTropas = ({ cx, cy, tropas, nombreComarca, zoomScale, colorFondo, str
     let strokeTexto = 'var(--color-ui-bg-primary)';
 
     if (isInvestigando) {
-        // Investigando: Fondo del jugador, borde blanco, texto blanco
+        // Investigando: Fondo del jugador, borde blanco, texto normal
         fillCirculo = colorFondo || 'var(--color-estado-investigando, #4C51BF)';
         strokeCirculo = 'var(--color-text-primary)'; // Blanco
-        colorTexto = 'var(--color-text-primary)'; // Blanco
-        strokeTexto = 'none';
     } else if (isTrabajando) {
-        // Trabajando: Fondo del jugador, borde blanco, texto blanco
+        // Trabajando: Fondo del jugador, borde blanco, texto normal
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
         strokeCirculo = 'var(--color-text-primary)'; // Blanco
-        colorTexto = 'var(--color-text-primary)'; // Blanco
-        strokeTexto = 'none';
     } else {
         fillCirculo = colorFondo || 'var(--color-ui-panel-overlay)';
     }
