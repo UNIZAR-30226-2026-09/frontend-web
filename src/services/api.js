@@ -1,6 +1,7 @@
 // src/services/api.js
 
 export const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000/api`;
+export const BASE_URL = API_URL.replace(/\/api$/, '');
 
 /**
  * Envoltorio base para realizar peticiones HTTP al servidor.

@@ -147,6 +147,12 @@ export interface EstadoJuego {
     agregarMensajeLog: (mensaje: string) => void;
 
     /**
+     * Carga el historial de logs desde el backend (para reconexiones y recarga de página).
+     * @param overrideId - ID opcional de la partida como fallback.
+     */
+    cargarLogsPartida: (overrideId?: number | string) => Promise<void>;
+
+    /**
      * Obliga a la máquina de estados a saltar a una fase específica y limpia la UI.
      * @param {FaseJuego} nuevaFase Fase destino.
      */

@@ -6,10 +6,10 @@ import './PlayerList.css';
 
 export const PlayerList: React.FC = () => {
     // Suscripción al store
-    const { 
-        jugadores, 
-        jugadorLocal, 
-        turnoActual, 
+    const {
+        jugadores,
+        jugadorLocal,
+        turnoActual,
         coloresJugadores,
         diccionarioJugadores,
         getEstadisticasJugador,
@@ -30,7 +30,7 @@ export const PlayerList: React.FC = () => {
                 const stats = getEstadisticasJugador(jugadorId);
                 const info = diccionarioJugadores ? diccionarioJugadores[jugadorId] : null;
                 const nombre = info?.nombre || info?.jugador || info?.username || info?.nombre_usuario || (jugadorId.charAt(0).toUpperCase() + jugadorId.slice(1));
-                
+
                 return (
                     <PlayerCard
                         key={jugadorId}

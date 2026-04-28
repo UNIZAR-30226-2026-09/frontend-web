@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchApi } from '../../services/api';
+import { fetchApi, BASE_URL } from '../../services/api';
 import PanelEstadisticas from '../social/PanelEstadisticas';
 import '../../styles/Lobby.css';
 import '../../styles/PanelInteligencia.css';
@@ -7,9 +7,9 @@ import '../../styles/PanelInteligencia.css';
 /**
  * Pantalla para visualizar el perfil de otro jugador (Top global, amigos, etc.)
  * Muestra el usuario y sus estadísticas públicas sin permitir edición ni mostrar información privada.
- * @param {{ username: string, onCerrar: () => void }} props
+ * @param {{ username: string, onCerrar: () => void, avatarProp?: string }} props
  */
-const PanelPerfilJugador = ({ username, onCerrar, esAmigo = false, onCortarAmistad }) => {
+const PanelPerfilJugador = ({ username, onCerrar, esAmigo = false, onCortarAmistad, avatarProp }) => {
   const [estadisticas, setEstadisticas] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -104,7 +104,12 @@ const PanelPerfilJugador = ({ username, onCerrar, esAmigo = false, onCortarAmist
 
             {/* COLUMNA IZQUIERDA: Perfil y Título */}
             <div className="intel-perfil-izq">
-              <div className="intel-avatar">{inicial}</div>
+              <img 
+                src={`${BASE_URL}${avatarProp || estadisticas?.avatar || '/static/perfiles/default.png'}`} 
+                alt={username} 
+                className="intel-avatar" 
+                style={{ border: 'none', objectFit: 'cover', background: 'transparent' }} 
+              />
               <h2 className="intel-titulo">Perfil de {username}</h2>
             </div>
 

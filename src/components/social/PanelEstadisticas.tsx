@@ -39,7 +39,11 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
 
                 <div className="stat-card destacado">
                     <span className="stat-label">Ranking Mundial</span>
-                    <span className="stat-value">#{estadisticas.ranking_mundial || 67}</span>
+                    <span className="stat-value">
+                        {estadisticas.posicion_ranking != null && estadisticas.num_partidas_ganadas > 0 
+                            ? `#${estadisticas.posicion_ranking}` 
+                            : '-'}
+                    </span>
                 </div>
 
                 <div className="stat-card">

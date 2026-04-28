@@ -1,5 +1,5 @@
 // src/components/lobby/SalaLobby.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useGameStore } from '../../store/gameStore';
@@ -35,8 +35,16 @@ const SalaLobby = ({ onVolver }) => {
     socketService.connectToPartida(salaActiva.id, usernameLocal);
   }, [salaActiva.id, usernameLocal]);
 
-  // Navegar automáticamente cuando el backend notifica que la partida ha iniciado
+  // Navegar automáticamente cuando el backend notifica que la partida ha iniciado.
+  // isReadyRef se activa tras el primer render para ignorar el valor persistido.
+  const isReadyRef = useRef(false);
   useEffect(() => {
+    const timer = setTimeout(() => { isReadyRef.current = true; }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isReadyRef.current) return; // Ignorar el valor inicial del store (puede estar persistido)
     if (salaActiva.estado === 'activa' && salaActiva.id) {
       navigate(`/partida/${salaActiva.id}`);
     }

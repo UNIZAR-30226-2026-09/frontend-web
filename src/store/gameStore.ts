@@ -147,6 +147,34 @@ const parsearJugadores = (
     };
 };
 
+/**
+ * Convierte un objeto de log del backend (formato docs/logs_partida.md) en una frase
+ * legible para mostrar en el panel LogPartida.
+ * Soporta todos los tipo_evento definidos en la documentación.
+ */
+const logEntradaAFrase = (log: any): string => {
+    const d = log.datos || {};
+    const user = log.user ?? '?';
+    switch ((log.tipo_evento || '').toLowerCase()) {
+        case 'cambio_turno':
+            return `🔄 Turno de ${d.turno_de || user}`;
+        case 'ataque_convencional': {
+            const victoria = d.victoria ? ' ¡Conquista!' : '';
+            return `⚔️ ${user} atacó ${d.origen || '?'} → ${d.destino || '?'} (bajas: ${d.bajas_atacante ?? 0}/${d.bajas_defensor ?? 0})${victoria}`;
+        }
+        case 'conquista':
+            return `🏴 ${user} conquistó ${d.territorio_conquistado || '?'} (antes de ${d.anterior_dueno || '?'})`;
+        case 'ataque_especial':
+            return `💥 ${user} lanzó ${d.tipo_ataque || '?'} sobre ${d.destino || '?'}`;
+        case 'jugador_eliminado':
+            return `💀 ${d.eliminado || user} ha sido eliminado`;
+        case 'fin_partida':
+            return `🏆 Partida terminada — Ganador: ${d.ganador || user}`;
+        default:
+            return `📋 [${log.tipo_evento}] ${user}`;
+    }
+};
+
 // Store
 export const useGameStore = create<EstadoJuego>()(
     persist(
@@ -261,6 +289,32 @@ export const useGameStore = create<EstadoJuego>()(
                     const nuevoHistorial = [mensaje, ...state.historialLog].slice(0, 50);
                     return { historialLog: nuevoHistorial };
                 });
+            },
+
+            // Carga el historial de logs de la partida desde el backend (para reconexiones/F5)
+            // Formato según docs/logs_partida.md: tipo_evento, user, datos
+            cargarLogsPartida: async (overrideId?: number | string) => {
+                const idToUse = overrideId || get().salaActiva?.id;
+                console.log(`[cargarLogsPartida] Solicitando logs para partida: ${idToUse}`);
+                if (!idToUse) {
+                    console.warn('[cargarLogsPartida] ⚠️ No hay ID de partida disponible');
+                    return;
+                }
+                try {
+                    const logs: any[] = await fetchApi(`/v1/partidas/${idToUse}/logs`);
+                    console.log(`[cargarLogsPartida] ✅ Respuesta del backend:`, logs);
+                    if (!Array.isArray(logs) || logs.length === 0) {
+                        console.log('[cargarLogsPartida] ℹ️ El endpoint devolvió 0 logs (array vacío)');
+                        return;
+                    }
+
+                    // La API devuelve más reciente primero (según el doc)
+                    const frases = logs.map(logEntradaAFrase);
+                    console.log(`[cargarLogsPartida] 📋 Frases generadas:`, frases);
+                    set({ historialLog: frases.slice(0, 50) });
+                } catch (error) {
+                    console.error('[cargarLogsPartida] ❌ Error al llamar al endpoint:', error);
+                }
             },
 
             // ACCIONES — SINCRONIZACIÓN CON BACKEND
@@ -1092,7 +1146,11 @@ export const useGameStore = create<EstadoJuego>()(
                         const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
 
                         if (eliminadoId) {
-                            get().agregarMensajeLog(`💀 ${eliminadoId} ha sido derrotado`);
+                            // Usar el log embebido si viene, si no construir frase de fallback
+                            const frase = mensaje.log
+                                ? logEntradaAFrase(mensaje.log)
+                                : `💀 ${eliminadoId} ha sido eliminado`;
+                            get().agregarMensajeLog(frase);
                         }
 
                         set((state) => {
@@ -1174,8 +1232,10 @@ export const useGameStore = create<EstadoJuego>()(
                         const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
                         const tropasRecibidas: number = data.tropas_recibidas ?? 0;
 
-                        if (faseRaw && jugadorRaw) {
-                            get().agregarMensajeLog(`📢 Fase: ${faseRaw} - Turno de ${jugadorRaw}`);
+                        // Generar log desde los datos del propio mensaje WS
+                        if (jugadorRaw) {
+                            const faseDisplay = faseRaw || '?';
+                            get().agregarMensajeLog(`🔄 Turno de ${jugadorRaw} | Fase: ${faseDisplay}`);
                         }
 
                         set((state) => {
@@ -1242,7 +1302,10 @@ export const useGameStore = create<EstadoJuego>()(
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const jugadorQueColoca = data.jugador || get().turnoActual;
 
-                        get().agregarMensajeLog(`🪖 ${jugadorQueColoca} ha desplegado tropas en ${data.territorio}`);
+                        // Generar log directamente desde los datos del mensaje WS
+                        if (data.territorio) {
+                            get().agregarMensajeLog(`🪖 ${jugadorQueColoca} desplegó tropas en ${data.territorio}`);
+                        }
 
                         set((state) => {
                             // Calculamos cuántas se han puesto comparando con el estado actual
@@ -1272,8 +1335,11 @@ export const useGameStore = create<EstadoJuego>()(
                         const atacante = get().propietarios[data.origen] || 'Alguien';
                         const victoriaStr = data.victoria ? ' ¡Conquistado!' : '';
 
-                        get().agregarMensajeLog(`⚔️ ${atacante} atacó ${data.destino}. Bajas: ${data.bajas_atacante}/${data.bajas_defensor}.${victoriaStr}`);
-
+                        // Generar log directamente desde los datos del mensaje WS
+                        if (data.destino) {
+                            const victoria = data.victoria ? ' ¡Conquista!' : '';
+                            get().agregarMensajeLog(`⚔️ ${atacante} atacó ${data.origen || '?'} → ${data.destino} (bajas: ${data.bajas_atacante ?? 0}/${data.bajas_defensor ?? 0})${victoria}`);
+                        }
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
                             nuevasTropas[data.origen] =
@@ -1527,6 +1593,7 @@ export const useGameStore = create<EstadoJuego>()(
                             id: realPartidaId,
                             config_max_players: configMaxPlayers,
                             codigoInvitacion: codigo,
+                            estado: null, // ← limpiar estado persistido para evitar navegación prematura
                         },
                         jugadoresLobby,
                         jugadorLocal,

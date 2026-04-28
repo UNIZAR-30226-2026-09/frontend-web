@@ -12,24 +12,51 @@ const TopGlobalWidget = () => {
   const miUsername = useMemo(() => obtenerNombreJugador(user), [user]);
 
   const [topUsuarios, setTopUsuarios] = useState([]);
+  const [miStats, setMiStats] = useState(null);
   const [perfilViendo, setPerfilViendo] = useState(null);
 
   useEffect(() => {
     const fetchRanking = async () => {
       try {
         const data = await fetchApi('/v1/estadisticas/ranking?limite=10');
-        setTopUsuarios(data);
+        setTopUsuarios(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error al obtener el ranking global:", error);
       }
     };
-    fetchRanking();
-  }, []);
 
-  const miPos = 67; // Mock temporal hasta que se implemente en el backend
+    const fetchMisStats = async () => {
+      try {
+        const data = await fetchApi('/v1/estadisticas/me');
+        if (data) {
+          setMiStats(data);
+        }
+      } catch (error) {
+        console.error("Error al obtener mis estadisticas:", error);
+      }
+    };
+
+    fetchRanking();
+    if (user) {
+      fetchMisStats();
+    }
+  }, [user]);
+
+  const victoriasUsuario = miStats?.num_partidas_ganadas !== undefined 
+    ? miStats.num_partidas_ganadas 
+    : mockVictoriasMi;
+
+  let miPos = miStats?.posicion_ranking !== undefined && miStats?.posicion_ranking !== null 
+    ? miStats.posicion_ranking 
+    : '-';
+
+  if (victoriasUsuario === 0) {
+    miPos = '-';
+  }
 
   const top10 = useMemo(() => {
     return [...topUsuarios]
+      .filter((p) => p.num_partidas_ganadas > 0)
       .sort((a, b) => b.num_partidas_ganadas - a.num_partidas_ganadas)
       .slice(0, 10)
       .map((p, idx) => ({
@@ -40,8 +67,10 @@ const TopGlobalWidget = () => {
       }));
   }, [topUsuarios]);
 
-  const estaEnTop10 = miPos >= 1 && miPos <= 10;
-  const victoriasUsuario = estaEnTop10 ? top10[miPos - 1]?.victorias : mockVictoriasMi;
+  // Aseguramos que sea numero y este en top 10
+  const estaEnTop10 = typeof miPos === 'number' && miPos >= 1 && miPos <= 10;
+
+  const nombreMostrar = miStats?.nombre_user || miUsername || 'COMANDANTE';
 
   return (
     <div className="soberania-inicial__panel" aria-label="Top global (ganadas)">
@@ -51,7 +80,7 @@ const TopGlobalWidget = () => {
         <div className="soberania-top-list">
           <div className="soberania-top-scroll" aria-label="Top 10 (ganadas)">
             {top10.map((p) => {
-              const esMiFila = p.username === miUsername || (estaEnTop10 && p.posicion === miPos);
+              const esMiFila = p.username === nombreMostrar || (estaEnTop10 && p.posicion === miPos);
               return (
                 <div
                   key={p.id}
@@ -75,7 +104,7 @@ const TopGlobalWidget = () => {
             <div className="soberania-top-you soberania-top-you-fixed">
               <div className="soberania-top-left">
                 <div className="soberania-top-rank">{miPos}</div>
-                <div className="soberania-top-user">{miUsername || 'COMANDANTE'}</div>
+                <div className="soberania-top-user">{nombreMostrar}</div>
               </div>
               <div className="soberania-top-victorias">{victoriasUsuario}</div>
             </div>

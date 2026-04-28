@@ -13,7 +13,7 @@ export interface EstadisticasJugador {
     num_soldados_matados: number;
     winrate: number;
     region_mas_conquistada: string;
-    ranking_mundial?: number; // Puesto en el ranking global (simulado de momento)
+    posicion_ranking?: number; // Puesto en el ranking global
 }
 
 /**

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { fetchApi } from '../../services/api';
+import { fetchApi, BASE_URL } from '../../services/api';
 import { socialApi } from '../../services/socialApi';
 import PanelEstadisticas from '../social/PanelEstadisticas';
 import '../../styles/Lobby.css';
@@ -37,6 +37,12 @@ const PanelInteligencia = ({ onCerrar }) => {
   const [feedbackUsername, setFeedbackUsername] = useState(null); // { ok, msg }
   const [feedbackEmail, setFeedbackEmail] = useState(null);
 
+  // Estados para el avatar
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || '/static/perfiles/default.png');
+  const [seleccionandoAvatar, setSeleccionandoAvatar] = useState(false);
+  const [avataresDisponibles, setAvataresDisponibles] = useState([]);
+  const [guardandoAvatar, setGuardandoAvatar] = useState(false);
+
   // Estados para las estadísticas reales
   const [estadisticas, setEstadisticas] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -46,14 +52,19 @@ const PanelInteligencia = ({ onCerrar }) => {
     const cargarDatos = async () => {
       setIsLoadingStats(true);
       try {
-        const [statsData, userData] = await Promise.all([
+        const [statsData, userData, opcionesData] = await Promise.all([
           socialApi.obtenerEstadisticas(),
-          fetchApi('/v1/usuarios/me', { method: 'GET' })
+          fetchApi('/v1/usuarios/me', { method: 'GET' }),
+          fetchApi('/v1/usuarios/opciones', { method: 'GET' }).catch(() => ({ avatares: [] }))
         ]);
         setEstadisticas(statsData);
         if (userData) {
           if (userData.username) setUsername(userData.username);
           if (userData.email) setEmail(userData.email);
+          if (userData.avatar) setAvatarUrl(userData.avatar);
+        }
+        if (opcionesData && opcionesData.avatares) {
+          setAvataresDisponibles(opcionesData.avatares);
         }
       } catch (error) {
         console.error("Error al obtener los datos del perfil:", error);
@@ -110,13 +121,102 @@ const PanelInteligencia = ({ onCerrar }) => {
     alert('Cambio de contraseña pendiente de implementar (endpoint no disponible aún).');
   };
 
-  const inicial = usernameInicial.charAt(0).toUpperCase() || '?';
+  const handleSeleccionarAvatar = async (nombreArchivo) => {
+    setGuardandoAvatar(true);
+    try {
+      const actualizado = await fetchApi('/v1/usuarios/me/avatar', {
+        method: 'PUT',
+        body: JSON.stringify({ avatar_name: nombreArchivo })
+      });
+      login(actualizado, token);
+      setAvatarUrl(actualizado.avatar);
+      setSeleccionandoAvatar(false);
+    } catch (error) {
+      console.error('Error al cambiar avatar:', error);
+      alert('Error al actualizar el avatar');
+    } finally {
+      setGuardandoAvatar(false);
+    }
+  };
 
-
+  const nombresAvatares = [
+    'José Antonio Labordeta',
+    'Alberto Zapater',
+    'Amaral',
+    'Kase.O',
+    'Francisco de Goya',
+    'Jesús Vallejo'
+  ];
 
   return (
     <div className="intel-overlay">
-      <div className="intel-panel">
+      {/* Modal de selección de Avatar */}
+      {seleccionandoAvatar && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--color-ui-bg-secondary)', border: '2px solid var(--color-border-bronze)',
+            padding: '2rem', borderRadius: '12px', textAlign: 'center', maxWidth: '700px', width: '90%',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8)'
+          }}>
+            <h3 style={{ color: 'var(--color-primary-light)', marginTop: 0, marginBottom: '2rem', fontSize: '1.5rem' }}>Seleccionar Foto de Perfil</h3>
+
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '30px 15px', maxHeight: '60vh', overflowY: 'auto', marginBottom: '30px',
+              padding: '10px'
+            }}>
+              {avataresDisponibles.map((avatarName, index) => (
+                <div
+                  key={avatarName}
+                  onClick={() => !guardandoAvatar && handleSeleccionarAvatar(avatarName)}
+                  style={{
+                    cursor: guardandoAvatar ? 'wait' : 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+                    opacity: guardandoAvatar ? 0.5 : 1
+                  }}
+                >
+                  <div style={{
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '4px solid transparent',
+                    transition: 'transform 0.2s, border-color 0.2s',
+                    aspectRatio: '1/1',
+                    width: '100%',
+                    maxWidth: '140px'
+                  }}
+                    onMouseOver={(e) => { if (!guardandoAvatar) e.currentTarget.style.borderColor = 'var(--color-border-gold-vivo)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                    onMouseOut={(e) => { if (!guardandoAvatar) e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    <img
+                      src={`${BASE_URL}/static/perfiles/${avatarName}`}
+                      alt={nombresAvatares[index] || avatarName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '1rem', fontWeight: 'bold' }}>
+                    {nombresAvatares[index] || 'Personaje Desconocido'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setSeleccionandoAvatar(false)}
+              className="lobby-boton-secundario"
+              style={{ padding: '0.6rem 2rem' }}
+              disabled={guardandoAvatar}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="intel-panel" style={seleccionandoAvatar ? { filter: 'blur(4px)' } : {}}>
 
         <button className="intel-cerrar" onClick={onCerrar} aria-label="Cerrar">✕</button>
 
@@ -127,7 +227,19 @@ const PanelInteligencia = ({ onCerrar }) => {
 
             {/* COLUMNA IZQUIERDA: Perfil y Título */}
             <div className="intel-perfil-izq">
-              <div className="intel-avatar">{inicial}</div>
+              <div
+                className="intel-avatar-container"
+                style={{ position: 'relative', cursor: 'pointer', borderRadius: '50%', overflow: 'hidden', width: '160px', height: '160px', marginBottom: '10px', border: '3px solid var(--color-border-bronze)' }}
+                onClick={() => setSeleccionandoAvatar(true)}
+                title="Cambiar Foto"
+              >
+                <img
+                  src={`${BASE_URL}${avatarUrl}`}
+                  alt={username}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', background: 'var(--color-ui-bg-primary)' }}
+                />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.9rem', padding: '6px 0', textAlign: 'center', fontWeight: 'bold' }}>EDITAR</div>
+              </div>
               <h2 className="intel-titulo">Perfil de {username}</h2>
             </div>
 

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { BASE_URL } from '../../services/api';
 
 const PerfilCard = ({ onAbrirPerfil }) => {
   const user = useAuthStore((state) => state.user);
@@ -17,8 +18,9 @@ const PerfilCard = ({ onAbrirPerfil }) => {
         <div className="soberania-perfil-avatar">
           {imgOk ? (
             <img
-              src="/antiguas/fotoPerfil1.jpg"
+              src={`${BASE_URL}${user?.avatar || '/static/perfiles/default.png'}`}
               alt={`Perfil de ${username || 'Jugador'}`}
+              style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '50%' }}
               onError={() => setImgOk(false)}
             />
           ) : (

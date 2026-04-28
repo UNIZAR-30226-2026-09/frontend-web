@@ -1,9 +1,9 @@
 .btn-arbol-tecnologico {
-  position: absolute;
-  bottom: 140px; /* Sobre btn-toggle-mapa (que esta en bottom 30 + alto 100) */
-  left: 30px;
-  width: 100px;
-  height: 100px;
+  position: fixed;
+  bottom: 30px;
+  right: 50px; /* A la derecha de btn-toggle-mapa (right:150 + 80px ancho + 20 gap = 50) */
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background-color: var(--color-ui-bg-primary);
   border: 2px solid var(--color-border-bronze);

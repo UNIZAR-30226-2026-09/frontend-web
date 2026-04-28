@@ -20,6 +20,7 @@ const PantallaJuego = () => {
     const { id } = useParams();
     const sincronizarEstadoPartida = useGameStore((state) => state.sincronizarEstadoPartida);
     const cargarCatalogoTecnologias = useGameStore((state) => state.cargarCatalogoTecnologias);
+    const cargarLogsPartida = useGameStore((state) => state.cargarLogsPartida);
     const salaId = useGameStore((state) => state.salaActiva?.id);
     const user = useAuthStore((state) => state.user);
 
@@ -33,6 +34,9 @@ const PantallaJuego = () => {
                 console.log(`[PantallaJuego] Detectada recarga en partida ${id}. Recuperando estado...`);
                 await sincronizarEstadoPartida(id);
             }
+
+            // Cargar historial de logs (tanto en reconexión como primera carga)
+            await cargarLogsPartida(id ? Number(id) : undefined);
 
             // Cargar catálogo de tecnologías.
             // Pasamos el id de URL como fallback por si salaActiva.id aún no está
@@ -53,7 +57,7 @@ const PantallaJuego = () => {
             // las reconexiones automáticamente incluso tras un desmontaje/montaje accidental (StrictMode, re-renders).
             // socketService.disconnect();
         };
-    }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias]);
+    }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias, cargarLogsPartida]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>

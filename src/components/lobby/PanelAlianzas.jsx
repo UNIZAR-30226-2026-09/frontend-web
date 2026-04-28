@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { socialApi } from '../../services/socialApi';
+import { BASE_URL } from '../../services/api';
 import PanelPerfilJugador from './PanelPerfilJugador';
 import '../../styles/PanelAlianzas.css';
 
@@ -12,7 +13,7 @@ const PanelAlianzas = ({ onCerrar }) => {
     const [enviando, setEnviando] = useState(false);
     const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
     const [notificacion, setNotificacion] = useState(null);
-    const [perfilViendo, setPerfilViendo] = useState(null);
+    const [perfilViendo, setPerfilViendo] = useState(null); // { username, avatar }
 
     const mostrarNotificacion = (msg, isError = false) => {
         setNotificacion({ msg, isError });
@@ -159,13 +160,18 @@ const PanelAlianzas = ({ onCerrar }) => {
                                 style={{ cursor: 'pointer' }}
                                 onClick={(e) => {
                                     if (!e.target.closest('.alianzas-acciones')) {
-                                        setPerfilViendo(nombreAmigo);
+                                        setPerfilViendo({ username: nombreAmigo, avatar: amigo.avatar });
                                     }
                                 }}
                             >
                                 <div className="alianzas-info">
-                                    <div className="alianzas-avatar">
-                                        {nombreAmigo.charAt(0).toUpperCase()}
+                                    <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
+                                        <img 
+                                            src={`${BASE_URL}${amigo.avatar || '/static/perfiles/default.png'}`} 
+                                            alt={nombreAmigo} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                            onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.parentElement.textContent = nombreAmigo.charAt(0).toUpperCase(); }}
+                                        />
                                     </div>
                                     <div className="alianzas-detalles">
                                         <span className="alianzas-nombre">{nombreAmigo}</span>
@@ -202,7 +208,14 @@ const PanelAlianzas = ({ onCerrar }) => {
                                     return (
                                         <div key={idx} className="alianzas-card" style={{ borderLeftColor: 'var(--color-border-gold)' }}>
                                             <div className="alianzas-info">
-                                                <div className="alianzas-avatar">{nombreSolicitante.charAt(0).toUpperCase()}</div>
+                                                <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
+                                                    <img 
+                                                        src={`${BASE_URL}/static/perfiles/default.png`} 
+                                                        alt={nombreSolicitante} 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                                        onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.parentElement.textContent = nombreSolicitante.charAt(0).toUpperCase(); }}
+                                                    />
+                                                </div>
                                                 <div className="alianzas-detalles">
                                                     <span className="alianzas-nombre">{nombreSolicitante}</span>
                                                     <span className="alianzas-estado">Propuesta de alianza entrante</span>
@@ -252,7 +265,8 @@ const PanelAlianzas = ({ onCerrar }) => {
 
             {perfilViendo && createPortal(
                 <PanelPerfilJugador
-                    username={perfilViendo}
+                    username={perfilViendo?.username || perfilViendo}
+                    avatarProp={perfilViendo?.avatar}
                     onCerrar={() => setPerfilViendo(null)}
                     esAmigo={true}
                     onCortarAmistad={handleCortarAmistad}
