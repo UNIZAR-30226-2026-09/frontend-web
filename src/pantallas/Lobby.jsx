@@ -22,11 +22,13 @@ const Lobby = () => {
   const logout = useAuthStore((state) => state.logout);
   const crearPartidaBackend = useGameStore((state) => state.crearPartidaBackend);
   const unirsePartidaBackend = useGameStore((state) => state.unirsePartidaBackend);
+  const reanudarPartidaBackend = useGameStore((state) => state.reanudarPartidaBackend);
 
   const [vistaActual, setVistaActual] = useState('mando');
   const [cargandoRapida, setCargandoRapida] = useState(false);
   const [errorRapida, setErrorRapida] = useState(null);
   const [popupSalaCerrada, setPopupSalaCerrada] = useState(null);
+  const [partidasPausadas, setPartidasPausadas] = useState([]);
 
   useEffect(() => {
     const handleSalaCerrada = (e) => {
@@ -37,6 +39,20 @@ const Lobby = () => {
     return () => window.removeEventListener('sala_cerrada', handleSalaCerrada);
   }, []);
 
+  useEffect(() => {
+    if (vistaActual === 'operaciones') {
+      const cargarPartidasPausadas = async () => {
+        try {
+          const data = await fetchApi('/v1/partidas/pausadas');
+          setPartidasPausadas(data || []);
+        } catch (error) {
+          console.error("Error al cargar operaciones en suspenso:", error);
+        }
+      };
+      cargarPartidasPausadas();
+    }
+  }, [vistaActual]);
+
   // Datos mock de partidas de amigos (se sustituirán por llamada real)
   const [partidas] = useState([
     { id: '101', nombre: 'PRUEBA1', jugadores: 1, maxJugadores: 2, estado: 'Esperando rival' },
@@ -45,6 +61,15 @@ const Lobby = () => {
   ]);
 
   const handleLogout = () => { logout(); navigate('/'); };
+
+  const handleReanudarPartida = async (codigo) => {
+    try {
+      await reanudarPartidaBackend(codigo);
+      setVistaActual('sala');
+    } catch (error) {
+      alert("No se pudo reanudar la partida. ¿Quizás no eres el creador o el código es inválido?");
+    }
+  };
 
   /** Busca sala pública disponible o crea una nueva. */
   const handlePartidaRapida = async () => {
@@ -166,6 +191,30 @@ const Lobby = () => {
                 </div>
 
               </div>
+
+              {/* PANEL DE PARTIDAS PAUSADAS */}
+              {partidasPausadas.length > 0 && (
+                <div style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--color-border-bronze)', borderRadius: '8px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                  <h3 style={{ color: 'var(--color-border-gold)', margin: 0, textAlign: 'center', fontSize: '1.2rem', letterSpacing: '1px' }}>OPERACIONES EN SUSPENSO</h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                    {partidasPausadas.map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-ui-bg-secondary)', padding: '0.8rem 1.2rem', borderRadius: '6px', borderLeft: '4px solid var(--color-border-gold)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                          <span style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>Partida #{p.id}</span>
+                          <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Código de Acceso: {p.codigo_invitacion}</span>
+                        </div>
+                        <button
+                          onClick={() => handleReanudarPartida(p.codigo_invitacion)}
+                          style={{ padding: '0.6rem 1.5rem', background: 'var(--color-border-gold)', color: '#1A1200', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase' }}
+                        >
+                          Reanudar Misión ➔
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <button className="lobby-boton-secundario" onClick={() => setVistaActual('mando')}>
                 CANCELAR ORDEN

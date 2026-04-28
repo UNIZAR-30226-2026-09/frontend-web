@@ -1219,7 +1219,10 @@ export const useGameStore = create<EstadoJuego>()(
                         if (msj === '@@SYS_SYNC_PHASE@@') {
                             const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
                             if (emisor !== get().jugadorLocal) {
-                                get().sincronizarEstadoPartida();
+                                // AÑADIMOS RETRASO PARA EVITAR CONDICIÓN DE CARRERA
+                                setTimeout(() => {
+                                    get().sincronizarEstadoPartida();
+                                }, 800);
                             }
                         }
                         break;
@@ -1290,10 +1293,12 @@ export const useGameStore = create<EstadoJuego>()(
 
                         // REFRESCO CRÍTICO: Sincronizar estado completo al cambiar de fase
                         // para capturar monedas generadas, tecnologías desbloqueadas, etc.
-                        get().sincronizarEstadoPartida().then(() => {
-                            // Recargar catálogo para reflejar nuevos desbloqueos (predesbloqueada/comprada)
-                            get().cargarCatalogoTecnologias();
-                        });
+                        setTimeout(() => {
+                            get().sincronizarEstadoPartida().then(() => {
+                                // Recargar catálogo para reflejar nuevos desbloqueos
+                                get().cargarCatalogoTecnologias();
+                            });
+                        }, 800);
 
                         break;
                     }

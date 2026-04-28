@@ -42,17 +42,9 @@ const TopGlobalWidget = () => {
     }
   }, [user]);
 
-  const victoriasUsuario = miStats?.num_partidas_ganadas !== undefined 
-    ? miStats.num_partidas_ganadas 
+  const victoriasUsuario = miStats?.num_partidas_ganadas !== undefined
+    ? miStats.num_partidas_ganadas
     : mockVictoriasMi;
-
-  let miPos = miStats?.posicion_ranking !== undefined && miStats?.posicion_ranking !== null 
-    ? miStats.posicion_ranking 
-    : '-';
-
-  if (victoriasUsuario === 0) {
-    miPos = '-';
-  }
 
   const top10 = useMemo(() => {
     return [...topUsuarios]
@@ -67,10 +59,21 @@ const TopGlobalWidget = () => {
       }));
   }, [topUsuarios]);
 
+  // Movemos nombreMostrar hacia arriba para usarlo en la búsqueda
+  const nombreMostrar = miStats?.nombre_user || miUsername || 'COMANDANTE';
+
+  // Nueva lógica de búsqueda de posición
+  let miPos = miStats?.posicion_ranking ?? '-';
+
+  if (miPos === '-' && victoriasUsuario > 0) {
+    const miJugador = top10.find(p => p.username === nombreMostrar);
+    if (miJugador) {
+      miPos = miJugador.posicion;
+    }
+  }
+
   // Aseguramos que sea numero y este en top 10
   const estaEnTop10 = typeof miPos === 'number' && miPos >= 1 && miPos <= 10;
-
-  const nombreMostrar = miStats?.nombre_user || miUsername || 'COMANDANTE';
 
   return (
     <div className="soberania-inicial__panel" aria-label="Top global (ganadas)">
