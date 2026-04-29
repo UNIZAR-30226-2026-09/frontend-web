@@ -28,6 +28,13 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
     const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
     const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
+    const armaEspecialSeleccionada = useGameStore((state) => state.armaEspecialSeleccionada);
+
+    // Helper para comparar jugadores ignorando mayúsculas
+    const esMismoJugador = (j1, j2) => {
+        if (!j1 || !j2) return false;
+        return String(j1).toLowerCase() === String(j2).toLowerCase();
+    };
 
     const comarcaOcupada = !!estadosBloqueo[id];
     // Solo bloqueamos visualmente los territorios del jugador local (los ajenos no podemos interactuarlos de todas formas)
@@ -43,8 +50,12 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const isHighlighted = comarcasResaltadas.includes(id);
     const isSelected = isOrigin || isDestination || isHighlighted;
 
+    const esMiTurnoLocalGlobal = esMismoJugador(turnoActual, jugadorLocal);
+
     let territorioBloqueadoVisual = false;
-    if (faseActual === 'REFUERZO') {
+    if (!esMiTurnoLocalGlobal) {
+        territorioBloqueadoVisual = true;
+    } else if (faseActual === 'REFUERZO') {
         territorioBloqueadoVisual = !propietarioEsLocal || (tropasDisponibles ?? 0) === 0;
     } else if (faseActual === 'GESTION') {
         const hayTrabajo = Object.entries(estadosBloqueo).some(([idx, e]) => e === 'trabajando' && propietarios[idx] === jugadorLocal);
@@ -98,15 +109,16 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
                 territorioBloqueadoVisual = true;
             }
         }
+    } else if (faseActual === 'ATAQUE_ESPECIAL') {
+        if (!armaEspecialSeleccionada) {
+            territorioBloqueadoVisual = true;
+        } else {
+            // El usuario dijo "cuando seleccionemos alguno el mapa se iluminara, pero tambien dependera de la habilidad"
+            // "de momento no es necesario preocuparse de eso". Entonces si hay arma, lo dejamos sin bloqueo visual por defecto.
+        }
     } else {
         territorioBloqueadoVisual = propietarioEsLocal && comarcaOcupada;
     }
-
-    // Helper para comparar jugadores ignorando mayúsculas
-    const esMismoJugador = (j1, j2) => {
-        if (!j1 || !j2) return false;
-        return String(j1).toLowerCase() === String(j2).toLowerCase();
-    };
 
     /**
      * Evalúa el color de relleno y la opacidad según el contexto actual.
@@ -179,8 +191,6 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     let strokeColor = 'var(--color-border-gold)'; // Base golden border
     let strokeWidthSize = 1.5;
 
-    const esMiTurnoLocalGlobal = esMismoJugador(turnoActual, jugadorLocal);
-
     if (modoVista === 'REGIONES') {
         if (regionId) {
             strokeColor = obtenerColorFuerteRegion(regionId);
@@ -196,9 +206,12 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     } else {
         if (isOrigin) {
             strokeColor = 'var(--color-text-primary)';
-        } else if ((isHovered || isSelected || isVivoState) && !territorioBloqueadoVisual) {
-            if (!esMiTurnoLocalGlobal) strokeColor = 'var(--color-border-gold)';
-            else strokeColor = 'var(--color-border-gold-vivo)';
+        } else if ((isHovered || isSelected) && !territorioBloqueadoVisual) {
+            strokeColor = 'var(--color-text-primary)';
+        } else if (isVivoState && !territorioBloqueadoVisual) {
+            strokeColor = 'var(--color-border-gold-vivo)';
+        } else if (territorioBloqueadoVisual && !esMiTurnoLocalGlobal) {
+            strokeColor = 'var(--color-border-gold)';
         }
         
         if ((isOrigin || isHovered || isSelected || isVivoState) && !territorioBloqueadoVisual) {

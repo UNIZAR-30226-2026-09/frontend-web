@@ -11,6 +11,7 @@ import ControlTrasladoConquista from '../components/hud/ControlTrasladoConquista
 import ControlFortificacion from '../components/hud/ControlFortificacion';
 import GameOverModal from '../components/hud/GameOverModal';
 import LogPartida from '../components/hud/LogPartida';
+import MonedasWidget from '../components/hud/MonedasWidget';
 
 /**
  * Pantalla principal del juego que junta el HUD superior y el mapa interactivo.
@@ -70,6 +71,7 @@ const PantallaJuego = () => {
             <ControlFortificacion />
             <GameOverModal />
             <LogPartida />
+            <MonedasWidget />
         </div>
     );
 };

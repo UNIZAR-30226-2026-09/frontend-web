@@ -786,7 +786,7 @@ export const useGameStore = create<EstadoJuego>()(
                 }
 
                 if (String(estado.turnoActual).toLowerCase() !== String(estado.jugadorLocal).toLowerCase()) {
-                    console.log(`[manejarClickComarca] No es tu turno. (Local: ${estado.jugadorLocal}, Turno: ${estado.turnoActual})`);
+                    estado.mostrarErrorGlobal('No puedes realizar acciones fuera de tu turno.');
                     return;
                 }
 
@@ -806,7 +806,10 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'ATAQUE_ESPECIAL': {
                         const armaId = estado.armaEspecialSeleccionada;
-                        if (!armaId) return;
+                        if (!armaId) {
+                            estado.mostrarErrorGlobal('Debes seleccionar un ataque especial.');
+                            return;
+                        }
 
                         const catalogo = estado.catalogoTecnologias || {};
 

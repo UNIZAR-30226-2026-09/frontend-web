@@ -120,13 +120,6 @@ const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onUsar, onCerrar, 
                         ⚔️ Usar
                     </button>
                 )}
-                <button
-                    className="btn-arsenal-cerrar"
-                    onClick={onCerrar}
-                    title="Cerrar"
-                >
-                    ✕
-                </button>
             </div>
         </div>,
         document.body
@@ -196,15 +189,14 @@ const ControlAtaqueEspecial = () => {
     useEffect(() => {
         const handleClickFuera = (e) => {
             if (
-                panelRef.current &&
-                !panelRef.current.contains(e.target) &&
-                !e.target.closest('.arsenal-tooltip')
+                !e.target.closest('.arsenal-tooltip') &&
+                !e.target.closest('.arsenal-btn-icono')
             ) {
                 setSeleccionado(null);
             }
         };
-        document.addEventListener('mousedown', handleClickFuera);
-        return () => document.removeEventListener('mousedown', handleClickFuera);
+        document.addEventListener('pointerup', handleClickFuera);
+        return () => document.removeEventListener('pointerup', handleClickFuera);
     }, []);
 
     // Guard clauses
@@ -330,12 +322,7 @@ const ControlAtaqueEspecial = () => {
                 </div>
             )}
 
-            {/* Monedas disponibles  */}
-            {monedas !== null && (
-                <div className="arsenal-monedas" title="Monedas disponibles">
-                    💰 {monedas}
-                </div>
-            )}
+
         </div>
     );
 };

@@ -155,38 +155,52 @@ const LineasConexion = ({ habilidades, contenedorRef }) => {
 };
 
 // ─── Tooltip modal de confirmación ───────────────────────────────────────────
-const TooltipNodo = ({ tech, onConfirmar, onCerrar, puedeInvestigar, razonBloqueado, enviando }) => (
-    <div className="tooltip-nodo-overlay" onClick={onCerrar}>
-        <div className="tooltip-nodo-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="tooltip-nodo-header">
-                <span className="tooltip-icono">{ICONOS[tech.id] || '🔬'}</span>
-                <h3 className="tooltip-titulo">{tech.nombre}</h3>
-            </div>
-            <p className="tooltip-descripcion">{tech.descripcion || 'Sin descripción disponible.'}</p>
-            {tech.precio > 0 && (
-                <p className="tooltip-precio">💰 Coste: <b>{tech.precio}</b> monedas</p>
-            )}
-            {razonBloqueado && (
-                <p className="tooltip-aviso">⚠️ {razonBloqueado}</p>
-            )}
-            <div className="tooltip-botones">
-                <button
-                    className="btn-tooltip-investigar"
-                    onClick={onConfirmar}
-                    disabled={!puedeInvestigar || enviando}
-                    title={razonBloqueado || 'Investigar esta tecnología'}
-                >
-                    {enviando ? '⏳ Enviando...' : '📚 Investigar'}
-                </button>
-                <button className="btn-tooltip-cerrar" onClick={onCerrar}>Cancelar</button>
+const TooltipNodo = ({ techData, onConfirmar, onCerrar, puedeInvestigarGlobal, razonBloqueadoGlobal, enviando }) => {
+    const { habilidad: tech, estadoNodo } = techData;
+    
+    let botonDeshabilitado = !puedeInvestigarGlobal || enviando || estadoNodo !== 'disponible';
+    let mensajeAviso = razonBloqueadoGlobal;
+
+    if (estadoNodo === 'desbloqueado') {
+        mensajeAviso = "✅ Tecnología ya investigada.";
+    } else if (estadoNodo === 'bloqueado') {
+        mensajeAviso = "🔒 Antes debes investigar las tecnologías anteriores.";
+    }
+
+    return (
+        <div className="tooltip-nodo-overlay" onClick={onCerrar}>
+            <div className="tooltip-nodo-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="tooltip-nodo-header">
+                    <span className="tooltip-icono">{ICONOS[tech.id] || '🔬'}</span>
+                    <h3 className="tooltip-titulo">{tech.nombre}</h3>
+                </div>
+                <p className="tooltip-descripcion">{tech.descripcion || 'Sin descripción disponible.'}</p>
+                {tech.precio > 0 && (
+                    <p className="tooltip-precio">💰 Coste: <b>{tech.precio}</b> monedas</p>
+                )}
+                {mensajeAviso && (
+                    <p className="tooltip-aviso">{mensajeAviso}</p>
+                )}
+                <div className="tooltip-botones">
+                    {estadoNodo !== 'desbloqueado' && (
+                        <button
+                            className="btn-tooltip-investigar"
+                            onClick={onConfirmar}
+                            disabled={botonDeshabilitado}
+                            title={mensajeAviso || 'Investigar esta tecnología'}
+                        >
+                            {enviando ? '⏳ Enviando...' : '📚 Investigar'}
+                        </button>
+                    )}
+                    <button className="btn-tooltip-cerrar" onClick={onCerrar}>Cerrar</button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ─── Nodo individual ──────────────────────────────────────────────────────────
 const NodoTecnologico = ({ habilidad, estadoNodo, isInvestigando, onClickNodo }) => {
-    const clickeable = estadoNodo === 'disponible' && !isInvestigando;
     const clases = [
         'nodo-tech',
         `nodo-${estadoNodo}`,
@@ -197,7 +211,7 @@ const NodoTecnologico = ({ habilidad, estadoNodo, isInvestigando, onClickNodo })
         <div
             className={clases}
             data-tech-id={habilidad.id}
-            onClick={() => clickeable && onClickNodo(habilidad)}
+            onClick={() => onClickNodo({ habilidad, estadoNodo })}
             title={estadoNodo === 'bloqueado' ? 'Desbloquea los requisitos previos' : isInvestigando ? 'Investigación en curso...' : ''}
             style={{ position: 'relative', zIndex: 1 }}
         >
@@ -353,10 +367,10 @@ const PanelArbolTecnologico = () => {
 
     // ── Confirmar investigación ─────────────────────────────────────────────
     const handleConfirmar = async () => {
-        if (!nodoSeleccionado) return;
+        if (!nodoSeleccionado || !nodoSeleccionado.habilidad) return;
         setEnviando(true);
         try {
-            await investigarBackend(nodoSeleccionado.id, territorioInvestigador);
+            await investigarBackend(nodoSeleccionado.habilidad.id, territorioInvestigador);
             setNodoSeleccionado(null);
         } finally {
             setEnviando(false);
@@ -403,11 +417,11 @@ const PanelArbolTecnologico = () => {
 
             {nodoSeleccionado && (
                 <TooltipNodo
-                    tech={nodoSeleccionado}
+                    techData={nodoSeleccionado}
                     onConfirmar={handleConfirmar}
                     onCerrar={() => setNodoSeleccionado(null)}
-                    puedeInvestigar={puedeInvestigar}
-                    razonBloqueado={razonBloqueado}
+                    puedeInvestigarGlobal={puedeInvestigar}
+                    razonBloqueadoGlobal={razonBloqueado}
                     enviando={enviando}
                 />
             )}

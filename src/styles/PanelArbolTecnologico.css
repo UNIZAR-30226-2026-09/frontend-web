@@ -184,7 +184,13 @@
   border-style: dashed;
   filter: grayscale(80%);
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nodo-bloqueado:hover {
+  border-color: #777;
+  opacity: 0.8;
 }
 
 /* — INVESTIGANDO — */

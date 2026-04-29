@@ -522,7 +522,9 @@ const Tablero = (props) => {
 
             // Lógica unificada de bloqueo visual según fase (usado para silueta y ficha)
             let estaBloqueadoVisualmente = false;
-            if (faseActual === 'REFUERZO') {
+            if (!esMiTurnoLocal) {
+              estaBloqueadoVisualmente = true;
+            } else if (faseActual === 'REFUERZO') {
               estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
             } else if (faseActual === 'GESTION') {
               estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
@@ -570,6 +572,10 @@ const Tablero = (props) => {
                       estaBloqueadoVisualmente = true;
                   }
               }
+            } else if (faseActual === 'ATAQUE_ESPECIAL') {
+              if (!armaEspecialSeleccionada) {
+                  estaBloqueadoVisualmente = true;
+              }
             } else {
               estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
             }
@@ -581,15 +587,15 @@ const Tablero = (props) => {
               if (!isHovered && !isSelected && !isVivoState) return null;
             }
 
-            let strokeColor = 'var(--color-border-gold-vivo)';
+            let strokeColor = 'var(--color-border-gold)';
 
             if (modoVista === 'REGIONES') {
               strokeColor = 'var(--color-text-primary)';
-            } else if (isOrigin) {
+            } else if (isOrigin || isHovered || isSelected) {
               strokeColor = 'var(--color-text-primary)';
+            } else if (isVivoState && !estaBloqueadoVisualmente) {
+              strokeColor = 'var(--color-border-gold-vivo)';
             } else if (!esMiTurnoLocal) {
-              // Si no es nuestro turno, obligamos a que el stroke sea el apagado
-              // incluso si por algún isVivoState se renderizara
               strokeColor = 'var(--color-border-gold)';
             }
 
@@ -720,7 +726,9 @@ const Tablero = (props) => {
               if (isHovered || isSelected) strokeFicha = 'var(--color-text-primary)';
             } else {
               let estaBloqueadoVisualmente = false;
-              if (faseActual === 'REFUERZO') {
+              if (!esMiTurnoLocal) {
+                  estaBloqueadoVisualmente = true;
+              } else if (faseActual === 'REFUERZO') {
                 estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
               } else if (faseActual === 'GESTION') {
                 estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
@@ -768,16 +776,20 @@ const Tablero = (props) => {
                         estaBloqueadoVisualmente = true;
                     }
                 }
+              } else if (faseActual === 'ATAQUE_ESPECIAL') {
+                if (!armaEspecialSeleccionada) {
+                    estaBloqueadoVisualmente = true;
+                }
               } else {
                 estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
               }
 
               if (!estaBloqueadoVisualmente && (isHovered || isSelected || isVivoState)) {
-                if (isOrigin) {
+                if (isOrigin || isHovered || isSelected) {
                   strokeFicha = 'var(--color-text-primary)';
                 } else if (!esMiTurnoLocal) {
                   strokeFicha = 'var(--color-border-gold)';
-                } else {
+                } else if (isVivoState) {
                   strokeFicha = 'var(--color-border-gold-vivo)';
                 }
               }

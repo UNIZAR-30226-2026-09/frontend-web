@@ -63,7 +63,7 @@ const LogPartida = () => {
                 bottom: '16px',
                 left: '16px',
                 width: '400px',
-                maxHeight: '300px',
+                height: '300px',
                 background: 'var(--color-ui-panel-overlay, rgba(12, 10, 5, 0.92))',
                 border: '2px solid var(--color-border-gold, #8C7322)',
                 borderRadius: '12px',
