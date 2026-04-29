@@ -166,11 +166,11 @@ const PanelAlianzas = ({ onCerrar }) => {
                             >
                                 <div className="alianzas-info">
                                     <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
-                                        <img 
-                                            src={`${BASE_URL}${amigo.avatar || '/static/perfiles/default.png'}`} 
-                                            alt={nombreAmigo} 
+                                        <img
+                                            src={`${BASE_URL}${amigo.avatar || '/static/perfiles/default.png'}`}
+                                            alt={nombreAmigo}
                                             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                                            onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.parentElement.textContent = nombreAmigo.charAt(0).toUpperCase(); }}
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = nombreAmigo.charAt(0).toUpperCase(); }}
                                         />
                                     </div>
                                     <div className="alianzas-detalles">
@@ -184,9 +184,6 @@ const PanelAlianzas = ({ onCerrar }) => {
                                 <div className="alianzas-acciones">
                                     {amigo.estado_conexion === 'EN_PARTIDA' && (
                                         <button className="btn-accion btn-accion-principal" onClick={() => alert('Espectando sala: ' + amigo.salaActivaId)}>Espectar</button>
-                                    )}
-                                    {(amigo.estado_conexion === 'CONECTADO') && (
-                                        <button className="btn-accion btn-accion-principal">Invitar</button>
                                     )}
                                 </div>
                             </div>
@@ -209,11 +206,11 @@ const PanelAlianzas = ({ onCerrar }) => {
                                         <div key={idx} className="alianzas-card" style={{ borderLeftColor: 'var(--color-border-gold)' }}>
                                             <div className="alianzas-info">
                                                 <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
-                                                    <img 
-                                                        src={`${BASE_URL}/static/perfiles/default.png`} 
-                                                        alt={nombreSolicitante} 
+                                                    <img
+                                                        src={`${BASE_URL}/static/perfiles/default.png`}
+                                                        alt={nombreSolicitante}
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                                                        onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.parentElement.textContent = nombreSolicitante.charAt(0).toUpperCase(); }}
+                                                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = nombreSolicitante.charAt(0).toUpperCase(); }}
                                                     />
                                                 </div>
                                                 <div className="alianzas-detalles">

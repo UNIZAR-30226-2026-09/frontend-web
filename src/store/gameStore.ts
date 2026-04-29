@@ -893,7 +893,7 @@ export const useGameStore = create<EstadoJuego>()(
                             estado.mostrarErrorGlobal('Todos los refuerzos ya han sido desplegados.');
                             return;
                         }
-                        
+
                         if (estado.comarcaRefuerzo === comarcaId) {
                             set({ comarcaRefuerzo: null, popupCoords: null });
                         } else {
@@ -1057,7 +1057,7 @@ export const useGameStore = create<EstadoJuego>()(
                         // Comprobar si ya se han agotado las acciones de gestión
                         const hayTrabajo = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e === 'trabajando' && estado.propietarios[id] === estado.jugadorLocal);
                         const hayInvestigacion = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e && e.startsWith('investigando') && estado.propietarios[id] === estado.jugadorLocal);
-                        
+
                         if (hayTrabajo && hayInvestigacion) {
                             estado.mostrarErrorGlobal('Ya has ordenado trabajar e investigar. No puedes hacer más tareas esta fase.');
                             return;
@@ -1216,8 +1216,10 @@ export const useGameStore = create<EstadoJuego>()(
                             // Eliminamos al jugador que sale de la lista de propietarios.
                             // Convertimos a string por seguridad tipográfica.
                             propietariosRestantes.delete(String(eliminadoId));
+                            const mapaVacio = Object.keys(state.propietarios).length === 0;
 
                             const esVictoria =
+                                !mapaVacio &&
                                 !!state.jugadorLocal &&
                                 propietariosRestantes.size === 1 &&
                                 propietariosRestantes.has(state.jugadorLocal);
@@ -1326,6 +1328,7 @@ export const useGameStore = create<EstadoJuego>()(
                                 preparandoAtaque: false,
                                 preparandoFortificacion: false,
                                 movimientoConquistaPendiente: false,
+                                movimientoRealizadoEnTurno: false,
                             };
                         });
 
@@ -1563,6 +1566,7 @@ export const useGameStore = create<EstadoJuego>()(
                         // Reset de variables de votación para evitar caching entre salas
                         faseVotacionPausa: 'ninguna',
                         jugadorSolicitantePausa: null,
+                        estadoPartidaLocal: 'JUGANDO',
                     });
 
                     return data;
@@ -1647,6 +1651,7 @@ export const useGameStore = create<EstadoJuego>()(
                         // Reset de variables de votación para evitar caching entre salas
                         faseVotacionPausa: 'ninguna',
                         jugadorSolicitantePausa: null,
+                        estadoPartidaLocal: 'JUGANDO',
                     }));
 
                     return data;
