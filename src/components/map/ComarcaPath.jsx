@@ -27,6 +27,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const cantidadTropas = useGameStore((state) => state.tropas[id] || 0);
     const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
     const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+    const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
 
     const comarcaOcupada = !!estadosBloqueo[id];
     // Solo bloqueamos visualmente los territorios del jugador local (los ajenos no podemos interactuarlos de todas formas)
@@ -36,12 +37,70 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         if (!propietarioId || !jugadorLocal) return false;
         return String(propietarioId).toLowerCase() === String(jugadorLocal).toLowerCase();
     })();
-    const territorioBloqueadoVisual = comarcaOcupada && propietarioEsLocal;
 
     const isOrigin = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
     const isHighlighted = comarcasResaltadas.includes(id);
     const isSelected = isOrigin || isDestination || isHighlighted;
+
+    let territorioBloqueadoVisual = false;
+    if (faseActual === 'REFUERZO') {
+        territorioBloqueadoVisual = !propietarioEsLocal || (tropasDisponibles ?? 0) === 0;
+    } else if (faseActual === 'GESTION') {
+        const hayTrabajo = Object.entries(estadosBloqueo).some(([idx, e]) => e === 'trabajando' && propietarios[idx] === jugadorLocal);
+        const hayInvestigacion = Object.entries(estadosBloqueo).some(([idx, e]) => e && e.startsWith('investigando') && propietarios[idx] === jugadorLocal);
+        const gestionCompletada = hayTrabajo && hayInvestigacion;
+        territorioBloqueadoVisual = !propietarioEsLocal || comarcaOcupada || gestionCompletada;
+    } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
+        if (!origenSeleccionado) {
+            if (!propietarioEsLocal) {
+                territorioBloqueadoVisual = true;
+            } else if (comarcaOcupada) {
+                territorioBloqueadoVisual = true;
+            } else if (cantidadTropas <= 1) {
+                territorioBloqueadoVisual = true;
+            } else {
+                const hasEnemyAdjacent = adyacentes && adyacentes.some(adj => {
+                    const propAdj = propietarios[adj];
+                    return propAdj && String(propAdj).toLowerCase() !== String(jugadorLocal).toLowerCase();
+                });
+                if (!hasEnemyAdjacent) {
+                    territorioBloqueadoVisual = true;
+                }
+            }
+        } else {
+            // Origen seleccionado: apagar TODO lo que no sea el origen, el destino, o un objetivo válido
+            if (!isOrigin && !isDestination && !isHighlighted) {
+                territorioBloqueadoVisual = true;
+            }
+        }
+    } else if (faseActual === 'FORTIFICACION') {
+        if (movimientoRealizadoEnTurno) {
+            territorioBloqueadoVisual = true;
+        } else if (!origenSeleccionado) {
+            if (!propietarioEsLocal) {
+                territorioBloqueadoVisual = true;
+            } else if (comarcaOcupada) {
+                territorioBloqueadoVisual = true;
+            } else if (cantidadTropas <= 1) {
+                territorioBloqueadoVisual = true;
+            } else {
+                const hasAlliedAdjacent = adyacentes && adyacentes.some(adj => {
+                    const propAdj = propietarios[adj];
+                    return propAdj && String(propAdj).toLowerCase() === String(jugadorLocal).toLowerCase();
+                });
+                if (!hasAlliedAdjacent) {
+                    territorioBloqueadoVisual = true;
+                }
+            }
+        } else {
+            if (!isOrigin && !isDestination && !isHighlighted) {
+                territorioBloqueadoVisual = true;
+            }
+        }
+    } else {
+        territorioBloqueadoVisual = propietarioEsLocal && comarcaOcupada;
+    }
 
     // Helper para comparar jugadores ignorando mayúsculas
     const esMismoJugador = (j1, j2) => {
@@ -59,27 +118,27 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         const colorBase = propietarioId && coloresJugadores[propietarioId] ? coloresJugadores[propietarioId] : null;
         const colorApagado = colorBase ? colorBase.replace(')', '-apagado)') : 'var(--color-ui-bg-secondary)';
 
-        // 0. Si el territorio está bloqueado visualmente por una tarea activa
-        if (territorioBloqueadoVisual) {
-            return { color: colorApagado, opacidad: 1, isVivoState: false };
-        }
-
-        // 1. Interacciones tácticas tienen prioridad absoluta
-        if (isDestination) {
-            return { color: colorBase || 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: true };
-        }
-
-        if (isOrigin || isHighlighted) {
-            return { color: colorBase, opacidad: 1, isVivoState: true };
-        }
-
-        // 2. Modo de visualización por regiones
+        // 0. Modo de visualización por regiones tiene prioridad absoluta sobre bloqueos visuales
         if (modoVista === 'REGIONES' && regionId) {
             const esDelJugador = esMismoJugador(propietarios[id], jugadorLocal);
             const color = obtenerColorRegion(regionId, esDelJugador);
             // Contraste extremo: propio opaco, ajeno muy translúcido
             const opacidad = 1;
             return { color, opacidad, isVivoState: false };
+        }
+
+        // 1. Si el territorio está bloqueado visualmente por una tarea activa
+        if (territorioBloqueadoVisual) {
+            return { color: colorApagado, opacidad: 1, isVivoState: false };
+        }
+
+        // 2. Interacciones tácticas tienen prioridad absoluta
+        if (isDestination) {
+            return { color: colorBase || 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: true };
+        }
+
+        if (isOrigin || isHighlighted) {
+            return { color: colorBase, opacidad: 1, isVivoState: true };
         }
 
         // 3. Color del jugador propietario

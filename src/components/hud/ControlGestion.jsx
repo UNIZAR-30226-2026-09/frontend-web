@@ -6,6 +6,7 @@ const ControlGestion = () => {
 
     if (estado.faseActual !== 'GESTION') return null;
     if (!estado.origenSeleccionado) return null;
+    if (!estado.popupCoords) return null;
 
     const territorioSeleccionado = estado.origenSeleccionado;
     const esJugadorLocal = estado.propietarios[territorioSeleccionado] === estado.jugadorLocal;
@@ -37,10 +38,6 @@ const ControlGestion = () => {
         estado.toggleArbolTecnologico();
     };
 
-    const cancelar = () => {
-        useGameStore.setState({ origenSeleccionado: null, popupCoords: null });
-    };
-
     const popupCoords = estado.popupCoords;
     const modalPosition = {
         position: 'fixed',
@@ -63,7 +60,7 @@ const ControlGestion = () => {
 
                 <div style={styles.botonesColumna}>
                     <button 
-                        style={{ ...styles.btnBase, ...styles.btnTrabajar }} 
+                        style={{ ...styles.btnBase, ...styles.btnTrabajar, ...( (trabajando || investigando || hayOtroTrabajando) ? styles.btnDisabled : {} ) }} 
                         onClick={handleTrabajar} 
                         disabled={trabajando || investigando || hayOtroTrabajando}
                         title={hayOtroTrabajando ? "Otro territorio ya está trabajando" : "Generar ingresos"}
@@ -72,16 +69,12 @@ const ControlGestion = () => {
                     </button>
                     
                     <button 
-                        style={{ ...styles.btnBase, ...styles.btnInvestigar }} 
+                        style={{ ...styles.btnBase, ...styles.btnInvestigar, ...( (trabajando || investigando || hayOtroInvestigando) ? styles.btnDisabled : {} ) }} 
                         onClick={handleInvestigar} 
                         disabled={trabajando || investigando || hayOtroInvestigando}
                         title={hayOtroInvestigando ? "Otro territorio ya está investigando" : "Abrir Árbol de Tecnología"}
                     >
                         📚 Investigar
-                    </button>
-
-                    <button style={{...styles.btnBase, ...styles.btnCancelar}} onClick={cancelar}>
-                        Cerrar
                     </button>
                 </div>
             </div>
@@ -126,9 +119,10 @@ const styles = {
         backgroundColor: '#3182CE',
         color: '#fff',
     },
-    btnCancelar: {
-        backgroundColor: '#4A5568',
-        color: 'white',
+    btnDisabled: {
+        opacity: 0.5,
+        cursor: 'not-allowed',
+        filter: 'grayscale(0.8)'
     }
 };
 

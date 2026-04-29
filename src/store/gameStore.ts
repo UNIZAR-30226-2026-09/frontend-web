@@ -882,7 +882,18 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'REFUERZO': {
-                        if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
+                        if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                            estado.mostrarErrorGlobal('No puedes reforzar territorios enemigos.');
+                            return;
+                        }
+                        if ((estado.tropasDisponibles ?? 0) <= 0) {
+                            estado.mostrarErrorGlobal('Todos los refuerzos ya han sido desplegados.');
+                            return;
+                        }
+                        
+                        if (estado.comarcaRefuerzo === comarcaId) {
+                            set({ comarcaRefuerzo: null, popupCoords: null });
+                        } else {
                             set({ comarcaRefuerzo: comarcaId, tropasAAsignar: Math.max(1, estado.tropasDisponibles ?? 0), popupCoords: coords || null });
                         }
                         break;
@@ -893,7 +904,7 @@ export const useGameStore = create<EstadoJuego>()(
 
                         if (estado.preparandoAtaque || estado.movimientoConquistaPendiente) return;
 
-                        if (estado.origenSeleccionado === comarcaId) {
+                        if (estado.origenSeleccionado && String(estado.origenSeleccionado) === String(comarcaId)) {
                             set({
                                 origenSeleccionado: null,
                                 destinoSeleccionado: null,
@@ -903,7 +914,7 @@ export const useGameStore = create<EstadoJuego>()(
                             return;
                         }
 
-                        if (estado.destinoSeleccionado === comarcaId) {
+                        if (estado.destinoSeleccionado && String(estado.destinoSeleccionado) === String(comarcaId)) {
                             set({ destinoSeleccionado: null, popupCoords: null });
                             if (estado.grafoGlobal && estado.origenSeleccionado) {
                                 const alcanzables = calcularComarcasEnRango(
@@ -923,11 +934,12 @@ export const useGameStore = create<EstadoJuego>()(
                         }
 
                         if (!estado.origenSeleccionado) {
-                            if (
-                                estado.propietarios[comarcaId] !== estado.jugadorLocal ||
-                                (estado.tropas[comarcaId] ?? 0) <= 1
-                            ) {
-                                console.log('[manejarClickComarca] Origen inválido para atacar.');
+                            if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                                estado.mostrarErrorGlobal('Solamente puedes realizar ataques desde tus territorios.');
+                                return;
+                            }
+                            if ((estado.tropas[comarcaId] ?? 0) <= 1) {
+                                estado.mostrarErrorGlobal('No puedes atacar con una sola tropa.');
                                 return;
                             }
                             if (!estado.grafoGlobal) return;
@@ -943,7 +955,7 @@ export const useGameStore = create<EstadoJuego>()(
                             );
 
                             if (enemigosAlcanzables.length === 0) {
-                                console.log('[manejarClickComarca] Origen rodeado por aliados.');
+                                estado.mostrarErrorGlobal('No tienes acceso a territorios enemigos desde aquí.');
                                 return;
                             }
 
@@ -955,7 +967,8 @@ export const useGameStore = create<EstadoJuego>()(
                             return;
                         }
 
-                        if (estado.comarcasResaltadas.includes(comarcaId)) {
+                        const strResaltadas = estado.comarcasResaltadas.map(String);
+                        if (strResaltadas.includes(String(comarcaId))) {
                             set({ destinoSeleccionado: comarcaId, preparandoAtaque: true, popupCoords: coords || null });
                             return;
                         }
@@ -972,11 +985,23 @@ export const useGameStore = create<EstadoJuego>()(
                     case 'FORTIFICACION': {
                         if (estado.preparandoFortificacion) return;
 
-                        if (
-                            !estado.origenSeleccionado &&
-                            estado.propietarios[comarcaId] === estado.jugadorLocal &&
-                            (estado.tropas[comarcaId] ?? 0) > 1
-                        ) {
+                        if (!estado.origenSeleccionado) {
+                            if (estado.movimientoRealizadoEnTurno) {
+                                estado.mostrarErrorGlobal('Solamente se puede fortificar una vez por fase.');
+                                return;
+                            }
+                            if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                                estado.mostrarErrorGlobal('No puedes fortificar territorios enemigos.');
+                                return;
+                            }
+                            if ((estado.tropas[comarcaId] ?? 0) <= 1) {
+                                estado.mostrarErrorGlobal('No puedes fortificar con una sola tropa.');
+                                return;
+                            }
+                            if (estado.estadosBloqueo?.[comarcaId]) {
+                                estado.mostrarErrorGlobal('No puedes fortificar desde un territorio que está trabajando o investigando.');
+                                return;
+                            }
 
                             if (!estado.grafoGlobal) return;
 
@@ -989,7 +1014,7 @@ export const useGameStore = create<EstadoJuego>()(
                             );
 
                             if (alcanzables.size === 0) {
-                                console.log('[manejarClickComarca] Ningún territorio aliado conectado.');
+                                estado.mostrarErrorGlobal('Un territorio aislado no puede fortificarse.');
                                 return;
                             }
 
@@ -1001,12 +1026,13 @@ export const useGameStore = create<EstadoJuego>()(
                             return;
                         }
 
-                        if (estado.origenSeleccionado === comarcaId) {
+                        if (estado.origenSeleccionado && String(estado.origenSeleccionado) === String(comarcaId)) {
                             set({ origenSeleccionado: null, comarcasResaltadas: [], popupCoords: null });
                             return;
                         }
 
-                        if (estado.comarcasResaltadas.includes(comarcaId)) {
+                        const strResaltadas = estado.comarcasResaltadas.map(String);
+                        if (strResaltadas.includes(String(comarcaId))) {
                             set({ destinoSeleccionado: comarcaId, preparandoFortificacion: true, popupCoords: coords || null });
                         } else {
                             set({
@@ -1020,16 +1046,25 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'GESTION': {
-                        // Solo permitimos seleccionar territorios propios
-                        if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
-                            // Toggle selección
-                            if (estado.origenSeleccionado === comarcaId) {
-                                set({ origenSeleccionado: null, popupCoords: null });
-                            } else {
-                                set({ origenSeleccionado: comarcaId, popupCoords: coords || null });
-                            }
-                        } else {
+                        if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                            estado.mostrarErrorGlobal('No puedes gestionar territorios enemigos.');
+                            return;
+                        }
+
+                        // Comprobar si ya se han agotado las acciones de gestión
+                        const hayTrabajo = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e === 'trabajando' && estado.propietarios[id] === estado.jugadorLocal);
+                        const hayInvestigacion = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e && e.startsWith('investigando') && estado.propietarios[id] === estado.jugadorLocal);
+                        
+                        if (hayTrabajo && hayInvestigacion) {
+                            estado.mostrarErrorGlobal('Ya has ordenado trabajar e investigar. No puedes hacer más tareas esta fase.');
+                            return;
+                        }
+
+                        // Toggle selección
+                        if (estado.origenSeleccionado === comarcaId) {
                             set({ origenSeleccionado: null, popupCoords: null });
+                        } else {
+                            set({ origenSeleccionado: comarcaId, popupCoords: coords || null });
                         }
                         break;
                     }

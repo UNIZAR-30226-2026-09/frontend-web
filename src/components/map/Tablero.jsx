@@ -105,6 +105,11 @@ const Tablero = (props) => {
   const estadosAlterados = useGameStore((state) => state.estadosAlterados) || {};
   const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
   const mensajeErrorGlobal = useGameStore((state) => state.mensajeErrorGlobal);
+  const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
+
+  const hayTrabajo = Object.values(estadosBloqueo).some(e => e === 'trabajando');
+  const hayInvestigacion = Object.values(estadosBloqueo).some(e => e && e.startsWith('investigando'));
+  const gestionCompletada = faseActual === 'GESTION' && hayTrabajo && hayInvestigacion;
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
   useEffect(() => {
@@ -170,7 +175,7 @@ const Tablero = (props) => {
         [50, 300]
       ])
       .on('start', () => {
-        // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups
+        // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups temporales (no el origen porque rompería ataques)
         useGameStore.setState({
           comarcaRefuerzo: null,
           popupCoords: null,
@@ -515,13 +520,64 @@ const Tablero = (props) => {
               }
             }
 
+            // Lógica unificada de bloqueo visual según fase (usado para silueta y ficha)
+            let estaBloqueadoVisualmente = false;
+            if (faseActual === 'REFUERZO') {
+              estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
+            } else if (faseActual === 'GESTION') {
+              estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
+            } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
+              if (!origenSeleccionado) {
+                  if (!esMio) {
+                      estaBloqueadoVisualmente = true;
+                  } else if (estadosBloqueo[comarca.id]) {
+                      estaBloqueadoVisualmente = true;
+                  } else {
+                      if (cantidadTropas <= 1) {
+                          estaBloqueadoVisualmente = true;
+                      } else {
+                          const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                          if (!hasEnemyAdjacent) {
+                              estaBloqueadoVisualmente = true;
+                          }
+                      }
+                  }
+              } else {
+                  if (!isOrigin && !isDestination && !isHighlighted) {
+                      estaBloqueadoVisualmente = true;
+                  }
+              }
+            } else if (faseActual === 'FORTIFICACION') {
+              if (movimientoRealizadoEnTurno) {
+                  estaBloqueadoVisualmente = true;
+              } else if (!origenSeleccionado) {
+                  if (!esMio) {
+                      estaBloqueadoVisualmente = true;
+                  } else if (estadosBloqueo[comarca.id]) {
+                      estaBloqueadoVisualmente = true;
+                  } else {
+                      if (cantidadTropas <= 1) {
+                          estaBloqueadoVisualmente = true;
+                      } else {
+                          const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                          if (!hasAlliedAdjacent) {
+                              estaBloqueadoVisualmente = true;
+                          }
+                      }
+                  }
+              } else {
+                  if (!isOrigin && !isDestination && !isHighlighted) {
+                      estaBloqueadoVisualmente = true;
+                  }
+              }
+            } else {
+              estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+            }
+
             if (modoVista === 'REGIONES') {
               if (!isHovered && !isSelected) return null;
             } else {
-              // Si está bloqueado y es nuestro, ignoramos el hover/selected para no iluminarlo
-              const estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
               if (estaBloqueadoVisualmente) return null;
-
               if (!isHovered && !isSelected && !isVivoState) return null;
             }
 
@@ -663,7 +719,59 @@ const Tablero = (props) => {
             if (modoVista === 'REGIONES') {
               if (isHovered || isSelected) strokeFicha = 'var(--color-text-primary)';
             } else {
-              const estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+              let estaBloqueadoVisualmente = false;
+              if (faseActual === 'REFUERZO') {
+                estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
+              } else if (faseActual === 'GESTION') {
+                estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
+              } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
+                if (!origenSeleccionado) {
+                    if (!esMio) {
+                        estaBloqueadoVisualmente = true;
+                    } else if (estadosBloqueo[comarca.id]) {
+                        estaBloqueadoVisualmente = true;
+                    } else {
+                        if (cantidadTropas <= 1) {
+                            estaBloqueadoVisualmente = true;
+                        } else {
+                            const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                            if (!hasEnemyAdjacent) {
+                                estaBloqueadoVisualmente = true;
+                            }
+                        }
+                    }
+                } else {
+                    if (!isOrigin && !isDestination && !isHighlighted) {
+                        estaBloqueadoVisualmente = true;
+                    }
+                }
+              } else if (faseActual === 'FORTIFICACION') {
+                if (movimientoRealizadoEnTurno) {
+                    estaBloqueadoVisualmente = true;
+                } else if (!origenSeleccionado) {
+                    if (!esMio) {
+                        estaBloqueadoVisualmente = true;
+                    } else if (estadosBloqueo[comarca.id]) {
+                        estaBloqueadoVisualmente = true;
+                    } else {
+                        if (cantidadTropas <= 1) {
+                            estaBloqueadoVisualmente = true;
+                        } else {
+                            const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                            if (!hasAlliedAdjacent) {
+                                estaBloqueadoVisualmente = true;
+                            }
+                        }
+                    }
+                } else {
+                    if (!isOrigin && !isDestination && !isHighlighted) {
+                        estaBloqueadoVisualmente = true;
+                    }
+                }
+              } else {
+                estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+              }
+
               if (!estaBloqueadoVisualmente && (isHovered || isSelected || isVivoState)) {
                 if (isOrigin) {
                   strokeFicha = 'var(--color-text-primary)';

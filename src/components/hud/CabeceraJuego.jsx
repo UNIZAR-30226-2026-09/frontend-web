@@ -67,10 +67,17 @@ const CabeceraJuego = () => {
 
   const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
 
+  const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+  const hayTrabajo = Object.entries(estadosBloqueo).some(([id, e]) => e === 'trabajando' && propietarios[id] === jugadorLocal);
+  const hayInvestigacion = Object.entries(estadosBloqueo).some(([id, e]) => e && e.startsWith('investigando') && propietarios[id] === jugadorLocal);
+  const gestionCompletada = hayTrabajo && hayInvestigacion;
+
   let debeBrillar = false;
   if (!isSiguienteBloqueado && esMiTurno) {
     if (isFaseRefuerzo && (tropasDisponibles ?? 0) === 0) debeBrillar = true;
     if (isUltimaFase && movimientoRealizadoEnTurno) debeBrillar = true;
+    if (faseActual === 'GESTION' && gestionCompletada) debeBrillar = true;
+    if (faseActual === 'FORTIFICACION' && movimientoRealizadoEnTurno) debeBrillar = true;
   }
 
   // Leer el jugador en turno actual real para sacar su color

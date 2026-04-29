@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { fetchApi } from '../../services/api';
-import { mockVictoriasMi } from '../../mock/menuMockData';
 import PanelPerfilJugador from './PanelPerfilJugador';
 
 const obtenerNombreJugador = (user) => user?.username || user?.nombre_usuario || user?.nombre || '';
@@ -44,7 +43,7 @@ const TopGlobalWidget = () => {
 
   const victoriasUsuario = miStats?.num_partidas_ganadas !== undefined
     ? miStats.num_partidas_ganadas
-    : mockVictoriasMi;
+    : 0;
 
   const top10 = useMemo(() => {
     return [...topUsuarios]
@@ -65,7 +64,9 @@ const TopGlobalWidget = () => {
   // Nueva lógica de búsqueda de posición
   let miPos = miStats?.posicion_ranking ?? '-';
 
-  if (miPos === '-' && victoriasUsuario > 0) {
+  if (victoriasUsuario === 0) {
+    miPos = '-';
+  } else if (miPos === '-') {
     const miJugador = top10.find(p => p.username === nombreMostrar);
     if (miJugador) {
       miPos = miJugador.posicion;
