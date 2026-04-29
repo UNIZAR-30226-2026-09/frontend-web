@@ -10,7 +10,7 @@ import '../../styles/Lobby.css';
  */
 const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
   const unirsePartidaBackend = useGameStore((state) => state.unirsePartidaBackend);
-  const reanudarPartidaBackend = useGameStore((state) => state.reanudarPartidaBackend);
+  const prepararSalaPausada = useGameStore((state) => state.prepararSalaPausada);
 
   const [codigo, setCodigo] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -83,14 +83,16 @@ const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
     }
   };
 
-  const handleReanudar = async (codigoPausa) => {
+  const handleReanudar = async (partidaPausada) => {
     setCargando(true);
     setError(null);
     try {
-      await reanudarPartidaBackend(codigoPausa);
-      onUnido(); // Esto avisa al Lobby para que cambie la vista a la sala
+      // Nos infiltramos en la sala sin hacer ruido
+      await prepararSalaPausada(partidaPausada);
+      onUnido(); // Esto avisa al padre (Lobby.jsx) para que dibuje el componente SalaLobby
     } catch (err) {
-      setError("No se pudo reanudar. ¿Quizás no eres el creador o el código es inválido?");
+      console.error("🚨 [ERROR REANUDAR]:", err);
+      setError("Fallo al conectar con el expediente de la partida.");
     } finally {
       setCargando(false);
     }
@@ -177,7 +179,7 @@ const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
                           <span style={{ color: '#fff', fontWeight: 'bold' }}>Partida #{p.id}</span>
                           <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Acceso: {p.codigo_invitacion}</span>
                         </div>
-                        <button onClick={() => handleReanudar(p.codigo_invitacion)} disabled={cargando} style={{ background: 'var(--color-border-gold)', color: '#1A1200', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: cargando ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                        <button onClick={() => handleReanudar(p)} disabled={cargando} style={{ background: 'var(--color-border-gold)', color: '#1A1200', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: cargando ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
                           REANUDAR
                         </button>
                       </div>

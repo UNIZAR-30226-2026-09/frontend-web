@@ -1241,6 +1241,20 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
+                    case 'PARTIDA_REANUDADA': {
+                        console.log("🚀 [WS] ¡El Cuartel General ha dado luz verde! Reanudando operación...");
+                        set((state) => ({
+                            salaActiva: { ...state.salaActiva, estado: 'activa' },
+                            jugadoresLobby: mensaje.jugadores ? Object.values(mensaje.jugadores).map((j: any) => ({
+                                id: j.username || j.nombre,
+                                username: j.username || j.nombre,
+                                numeroJugador: j.numeroJugador || 2,
+                                esCreador: false
+                            })) : state.jugadoresLobby
+                        }));
+                        break;
+                    }
+
                     case 'SALA_CERRADA': {
                         const payload = mensaje.data ?? mensaje.payload ?? mensaje;
                         window.dispatchEvent(new CustomEvent('sala_cerrada', { detail: payload }));
@@ -1657,6 +1671,66 @@ export const useGameStore = create<EstadoJuego>()(
                     return data;
                 } catch (error) {
                     console.error('[unirsePartidaBackend] Error:', error);
+                    throw error;
+                }
+            },
+
+            /**
+             * 1. INFILTRACIÓN: Mete al jugador en el Lobby localmente y conecta 
+             * el WebSocket SIN llamar al endpoint /unirse (que da error 400).
+             */
+            prepararSalaPausada: async (partida: any) => {
+                const user = useAuthStore.getState().user;
+                const miUsuario = user?.username || user?.nombre_usuario || 'unknown';
+
+                // 1. Identificamos si eres el Host
+                const creadorReal = partida.creador || partida.nombreCreador || partida.host || partida.creador_id;
+                const isHost = creadorReal === miUsuario || miUsuario === 'unknown';
+
+                // 2. PROTOCOLO DE REALIDAD: Al entrar, solo estás tú.
+                // Tu amigo aparecerá cuando el WebSocket dispare el evento de conexión normal.
+                const jugadoresData = [
+                    {
+                        id: miUsuario,
+                        username: miUsuario,
+                        numeroJugador: isHost ? 1 : 2, // Si eres host vas al 1, si no, vas al 2 (o al que toque)
+                        esCreador: isHost
+                    }
+                ];
+
+                set((state) => ({
+                    salaActiva: {
+                        ...state.salaActiva,
+                        id: partida.id,
+                        codigoInvitacion: partida.codigo_invitacion,
+                        estado: 'pausada',
+                        config_max_players: partida.config_max_players || 4,
+                    },
+                    jugadorLocal: miUsuario,
+                    esCreadorSala: isHost,
+                    jugadoresLobby: jugadoresData,
+                    faseVotacionPausa: 'ninguna',
+                }));
+
+                try {
+                    // Bajamos el tablero en segundo plano, pero NO sacamos a los jugadores de ahí
+                    await get().sincronizarEstadoPartida();
+                } catch (e) {
+                    console.warn("Aviso: Sincronización inicial omitida", e);
+                }
+            },
+            /**
+             * 2. REANUDAR REAL: El anfitrión llama a esto desde el Lobby cuando 
+             * todos los jugadores han entrado silenciosamente (2/2 listos).
+             */
+            ejecutarReanudarPartida: async () => {
+                const codigo = get().salaActiva?.codigoInvitacion;
+                if (!codigo) return;
+                try {
+                    await fetchApi(`/v1/partidas/${codigo}/reanudar`, { method: 'POST' });
+                    console.log("¡Orden de reanudación enviada al Cuartel General!");
+                } catch (error) {
+                    console.error('[ejecutarReanudarPartida] Error:', error);
                     throw error;
                 }
             },

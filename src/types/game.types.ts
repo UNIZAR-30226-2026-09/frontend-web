@@ -272,6 +272,18 @@ export interface EstadoJuego {
     unirsePartidaBackend: (codigo: string) => Promise<any>;
 
     /**
+     * 1. INFILTRACIÓN: Mete al jugador en el Lobby localmente y conecta 
+     * el WebSocket SIN llamar al endpoint /unirse (que da error 400).
+     */
+    prepararSalaPausada: (partida: any) => Promise<void>;
+
+    /**
+     * 2. REANUDAR REAL: El anfitrión llama a esto desde el Lobby cuando 
+     * todos los jugadores han entrado silenciosamente (2/2 listos).
+     */
+    ejecutarReanudarPartida: () => Promise<void>;
+
+    /**
      * Sincroniza el estado completo de la partida desde el servidor.
      */
     sincronizarEstadoPartida: () => Promise<void>;

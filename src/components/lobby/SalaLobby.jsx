@@ -18,6 +18,7 @@ const SalaLobby = ({ onVolver }) => {
   const user = useAuthStore((state) => state.user);
   const salaActiva = useGameStore((state) => state.salaActiva);
   const jugadoresLobby = useGameStore((state) => state.jugadoresLobby);
+  const ejecutarReanudarPartida = useGameStore((state) => state.ejecutarReanudarPartida);
 
   const [empezando, setEmpezando] = useState(false);
   const [errorEmpezar, setErrorEmpezar] = useState(null);
@@ -59,7 +60,11 @@ const SalaLobby = ({ onVolver }) => {
     setEmpezando(true);
     setErrorEmpezar(null);
     try {
-      await fetchApi(`/v1/partidas/${salaActiva.id}/empezar`, { method: 'POST' });
+      if (salaActiva.estado === 'pausada') {
+        await ejecutarReanudarPartida();
+      } else {
+        await fetchApi(`/v1/partidas/${salaActiva.id}/empezar`, { method: 'POST' });
+      }
       // La navegación ocurre automáticamente via WS PARTIDA_INICIADA
     } catch (err) {
       setErrorEmpezar(err.message || 'No se puede iniciar la partida.');
@@ -81,7 +86,7 @@ const SalaLobby = ({ onVolver }) => {
   });
 
   const handleAbandonar = async () => {
-    
+
     // 1. Cortamos el cable del websocket ANTES de la petición.
     // Así, si el server envía "SALA_CERRADA", nosotros (el host) ya no lo escuchamos
     // y no salta ningún popup indebido. El resto de jugadores sí lo escucharán.
@@ -95,8 +100,8 @@ const SalaLobby = ({ onVolver }) => {
         console.error("Error al abandonar la sala:", err);
       }
     }
-    
-    
+
+
     useGameStore.setState({
       salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
       jugadoresLobby: [],
@@ -164,7 +169,12 @@ const SalaLobby = ({ onVolver }) => {
         </div>
 
         <hr className="lobby-separador" />
-
+        {/* Chivato visual por si el backend nos rechaza el arranque */}
+        {errorEmpezar && (
+          <p style={{ color: 'var(--color-state-danger)', textAlign: 'center', fontWeight: 'bold', margin: '0.5rem 0' }}>
+            ⚠ {errorEmpezar}
+          </p>
+        )}
         <div className="lobby-acciones">
           <button className="lobby-boton-secundario" onClick={handleInvitarAmigos}>
             Invitar Amigos
@@ -174,10 +184,9 @@ const SalaLobby = ({ onVolver }) => {
             <button
               className="lobby-boton-exito"
               onClick={handleEmpezar}
-              disabled={jugadoresLobby.length < 2}
-              title={jugadoresLobby.length < 2 ? 'Se necesitan al menos 2 jugadores' : ''}
+              disabled={salaActiva.estado !== 'pausada' && jugadoresLobby.length < 2}
             >
-              Empezar Partida ➔
+              {salaActiva.estado === 'pausada' ? 'Reanudar Partida ➔' : 'Empezar Partida ➔'}
             </button>
           )}
 
