@@ -83,6 +83,7 @@ const parsearJugadores = (
     territorioTrabajandoLocal: string | null;
     territorioInvestigandoLocal: string | null;
     ramaInvestigandoLocal: string | null;
+    haLanzadoEspecialLocal: boolean | null;
 } => {
     const MAP_COLORS = [
         'var(--color-jugador-1)',
@@ -100,6 +101,7 @@ const parsearJugadores = (
     let territorioTrabajandoLocal: string | null = null;
     let territorioInvestigandoLocal: string | null = null;
     let ramaInvestigandoLocal: string | null = null;
+    let haLanzadoEspecialLocal: boolean | null = null;
 
     const miUsername =
         useAuthStore.getState().user?.username ??
@@ -125,6 +127,7 @@ const parsearJugadores = (
             if (info.territorio_trabajando !== undefined) territorioTrabajandoLocal = info.territorio_trabajando;
             if (info.territorio_investigando !== undefined) territorioInvestigandoLocal = info.territorio_investigando;
             if (info.rama_investigando !== undefined) ramaInvestigandoLocal = info.rama_investigando;
+            if (info.ha_lanzado_especial !== undefined) haLanzadoEspecialLocal = info.ha_lanzado_especial;
         }
 
         // Si es el jugador del turno, guardamos su reserva para que todos la vean
@@ -143,7 +146,8 @@ const parsearJugadores = (
         armasCompradasLocal,
         territorioTrabajandoLocal,
         territorioInvestigandoLocal,
-        ramaInvestigandoLocal
+        ramaInvestigandoLocal,
+        haLanzadoEspecialLocal
     };
 };
 
@@ -235,6 +239,7 @@ export const useGameStore = create<EstadoJuego>()(
             isSocketConnected: false,
             catalogoTecnologias: null,
             preparandoAtaqueEspecial: null,
+            haUsadoAtaqueEspecial: false,
 
             preparandoAtaque: false,
             movimientoConquistaPendiente: false,
@@ -365,7 +370,8 @@ export const useGameStore = create<EstadoJuego>()(
                     armasCompradasLocal,
                     territorioTrabajandoLocal,
                     territorioInvestigandoLocal,
-                    ramaInvestigandoLocal
+                    ramaInvestigandoLocal,
+                    haLanzadoEspecialLocal
                 } = payload.jugadores
                         ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
                         : {
@@ -379,35 +385,40 @@ export const useGameStore = create<EstadoJuego>()(
                             territorioTrabajandoLocal: null,
                             territorioInvestigandoLocal: null,
                             ramaInvestigandoLocal: null,
+                            haLanzadoEspecialLocal: null,
                         };
 
-                set((state) => ({
-                    faseActual: payload.fase_actual
-                        ? normalizarFase(payload.fase_actual)
-                        : state.faseActual,
-                    finFaseUtc: payload.fin_fase_utc ?? state.finFaseUtc,
-                    // Soportar múltiples claves de turno para robustez
-                    turnoActual: payload.turno_de ?? payload.jugador_activo ?? payload.turno_actual ?? state.turnoActual,
-                    ...(payload.mapa && { tropas, propietarios, estadosBloqueo, estadosAlterados }),
-                    coloresJugadores: {
-                        ...state.coloresJugadores,
-                        ...coloresJugadores,
-                    },
-                    ...(tropasReservaActivo !== null && {
-                        tropasDisponibles: tropasReservaActivo,
-                    }),
-                    jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
-                    diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
-                    jugadores: payload.jugadores
-                        ? Object.keys(payload.jugadores)
-                        : state.jugadores,
-                    monedas: monedasLocal ?? (typeof payload.monedas === 'number' ? payload.monedas : (payload.recursos?.monedas ?? state.monedas)),
-                    tecnologiasDesbloqueadas: (tecnologiasLocal ?? payload.tecnologias_predesbloqueadas ?? state.tecnologiasDesbloqueadas).map((t: string) => t.toLowerCase()),
-                    armasCompradas: (armasCompradasLocal ?? payload.tecnologias_compradas ?? state.armasCompradas).map((t: string) => t.toLowerCase()),
-                    territorioTrabajando: territorioTrabajandoLocal ?? payload.territorio_trabajando ?? state.territorioTrabajando,
-                    territorioInvestigando: territorioInvestigandoLocal ?? payload.territorio_investigando ?? state.territorioInvestigando,
-                    ramaInvestigando: ramaInvestigandoLocal ?? payload.rama_investigando ?? state.ramaInvestigando,
-                }));
+                const nuevaFase = payload.fase_actual ? normalizarFase(payload.fase_actual) : get().faseActual;
+                const nuevoTurno = payload.turno_de ?? payload.jugador_activo ?? payload.turno_actual ?? get().turnoActual;
+
+                set((state) => {
+                    const cambioTurno = state.turnoActual !== nuevoTurno;
+                    return {
+                        faseActual: nuevaFase,
+                        haUsadoAtaqueEspecial: haLanzadoEspecialLocal ?? (cambioTurno ? false : state.haUsadoAtaqueEspecial),
+                        finFaseUtc: payload.fin_fase_utc ?? state.finFaseUtc,
+                        turnoActual: nuevoTurno,
+                        ...(payload.mapa && { tropas, propietarios, estadosBloqueo, estadosAlterados }),
+                        coloresJugadores: {
+                            ...state.coloresJugadores,
+                            ...coloresJugadores,
+                        },
+                        ...(tropasReservaActivo !== null && {
+                            tropasDisponibles: tropasReservaActivo,
+                        }),
+                        jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
+                        diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
+                        jugadores: payload.jugadores
+                            ? Object.keys(payload.jugadores)
+                            : state.jugadores,
+                        monedas: monedasLocal ?? (typeof payload.monedas === 'number' ? payload.monedas : (payload.recursos?.monedas ?? state.monedas)),
+                        tecnologiasDesbloqueadas: (tecnologiasLocal ?? payload.tecnologias_predesbloqueadas ?? state.tecnologiasDesbloqueadas).map((t: string) => t.toLowerCase()),
+                        armasCompradas: (armasCompradasLocal ?? payload.tecnologias_compradas ?? state.armasCompradas).map((t: string) => t.toLowerCase()),
+                        territorioTrabajando: territorioTrabajandoLocal ?? payload.territorio_trabajando ?? state.territorioTrabajando,
+                        territorioInvestigando: territorioInvestigandoLocal ?? payload.territorio_investigando ?? state.territorioInvestigando,
+                        ramaInvestigando: ramaInvestigandoLocal ?? payload.rama_investigando ?? state.ramaInvestigando,
+                    };
+                });
             },
 
             setEstadoPartidaLocal: (nuevoEstado: any) => set({ estadoPartidaLocal: nuevoEstado }),
@@ -485,6 +496,7 @@ export const useGameStore = create<EstadoJuego>()(
             setFase: (nuevaFase: FaseJuego) =>
                 set({
                     faseActual: nuevaFase,
+                    haUsadoAtaqueEspecial: false,
                     origenSeleccionado: null,
                     destinoSeleccionado: null,
                     comarcasResaltadas: [],
@@ -662,6 +674,7 @@ export const useGameStore = create<EstadoJuego>()(
                     origenSeleccionado: null,
                     destinoSeleccionado: null,
                     popupCoords: null,
+                    haUsadoAtaqueEspecial: true, // Optimistic update
                 });
 
                 try {
@@ -670,6 +683,7 @@ export const useGameStore = create<EstadoJuego>()(
                     await get().sincronizarEstadoPartida();
                 } catch (error) {
                     console.error('[ejecutarAtaqueEspecialBackend] Error:', error);
+                    set({ haUsadoAtaqueEspecial: false }); // Revertir en caso de error
                     alert('El ataque especial no pudo ejecutarse. Inténtalo de nuevo.');
                 }
             },
@@ -805,6 +819,11 @@ export const useGameStore = create<EstadoJuego>()(
                 switch (estado.faseActual) {
 
                     case 'ATAQUE_ESPECIAL': {
+                        if (estado.haUsadoAtaqueEspecial) {
+                            estado.mostrarErrorGlobal('Solo se puede hacer un ataque especial por ronda.');
+                            return;
+                        }
+
                         const armaId = estado.armaEspecialSeleccionada;
                         if (!armaId) {
                             estado.mostrarErrorGlobal('Debes seleccionar un ataque especial.');
@@ -828,6 +847,18 @@ export const useGameStore = create<EstadoJuego>()(
                                     break;
                                 }
                             }
+                        }
+
+                        // EXCEPCIÓN: Habilidades dirigidas a JUGADORES RIVALES en lugar de territorios
+                        if (idLower === 'propaganda_subversiva' || idLower === 'sanciones_internacionales') {
+                            const propietario = estado.propietarios[comarcaId];
+                            if (!propietario || String(propietario).toLowerCase() === String(estado.jugadorLocal).toLowerCase()) {
+                                estado.mostrarErrorGlobal('No puedes aplicar esta habilidad sobre ti mismo o un territorio vacío.');
+                                return;
+                            }
+                            // Se envía el ID del jugador rival como destino, en lugar del ID del territorio
+                            get().ejecutarAtaqueEspecialBackend(String(propietario), armaId, null);
+                            return;
                         }
 
                         // Caso A: Rango null -> no requiere origen, se ejecuta directo sobre el destino

@@ -123,6 +123,8 @@ export interface EstadoJuego {
     armaEspecialSeleccionada: string | null;
     /** ID de la habilidad comprada, esperando selección de objetivo en el mapa */
     preparandoAtaqueEspecial: string | null;
+    /** Si el jugador ya ha usado un ataque especial en este turno */
+    haUsadoAtaqueEspecial: boolean;
 
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.

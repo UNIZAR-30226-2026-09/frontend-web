@@ -81,10 +81,13 @@ const PanelArsenalEspecial = () => {
     const armasCompradas           = useGameStore(s => s.armasCompradas);
     const catalogoTecnologias      = useGameStore(s => s.catalogoTecnologias);
     const armaEspecialSeleccionada = useGameStore(s => s.armaEspecialSeleccionada);
+    const haUsadoAtaqueEspecial    = useGameStore(s => s.haUsadoAtaqueEspecial);
     const monedas                  = useGameStore(s => s.monedas);
     const comprarTecnologiaBackend = useGameStore(s => s.comprarTecnologiaBackend);
     const prepararArmaEspecial     = useGameStore(s => s.prepararArmaEspecial);
     const cancelarAtaqueEspecial   = useGameStore(s => s.cancelarAtaqueEspecial);
+
+    if (haUsadoAtaqueEspecial) return null;
 
     const esMiTurno = String(turnoActual) === String(jugadorLocal);
 

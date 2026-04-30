@@ -29,6 +29,25 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
     const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
     const armaEspecialSeleccionada = useGameStore((state) => state.armaEspecialSeleccionada);
+    const catalogoTecnologias = useGameStore((state) => state.catalogoTecnologias);
+
+    let rangoEspecial = null;
+    if (armaEspecialSeleccionada && catalogoTecnologias) {
+        const idLower = armaEspecialSeleccionada.toLowerCase();
+        if (catalogoTecnologias[armaEspecialSeleccionada]) {
+            rangoEspecial = catalogoTecnologias[armaEspecialSeleccionada].rango;
+        } else if (catalogoTecnologias[idLower]) {
+            rangoEspecial = catalogoTecnologias[idLower].rango;
+        } else if (catalogoTecnologias.ramas) {
+            for (const habs of Object.values(catalogoTecnologias.ramas)) {
+                const enc = habs.find(h => h.id?.toLowerCase() === idLower);
+                if (enc) {
+                    rangoEspecial = enc.rango;
+                    break;
+                }
+            }
+        }
+    }
 
     // Helper para comparar jugadores ignorando mayúsculas
     const esMismoJugador = (j1, j2) => {
@@ -113,8 +132,23 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         if (!armaEspecialSeleccionada) {
             territorioBloqueadoVisual = true;
         } else {
-            // El usuario dijo "cuando seleccionemos alguno el mapa se iluminara, pero tambien dependera de la habilidad"
-            // "de momento no es necesario preocuparse de eso". Entonces si hay arma, lo dejamos sin bloqueo visual por defecto.
+            if (origenSeleccionado || comarcasResaltadas.length > 0) {
+                if (!isOrigin && !isDestination && !isHighlighted) {
+                    territorioBloqueadoVisual = true;
+                }
+            } else {
+                if (rangoEspecial !== null && rangoEspecial !== undefined) {
+                    if (!propietarioEsLocal) {
+                        territorioBloqueadoVisual = true;
+                    } else if (comarcaOcupada) {
+                        territorioBloqueadoVisual = true;
+                    }
+                } else {
+                    if (comarcaOcupada && propietarioEsLocal) {
+                        territorioBloqueadoVisual = true;
+                    }
+                }
+            }
         }
     } else {
         territorioBloqueadoVisual = propietarioEsLocal && comarcaOcupada;
@@ -150,7 +184,11 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         }
 
         if (isOrigin || isHighlighted) {
-            return { color: colorBase, opacidad: 1, isVivoState: true };
+            return { color: colorBase || 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: true };
+        }
+
+        if (faseActual === 'ATAQUE_ESPECIAL' && !territorioBloqueadoVisual) {
+            return { color: colorBase || 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: true };
         }
 
         // 3. Color del jugador propietario

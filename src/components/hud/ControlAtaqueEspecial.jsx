@@ -185,6 +185,7 @@ const ControlAtaqueEspecial = () => {
     const cancelarAtaqueEspecial = useGameStore(s => s.cancelarAtaqueEspecial);
 
     const esMiTurno = String(turnoActual) === String(jugadorLocal);
+    const haUsadoAtaqueEspecial = useGameStore(s => s.haUsadoAtaqueEspecial);
 
     useEffect(() => {
         const handleClickFuera = (e) => {
@@ -202,6 +203,7 @@ const ControlAtaqueEspecial = () => {
     // Guard clauses
     if (faseActual !== 'ATAQUE_ESPECIAL') return null;
     if (!esMiTurno) return null;
+    if (haUsadoAtaqueEspecial) return null;
 
     // Construir lista de habilidades visibles
     const habilidades = obtenerHabilidadesDisponibles(catalogoTecnologias, tecnologiasDesbloqueadas);
