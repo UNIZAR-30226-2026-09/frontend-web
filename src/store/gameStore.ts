@@ -832,14 +832,8 @@ export const useGameStore = create<EstadoJuego>()(
 
                         // Caso A: Rango null -> no requiere origen, se ejecuta directo sobre el destino
                         if (rango === null || rango === undefined) {
-                            // Clic destino: ejecutar
-                            const propietario = String(estado.propietarios[comarcaId]);
-                            const esEnemigo = propietario && !esMismoJugador(propietario, estado.jugadorLocal);
-                            if (esEnemigo) {
-                                get().ejecutarAtaqueEspecialBackend(comarcaId, armaId, null);
-                            } else {
-                                get().cancelarAtaqueEspecial();
-                            }
+                            // Clic destino: ejecutar sin validar bandos, el backend decide.
+                            get().ejecutarAtaqueEspecialBackend(comarcaId, armaId, null);
                             return;
                         }
 
