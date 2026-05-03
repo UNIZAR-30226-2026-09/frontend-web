@@ -9,26 +9,25 @@ import '../../styles/PanelArsenalEspecial.css';
  */
 const ICONOS_TECNOLOGIA = {
     // Rama Biológica
-    gripe_aviar:           '🦠',
-    vacuna_universal:      '💉',
-    fatiga:                '🥱',
-    coronavirus:           '☣️',
+    gripe_aviar: '🦠',
+    vacuna_universal: '💉',
+    fatiga: '🥱',
+    coronavirus: '☣️',
     // Rama Operaciones / Logística
-    academia_militar:      '🎖️',
-    inhibidor_senal:       '📡',
-    inhibidor_señal:       '📡', // alias con tilde
+    academia_militar: '🎖️',
+    inhibidor_senal: '📡',
+    inhibidor_señal: '📡', // alias con tilde
     propaganda_subversiva: '📰',
-    muro_fronterizo:       '🧱',
+    muro_fronterizo: '🧱',
     sanciones_internacionales: '📜',
-    sanciones_intern:      '📜',
+    sanciones_intern: '📜',
     // Rama Artillería
-    mortero_tactico:       '🪖',
-    mortero_táctico:       '🪖',
-    misil_crucero:         '🚀',
-    misil_de_crucero:      '🚀',
-    cabeza_nuclear:        '☢️',
-    bomba_racimo:          '💥',
-    bomba_de_racimo:       '💥',
+    mortero_tactico: '🪖',
+    misil_crucero: '🚀',
+    misil_de_crucero: '🚀',
+    cabeza_nuclear: '☢️',
+    bomba_racimo: '💥',
+    bomba_de_racimo: '💥',
 };
 
 const getIcono = (id) => {
@@ -74,18 +73,18 @@ const PanelArsenalEspecial = () => {
     const [comprando, setComprando] = useState(false);
     const [errorCompra, setErrorCompra] = useState(null);
 
-    const faseActual               = useGameStore(s => s.faseActual);
-    const turnoActual              = useGameStore(s => s.turnoActual);
-    const jugadorLocal             = useGameStore(s => s.jugadorLocal);
+    const faseActual = useGameStore(s => s.faseActual);
+    const turnoActual = useGameStore(s => s.turnoActual);
+    const jugadorLocal = useGameStore(s => s.jugadorLocal);
     const tecnologiasDesbloqueadas = useGameStore(s => s.tecnologiasDesbloqueadas);
-    const armasCompradas           = useGameStore(s => s.armasCompradas);
-    const catalogoTecnologias      = useGameStore(s => s.catalogoTecnologias);
+    const armasCompradas = useGameStore(s => s.armasCompradas);
+    const catalogoTecnologias = useGameStore(s => s.catalogoTecnologias);
     const armaEspecialSeleccionada = useGameStore(s => s.armaEspecialSeleccionada);
-    const haUsadoAtaqueEspecial    = useGameStore(s => s.haUsadoAtaqueEspecial);
-    const monedas                  = useGameStore(s => s.monedas);
+    const haUsadoAtaqueEspecial = useGameStore(s => s.haUsadoAtaqueEspecial);
+    const monedas = useGameStore(s => s.monedas);
     const comprarTecnologiaBackend = useGameStore(s => s.comprarTecnologiaBackend);
-    const prepararArmaEspecial     = useGameStore(s => s.prepararArmaEspecial);
-    const cancelarAtaqueEspecial   = useGameStore(s => s.cancelarAtaqueEspecial);
+    const prepararArmaEspecial = useGameStore(s => s.prepararArmaEspecial);
+    const cancelarAtaqueEspecial = useGameStore(s => s.cancelarAtaqueEspecial);
 
     if (haUsadoAtaqueEspecial) return null;
 
@@ -142,7 +141,13 @@ const PanelArsenalEspecial = () => {
             {/* Banner: modo selección de objetivo activo */}
             {armaEspecialSeleccionada && (
                 <div className="arsenal-modo-objetivo-banner">
-                    <span>{getIcono(armaEspecialSeleccionada)}</span>
+                    <span>
+                        {getIcono(armaEspecialSeleccionada).startsWith('/') ? (
+                            <img src={getIcono(armaEspecialSeleccionada)} alt="" style={{ width: '1.2rem', height: '1.2rem', objectFit: 'contain' }} />
+                        ) : (
+                            getIcono(armaEspecialSeleccionada)
+                        )}
+                    </span>
                     <span style={{ fontSize: '0.55rem' }}>
                         {tecActivaInfo?.nombre || armaEspecialSeleccionada}
                     </span>
@@ -162,9 +167,9 @@ const PanelArsenalEspecial = () => {
             {/* Lista de habilidades */}
             <div className="arsenal-lista">
                 {habilidades.map(tech => {
-                    const icono      = getIcono(tech.id);
+                    const icono = getIcono(tech.id);
                     const esteActivo = armaEspecialSeleccionada === tech.id;
-                    const sinDinero  = monedas < tech.precio;
+                    const sinDinero = monedas < tech.precio;
                     const popAbierto = nodoAbierto === tech.id;
                     const yaComprada = armasCompradas.includes(tech.id.toLowerCase());
 
@@ -176,22 +181,34 @@ const PanelArsenalEspecial = () => {
                             {/* Botón icono */}
                             <button
                                 className={`btn-arsenal-icono ${esteActivo ? 'activo' : ''}`}
-                                style={{ 
-                                    filter: yaComprada ? 'none' : 'grayscale(100%)', 
-                                    opacity: yaComprada ? 1 : 0.75 
+                                style={{
+                                    filter: yaComprada ? 'none' : 'grayscale(100%)',
+                                    opacity: yaComprada ? 1 : 0.75
                                 }}
                                 onClick={() => !armaEspecialSeleccionada && handleToggleNodo(tech.id)}
                                 title={`${tech.nombre} — ${yaComprada ? 'Lista para usar' : `${tech.precio} 💰`}`}
                                 disabled={!!armaEspecialSeleccionada && !esteActivo}
                             >
-                                <span className="arsenal-emoji">{icono}</span>
+                                <span className="arsenal-emoji">
+                                    {icono.startsWith('/') ? (
+                                        <img src={icono} alt="" className="arsenal-icon-img" />
+                                    ) : (
+                                        icono
+                                    )}
+                                </span>
                             </button>
 
                             {/* Popover de detalle y compra */}
                             {popAbierto && !preparandoAtaqueEspecial && (
                                 <div className="arsenal-popover">
                                     <div className="arsenal-popover-header">
-                                        <span className="arsenal-popover-icono">{icono}</span>
+                                        <span className="arsenal-popover-icono">
+                                            {icono.startsWith('/') ? (
+                                                <img src={icono} alt="" className="arsenal-icon-img" style={{ width: '1.6rem', height: '1.6rem' }} />
+                                            ) : (
+                                                icono
+                                            )}
+                                        </span>
                                         <h4 className="arsenal-popover-nombre">{tech.nombre}</h4>
                                     </div>
 

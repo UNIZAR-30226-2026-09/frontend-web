@@ -60,6 +60,21 @@ const PantallaJuego = () => {
         };
     }, [id, salaId, user, sincronizarEstadoPartida, cargarCatalogoTecnologias, cargarLogsPartida]);
 
+    // Polling de sincronización durante la fase GESTIÓN.
+    // En esta fase el servidor no emite eventos WS cuando un jugador trabaja o investiga,
+    // por lo que todos los clientes sincronizan el estado cada 3 s para ver los cambios
+    // (animaciones de trabajando/investigando) en tiempo real sin esperar al cambio de fase.
+    const faseActual = useGameStore((state) => state.faseActual);
+    useEffect(() => {
+        if (faseActual !== 'GESTION') return;
+
+        const interval = setInterval(() => {
+            sincronizarEstadoPartida();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [faseActual, sincronizarEstadoPartida]);
+
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>
             <CabeceraJuego />

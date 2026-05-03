@@ -499,17 +499,30 @@ const Tablero = (props) => {
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
-              if (propietarioId && esMiTurnoLocal) {
-                if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
-                  const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
-                  if (hasEnemyAdjacent) isVivoState = true;
+
+              // Territorio reclamable: 0 tropas y no es nuestro, adyacente a uno propio
+              // (No depende de !propietarioId, por si el backend reporta dueño antiguo)
+              const esTerritoriuVacio2 = !propietarioId && cantidadTropas === 0; // para visualización de color negro
+              const esVacioReclamable = cantidadTropas === 0 && !esMio && esMiTurnoLocal &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+
+              if (esMiTurnoLocal) {
+                // Territorios vacíos reclamables en REFUERZO y FORTIFICACION
+                if (esVacioReclamable && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esVacioReclamable && faseActual === 'FORTIFICACION' && !origenSeleccionado) isVivoState = true;
+
+                if (propietarioId && esMio) {
+                  if (faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                  if (faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                    const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                    if (hasEnemyAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                    const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                    if (hasAlliedAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL') isVivoState = true;
                 }
-                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
-                  const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
-                  if (hasAlliedAdjacent) isVivoState = true;
-                }
-                if (esMio && (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL')) isVivoState = true;
                 // En modo ataque especial, los territorios ENEMIGOS son objetivos válidos
                 if (preparandoAtaqueEspecial && !esMio && propietarioId) isVivoState = true;
               }
@@ -525,7 +538,11 @@ const Tablero = (props) => {
             if (!esMiTurnoLocal) {
               estaBloqueadoVisualmente = true;
             } else if (faseActual === 'REFUERZO') {
-              estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
+              // Vacíos (0 tropas, no propios) adyacentes son reclamables
+              const esReclamable = cantidadTropas === 0 && !esMio &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+              const puedeReforzar = esMio || (esReclamable && (tropasDisponibles ?? 0) > 0);
+              estaBloqueadoVisualmente = !puedeReforzar || (tropasDisponibles ?? 0) === 0;
             } else if (faseActual === 'GESTION') {
               estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
             } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
@@ -681,7 +698,7 @@ const Tablero = (props) => {
             const cantidadTropas = tropas[comarca.id] || 0;
             const dueño = propietarios ? propietarios[comarca.id] : null;
 
-            let colorActual = 'var(--color-state-disabled)';
+            let colorActual = '#111111'; // Territorios sin dueño: negro
             if (dueño && coloresJugadores && coloresJugadores[dueño]) {
               colorActual = coloresJugadores[dueño];
             }
@@ -698,21 +715,30 @@ const Tablero = (props) => {
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isSelected) isVivoState = true;
-              if (dueño && esMiTurnoLocal) {
-                if (esMio && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esMio && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
-                  const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
-                  if (hasEnemyAdjacent) isVivoState = true;
-                }
-                if (esMio && faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
-                  const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
-                  if (hasAlliedAdjacent) isVivoState = true;
-                }
-                // En GESTION y ATAQUE_ESPECIAL todos los territorios propios son interactuables
-                if (esMio && (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL')) isVivoState = true;
-                // En modo ataque especial, los territorios ENEMIGOS son objetivos
-                if (armaEspecialSeleccionada && !esMio && dueño) isVivoState = true;
 
+              // Territorio reclamable: 0 tropas, no es nuestro, adyacente a uno propio
+              const esVacioReclamable = cantidadTropas === 0 && !esMio && esMiTurnoLocal &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+
+              if (esMiTurnoLocal) {
+                if (esVacioReclamable && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esVacioReclamable && faseActual === 'FORTIFICACION' && !origenSeleccionado) isVivoState = true;
+
+                if (dueño && esMio) {
+                  if (faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                  if (faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                    const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                    if (hasEnemyAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                    const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                    if (hasAlliedAdjacent) isVivoState = true;
+                  }
+                  // En GESTION y ATAQUE_ESPECIAL todos los territorios propios son interactuables
+                  if (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL') isVivoState = true;
+                  // En modo ataque especial, los territorios ENEMIGOS son objetivos
+                  if (armaEspecialSeleccionada && !esMio && dueño) isVivoState = true;
+                }
               }
 
               // Evitar que se ilumine el borde de la ficha si está bloqueado por una tarea
@@ -729,7 +755,10 @@ const Tablero = (props) => {
               if (!esMiTurnoLocal) {
                   estaBloqueadoVisualmente = true;
               } else if (faseActual === 'REFUERZO') {
-                estaBloqueadoVisualmente = !esMio || (tropasDisponibles ?? 0) === 0;
+                const esReclamable = cantidadTropas === 0 && !esMio &&
+                  comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+                const puedeReforzar = esMio || (esReclamable && (tropasDisponibles ?? 0) > 0);
+                estaBloqueadoVisualmente = !puedeReforzar || (tropasDisponibles ?? 0) === 0;
               } else if (faseActual === 'GESTION') {
                 estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
               } else if (faseActual === 'ATAQUE_CONVENCIONAL') {

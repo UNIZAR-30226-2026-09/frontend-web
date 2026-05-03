@@ -4,25 +4,25 @@ import '../../styles/PanelArbolTecnologico.css';
 
 // ─── Emojis por ID de habilidad (enriquecimiento puramente visual en el cliente) ───
 const ICONOS = {
-    gripe_aviar:             '🦠',
-    vacuna_universal:        '💉',
-    fatiga:                  '🥱',
-    coronavirus:             '☣️',
-    academia_militar:        '🎖️',
-    inhibidor_senal:         '📡',
-    propaganda_subversiva:   '📰',
-    muro_fronterizo:         '🧱',
+    gripe_aviar: '🦠',
+    vacuna_universal: '💉',
+    fatiga: '🥱',
+    coronavirus: '☣️',
+    academia_militar: '🎖️',
+    inhibidor_senal: '📡',
+    propaganda_subversiva: '📰',
+    muro_fronterizo: '🧱',
     sanciones_internacionales: '📜',
-    mortero_tactico:         '🪖',
-    misil_crucero:           '🚀',
-    cabeza_nuclear:          '☢️',
-    bomba_racimo:            '💥',
+    mortero_tactico: '🪖',
+    misil_crucero: '🚀',
+    cabeza_nuclear: '☢️',
+    bomba_racimo: '💥',
 };
 
 // ─── Títulos de rama (cosmético) ───────────────────────────────────────────────
 const TITULO_RAMA = {
-    biologica:  '⚗️ Guerra Biológica',
-    logistica:  '🎯 Operaciones & Logística',
+    biologica: '⚗️ Guerra Biológica',
+    logistica: '🎯 Operaciones & Logística',
     artilleria: '💣 Artillería',
 };
 
@@ -40,7 +40,7 @@ const TITULO_RAMA = {
  */
 const calcularEstadoNodo = (habilidad, desbloqueadas, catalogo) => {
     const desbNorm = desbloqueadas.map(t => t.toLowerCase());
-    const idNorm   = (habilidad.id || '').toLowerCase();
+    const idNorm = (habilidad.id || '').toLowerCase();
 
     // Ya está completamente desbloqueado por el jugador
     if (desbNorm.includes(idNorm)) return 'desbloqueado';
@@ -157,7 +157,7 @@ const LineasConexion = ({ habilidades, contenedorRef }) => {
 // ─── Tooltip modal de confirmación ───────────────────────────────────────────
 const TooltipNodo = ({ techData, onConfirmar, onCerrar, puedeInvestigarGlobal, razonBloqueadoGlobal, enviando }) => {
     const { habilidad: tech, estadoNodo } = techData;
-    
+
     let botonDeshabilitado = !puedeInvestigarGlobal || enviando || estadoNodo !== 'disponible';
     let mensajeAviso = razonBloqueadoGlobal;
 
@@ -171,7 +171,13 @@ const TooltipNodo = ({ techData, onConfirmar, onCerrar, puedeInvestigarGlobal, r
         <div className="tooltip-nodo-overlay" onClick={onCerrar}>
             <div className="tooltip-nodo-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="tooltip-nodo-header">
-                    <span className="tooltip-icono">{ICONOS[tech.id] || '🔬'}</span>
+                    <span className="tooltip-icono">
+                        {ICONOS[tech.id]?.startsWith('/') ? (
+                            <img src={ICONOS[tech.id]} alt="" style={{ width: '2.2rem', height: '2.2rem', objectFit: 'contain' }} />
+                        ) : (
+                            ICONOS[tech.id] || '🔬'
+                        )}
+                    </span>
                     <h3 className="tooltip-titulo">{tech.nombre}</h3>
                 </div>
                 <p className="tooltip-descripcion">{tech.descripcion || 'Sin descripción disponible.'}</p>
@@ -215,11 +221,17 @@ const NodoTecnologico = ({ habilidad, estadoNodo, isInvestigando, onClickNodo })
             title={estadoNodo === 'bloqueado' ? 'Desbloquea los requisitos previos' : isInvestigando ? 'Investigación en curso...' : ''}
             style={{ position: 'relative', zIndex: 1 }}
         >
-            <span className="icono-nodo">{ICONOS[habilidad.id] || '🔬'}</span>
+            <span className="icono-nodo">
+                {ICONOS[habilidad.id]?.startsWith('/') ? (
+                    <img src={ICONOS[habilidad.id]} alt="" className="icono-nodo-img" />
+                ) : (
+                    ICONOS[habilidad.id] || '🔬'
+                )}
+            </span>
             <span className="nombre-nodo">{habilidad.nombre || habilidad.id}</span>
             {/* Feedback de estado activo */}
             {estadoNodo === 'desbloqueado' && !isInvestigando && <span className="badge-nodo">✅</span>}
-            {estadoNodo === 'bloqueado'    && <span className="badge-nodo">🔒</span>}
+            {estadoNodo === 'bloqueado' && <span className="badge-nodo">🔒</span>}
             {isInvestigando && (
                 <span className="label-investigando">⏳ Investigando...</span>
             )}
@@ -294,20 +306,20 @@ const RamaTecnologica = ({ nombre, habilidades, desbloqueadas, catalogo, investi
  */
 const PanelArbolTecnologico = () => {
     const [nodoSeleccionado, setNodoSeleccionado] = React.useState(null);
-    const [enviando, setEnviando]                 = React.useState(false);
+    const [enviando, setEnviando] = React.useState(false);
 
-    const isArbolOpen              = useGameStore((s) => s.isArbolTecnologicoOpen);
-    const toggleArbol              = useGameStore((s) => s.toggleArbolTecnologico);
+    const isArbolOpen = useGameStore((s) => s.isArbolTecnologicoOpen);
+    const toggleArbol = useGameStore((s) => s.toggleArbolTecnologico);
     const tecnologiasDesbloqueadas = useGameStore((s) => s.tecnologiasDesbloqueadas);
-    const catalogo                 = useGameStore((s) => s.catalogoTecnologias);
-    const investigarBackend        = useGameStore((s) => s.investigarBackend);
-    const faseActual               = useGameStore((s) => s.faseActual);
-    const territorioInvestigando   = useGameStore((s) => s.territorioInvestigando);
-    const diccionarioJugadores     = useGameStore((s) => s.diccionarioJugadores);
-    const jugadorLocal             = useGameStore((s) => s.jugadorLocal);
+    const catalogo = useGameStore((s) => s.catalogoTecnologias);
+    const investigarBackend = useGameStore((s) => s.investigarBackend);
+    const faseActual = useGameStore((s) => s.faseActual);
+    const territorioInvestigando = useGameStore((s) => s.territorioInvestigando);
+    const diccionarioJugadores = useGameStore((s) => s.diccionarioJugadores);
+    const jugadorLocal = useGameStore((s) => s.jugadorLocal);
     const territorioInvestigandoPendiente = useGameStore((s) => s.territorioInvestigandoPendiente);
-    const origenSeleccionado       = useGameStore((s) => s.origenSeleccionado);
-    const grafoGlobal              = useGameStore((s) => s.grafoGlobal);
+    const origenSeleccionado = useGameStore((s) => s.origenSeleccionado);
+    const grafoGlobal = useGameStore((s) => s.grafoGlobal);
 
     // ── Determinar la habilidad que se está investigando actualmente ──────────
     // El backend guarda en jugadores[username].habilidad_investigando el ID exacto.
@@ -326,13 +338,13 @@ const PanelArbolTecnologico = () => {
     const territorioInvestigador = territorioInvestigandoPendiente || origenSeleccionado;
 
     // ── Lógica de permiso ───────────────────────────────────────────────────
-    const enFaseGestion        = faseActual === 'GESTION';
-    const hayTerritorioActivo  = Boolean(territorioInvestigador);
+    const enFaseGestion = faseActual === 'GESTION';
+    const hayTerritorioActivo = Boolean(territorioInvestigador);
     const yaInvestigandoGlobal = Boolean(territorioInvestigando);
-    const puedeInvestigar      = enFaseGestion && hayTerritorioActivo && !yaInvestigandoGlobal;
+    const puedeInvestigar = enFaseGestion && hayTerritorioActivo && !yaInvestigandoGlobal;
 
     let razonBloqueado = null;
-    if (!enFaseGestion)            razonBloqueado = 'Solo puedes investigar en la fase de Gestión.';
+    if (!enFaseGestion) razonBloqueado = 'Solo puedes investigar en la fase de Gestión.';
     else if (!hayTerritorioActivo) razonBloqueado = 'Selecciona un territorio antes de abrir el árbol.';
     else if (yaInvestigandoGlobal) razonBloqueado = 'Ya tienes un territorio investigando este turno.';
 

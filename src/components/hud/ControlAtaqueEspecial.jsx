@@ -85,7 +85,13 @@ const TooltipArsenal = ({ hab, monedas, comprando, onComprar, onUsar, onCerrar, 
             <div className="arsenal-tooltip-flecha" aria-hidden="true" />
 
             <div className="arsenal-tooltip-header">
-                <span className="arsenal-tooltip-icono">{getIcono(hab.id)}</span>
+                <span className="arsenal-tooltip-icono">
+                    {getIcono(hab.id).startsWith('/') ? (
+                        <img src={getIcono(hab.id)} alt="" style={{ width: '1.6rem', height: '1.6rem', objectFit: 'contain' }} />
+                    ) : (
+                        getIcono(hab.id)
+                    )}
+                </span>
                 <h4 className="arsenal-tooltip-nombre">{hab.nombre || hab.id}</h4>
             </div>
 
@@ -145,12 +151,18 @@ const BtnIcono = ({ hab, monedas, onSeleccionar, esActivo, preparandoEsteAtaque,
             title={`${hab.nombre} — ${yaComprada ? 'Comprada' : `${hab.precio ?? 0} 💰`}`}
             aria-pressed={esActivo}
             aria-label={hab.nombre}
-            style={{ 
-                filter: yaComprada ? 'none' : 'grayscale(100%)', 
-                opacity: yaComprada ? 1 : 0.75 
+            style={{
+                filter: yaComprada ? 'none' : 'grayscale(100%)',
+                opacity: yaComprada ? 1 : 0.75
             }}
         >
-            <span className="arsenal-icono-emoji">{icono}</span>
+            <span className="arsenal-icono-emoji">
+                {icono.startsWith('/') ? (
+                    <img src={icono} alt="" style={{ width: '1.3rem', height: '1.3rem', objectFit: 'contain' }} />
+                ) : (
+                    icono
+                )}
+            </span>
             {sinDinero && !yaComprada && <span className="arsenal-btn-badge-pobre" aria-hidden="true">✕</span>}
             {preparandoEsteAtaque && <span className="arsenal-btn-badge-activo" aria-hidden="true">🎯</span>}
         </button>
@@ -262,10 +274,16 @@ const ControlAtaqueEspecial = () => {
             {/* Modo: objetivo seleccionado (preparando ataque) */}
             {armaEspecialSeleccionada && (
                 <div className="arsenal-modo-activo" title="Haz click en el mapa para lanzar el ataque">
-                    <span className="arsenal-modo-icono">{getIcono(armaEspecialSeleccionada)}</span>
+                    <span className="arsenal-modo-icono">
+                        {getIcono(armaEspecialSeleccionada).startsWith('/') ? (
+                            <img src={getIcono(armaEspecialSeleccionada)} alt="" style={{ width: '1.2rem', height: '1.2rem', objectFit: 'contain' }} />
+                        ) : (
+                            getIcono(armaEspecialSeleccionada)
+                        )}
+                    </span>
                     <span className="arsenal-modo-texto">
-                        {buscarEnCatalogo(catalogoTecnologias, armaEspecialSeleccionada)?.rango === null 
-                            ? 'Selecciona destino' 
+                        {buscarEnCatalogo(catalogoTecnologias, armaEspecialSeleccionada)?.rango === null
+                            ? 'Selecciona destino'
                             : 'Selecciona origen'}
                     </span>
                     <button

@@ -479,8 +479,19 @@ export const useGameStore = create<EstadoJuego>()(
                 }
                 try {
                     await gameApi.investigarTecnologia(estado.salaActiva.id, territorio, tecnologiaId);
-                    set({ territorioInvestigando: territorio, territorioInvestigandoPendiente: null });
+                    // Update optimista: marcar el territorio como 'investigando' localmente
+                    // y notificar a los rivales para que sincronicen
+                    set((state) => ({
+                        territorioInvestigando: territorio,
+                        territorioInvestigandoPendiente: null,
+                        estadosBloqueo: {
+                            ...state.estadosBloqueo,
+                            [territorio]: `investigando:${tecnologiaId}`,
+                        },
+                    }));
                     await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales en tiempo real
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
                 } catch (error) {
                     console.error('[investigarBackend] Error al investigar tecnología:', error);
                     alert("No se pudo investigar. Asegúrate de ser tu turno.");
@@ -492,8 +503,18 @@ export const useGameStore = create<EstadoJuego>()(
                 if (!estado.salaActiva?.id) return;
                 try {
                     await gameApi.trabajarTerritorio(estado.salaActiva.id, territorioId);
-                    set({ territorioTrabajando: territorioId });
+                    // Update optimista: marcar el territorio como 'trabajando' localmente
+                    // y notificar a los rivales para que sincronicen
+                    set((state) => ({
+                        territorioTrabajando: territorioId,
+                        estadosBloqueo: {
+                            ...state.estadosBloqueo,
+                            [territorioId]: 'trabajando',
+                        },
+                    }));
                     await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales en tiempo real
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
                 } catch (error) {
                     console.error('[trabajarBackend] Error al ordenar trabajo:', error);
                     alert("El territorio no puede trabajar en este momento.");
@@ -573,6 +594,14 @@ export const useGameStore = create<EstadoJuego>()(
                 const comarca = estado.comarcaRefuerzo;
                 const cantidad = estado.tropasAAsignar;
 
+                // ¿Se está reclamando un territorio vacío (0 tropas y no propio)?
+                // Si es así, actualizamos propietarios optimistamente para que el color
+                // cambie INMEDIATAMENTE en el mapa del jugador local.
+                const tropasActualesComarca = estado.tropas[comarca] ?? 0;
+                const propActualComarca = estado.propietarios[comarca];
+                const esMioComarca = String(propActualComarca ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                const estamosReclamandoVacio = tropasActualesComarca === 0 && !esMioComarca;
+
                 // Actualización optimista completa: el jugador ve INMEDIATAMENTE el incremento de tropas
                 // en el territorio Y la disminución en la reserva sin esperar al round-trip de red.
                 // Si hay error, revertimos ambos cambios. TROPAS_COLOCADAS simplemente confirma lo que
@@ -582,6 +611,13 @@ export const useGameStore = create<EstadoJuego>()(
                         ...state.tropas,
                         [comarca]: (state.tropas[comarca] ?? 0) + cantidad,
                     },
+                    // Si estamos reclamando un territorio vacío, asignamos el propietario optimistamente
+                    ...(estamosReclamandoVacio && estado.jugadorLocal && {
+                        propietarios: {
+                            ...state.propietarios,
+                            [comarca]: estado.jugadorLocal,
+                        }
+                    }),
                     tropasDisponibles: (state.tropasDisponibles ?? 0) - cantidad,
                     comarcaRefuerzo: null,
                     tropasAAsignar: 0,
@@ -591,6 +627,10 @@ export const useGameStore = create<EstadoJuego>()(
                 try {
                     await gameApi.colocarTropas(estado.salaActiva.id, comarca, cantidad);
                     await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales para que sincronicen el estado completo.
+                    // Esto es necesario porque el evento TROPAS_COLOCADAS puede no incluir
+                    // el cambio de propietario cuando se conquista un territorio vacío.
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
                 } catch (error) {
                     console.error('[confirmarRefuerzo] Error al colocar tropas:', error);
                     set((state) => ({
@@ -598,6 +638,13 @@ export const useGameStore = create<EstadoJuego>()(
                             ...state.tropas,
                             [comarca]: (state.tropas[comarca] ?? 0) - cantidad,
                         },
+                        // Revertir también el propietario si habíamos hecho el update optimista
+                        ...(estamosReclamandoVacio && {
+                            propietarios: {
+                                ...state.propietarios,
+                                [comarca]: propActualComarca ?? undefined,
+                            }
+                        }),
                         tropasDisponibles: (state.tropasDisponibles ?? 0) + cantidad,
                         comarcaRefuerzo: comarca,
                         tropasAAsignar: cantidad,
@@ -794,6 +841,13 @@ export const useGameStore = create<EstadoJuego>()(
                 try {
                     await gameApi.fortificar(estado.salaActiva.id, origen, destino, tropas);
                     await get().sincronizarEstadoPartida();
+                    // Si el destino es un territorio vacío (reclamado), notificar a rivales
+                    const tropasDestino = estado.tropas[destino] ?? 0;
+                    const propDestino = estado.propietarios[destino];
+                    const esPropioDestino = String(propDestino ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                    if (tropasDestino === 0 && !esPropioDestino) {
+                        socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
+                    }
                     set({
                         preparandoFortificacion: false,
                         origenSeleccionado: null,
@@ -932,10 +986,31 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'REFUERZO': {
-                        if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                        const tropasComarca = estado.tropas[comarcaId] ?? 0;
+                        const propietarioComarca = estado.propietarios[comarcaId];
+                        const esMio = String(propietarioComarca ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+
+                        // Un territorio con 0 tropas es reclamable pacíficamente (sea neutral o
+                        // haya perdido todas sus tropas). Solo bloqueamos si tiene tropas enemigas.
+                        const esVacioReclamable = tropasComarca === 0 && !esMio;
+
+                        if (!esMio && !esVacioReclamable) {
                             estado.mostrarErrorGlobal('No puedes reforzar territorios enemigos.');
                             return;
                         }
+
+                        // Territorio vacío sin tropas: comprobar adyacencia estricta (distancia 1) con al menos uno propio
+                        if (esVacioReclamable) {
+                            const nodoGrafo = estado.grafoGlobal?.get(comarcaId);
+                            const esAdyacenteAMio = nodoGrafo?.adyacentes.some(
+                                adj => String(estado.propietarios[adj] ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase()
+                            ) ?? false;
+                            if (!esAdyacenteAMio) {
+                                estado.mostrarErrorGlobal('Solo puedes reclamar territorios vacíos adyacentes a los tuyos.');
+                                return;
+                            }
+                        }
+
                         if ((estado.tropasDisponibles ?? 0) <= 0) {
                             estado.mostrarErrorGlobal('Todos los refuerzos ya han sido desplegados.');
                             return;
@@ -1055,13 +1130,28 @@ export const useGameStore = create<EstadoJuego>()(
 
                             if (!estado.grafoGlobal) return;
 
-                            // BFS: Buscamos todas las comarcas conectadas que también sean nuestras
+                            // BFS: aliados conectados + territorios vacíos adyacentes directos al origen
                             const alcanzables = calcularComarcasEnRango(
                                 estado.grafoGlobal,
                                 comarcaId,
-                                Infinity, // Rango infinito para buscar por todo el mapa conectado
+                                Infinity,
                                 (id) => estado.propietarios[id] === estado.jugadorLocal
                             );
+
+                            // Añadir territorios vacíos (0 tropas, no propios) adyacentes directos al origen
+                            // Nota: usamos la misma condición robusta que en el REFUERZO:
+                            // tropas === 0 y no es nuestro (independientemente de si tiene dueño registrado)
+                            const nodoOrigen = estado.grafoGlobal.get(comarcaId);
+                            if (nodoOrigen) {
+                                for (const adj of nodoOrigen.adyacentes) {
+                                    const tropasAdj = estado.tropas[adj] ?? 0;
+                                    const propAdj = estado.propietarios[adj];
+                                    const esPropioAdj = String(propAdj ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                                    if (tropasAdj === 0 && !esPropioAdj && !estado.estadosBloqueo?.[adj]) {
+                                        alcanzables.add(adj);
+                                    }
+                                }
+                            }
 
                             if (alcanzables.size === 0) {
                                 estado.mostrarErrorGlobal('Un territorio aislado no puede fortificarse.');
@@ -1325,6 +1415,15 @@ export const useGameStore = create<EstadoJuego>()(
                                     get().sincronizarEstadoPartida();
                                 }, 800);
                             }
+                        } else if (msj === '@@SYS_SYNC_TROOP@@') {
+                            const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
+                            if (emisor !== get().jugadorLocal) {
+                                // Sincronización ligera: recargar estado para que el rival
+                                // vea el nuevo propietario del territorio reclamado
+                                setTimeout(() => {
+                                    get().sincronizarEstadoPartida();
+                                }, 400);
+                            }
                         }
                         break;
                     }
@@ -1421,11 +1520,27 @@ export const useGameStore = create<EstadoJuego>()(
 
                             const esMiAccion = esMismoJugador(jugadorQueColoca, state.jugadorLocal);
 
+                            // Determinar el nuevo propietario:
+                            // 1. Si el backend lo manda explícitamente → usarlo.
+                            // 2. Si el territorio tenía 0 tropas (era vacío/neutral) → inferir que
+                            //    el jugador que colocó tropas es ahora el dueño. Esta heurística es
+                            //    segura: solo el backend permite desplegar en territorios vacíos adyacentes.
+                            const eraVacio = tropasPrevias === 0;
+                            const nuevoPropietario =
+                                data.nuevo_propietario ??
+                                data.owner_id ??
+                                (eraVacio && jugadorQueColoca ? jugadorQueColoca : null);
+
+                            const nuevosPropietarios = nuevoPropietario
+                                ? { ...state.propietarios, [data.territorio]: nuevoPropietario }
+                                : state.propietarios;
+
                             return {
                                 tropas: {
                                     ...state.tropas,
                                     [data.territorio]: data.tropas_totales_ahora,
                                 },
+                                propietarios: nuevosPropietarios,
                                 // Si NO soy yo quien las puso (o si queremos ser deterministas con el socket),
                                 // restamos de la reserva global. 
                                 // Nota: El local ya restó optimísticamente en confirmarRefuerzo.
@@ -1436,6 +1551,7 @@ export const useGameStore = create<EstadoJuego>()(
                         });
                         break;
                     }
+
 
                     case 'ATAQUE_RESULTADO': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
@@ -1460,9 +1576,25 @@ export const useGameStore = create<EstadoJuego>()(
                                     state.propietarios[data.origen];
                             }
 
+                            // Si el territorio fue conquistado, limpiar su bloqueo (tarea activa)
+                            // en tiempo real para todos los jugadores, sin esperar al cambio de fase.
+                            let nuevosEstadosBloqueo = state.estadosBloqueo;
+                            if (data.victoria && data.destino && state.estadosBloqueo?.[data.destino]) {
+                                nuevosEstadosBloqueo = { ...state.estadosBloqueo };
+                                delete nuevosEstadosBloqueo[data.destino];
+                            }
+
+                            // Limpiar también los marcadores locales si el territorio era el que tenía tarea
+                            const territorioConquistado = data.destino;
+                            const limpiarTrabajando = state.territorioTrabajando === territorioConquistado;
+                            const limpiarInvestigando = state.territorioInvestigando === territorioConquistado;
+
                             return {
                                 tropas: nuevasTropas,
                                 propietarios: nuevosPropietarios,
+                                estadosBloqueo: nuevosEstadosBloqueo,
+                                ...(limpiarTrabajando && { territorioTrabajando: null }),
+                                ...(limpiarInvestigando && { territorioInvestigando: null }),
                                 preparandoAtaque: false,
                                 // El trigger de movimientoConquistaPendiente se quita de aquí
                                 // para que sea el jugador atacante quien lo dispare manualmente

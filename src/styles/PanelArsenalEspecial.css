@@ -176,6 +176,17 @@
   font-size: 1.3rem;
   line-height: 1;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.arsenal-icon-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 /* POPOVER */

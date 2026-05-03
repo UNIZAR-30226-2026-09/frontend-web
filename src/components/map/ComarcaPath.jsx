@@ -64,6 +64,22 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         return String(propietarioId).toLowerCase() === String(jugadorLocal).toLowerCase();
     })();
 
+    // VISUAL: Un territorio es "vacío" (se pinta negro) solo si NO tiene propietario registrado.
+    // Un territorio recién conquistado (propietario = nuevo dueño, 0 tropas temporalmente)
+    // NO es vacío visual — debe mostrar el color del nuevo dueño.
+    const propietarioRaw = propietarios[id];
+    const tieneDueno = !!propietarioRaw && String(propietarioRaw).trim().length > 0;
+    const esTerritoriuVacio = cantidadTropas === 0 && !tieneDueno;
+
+    // INTERACCIÓN: Un territorio es reclamable si tiene 0 tropas y no es nuestro.
+    // (Incluye casos donde el backend puede reportar al viejo dueño, pero tropas = 0)
+    const esVacioReclamable = (() => {
+        if (!jugadorLocal) return false;
+        const noEsMio = !esMismoJugador(propietarioRaw, jugadorLocal);
+        return cantidadTropas === 0 && noEsMio &&
+            (adyacentes?.some(adj => esMismoJugador(propietarios[adj], jugadorLocal)) ?? false);
+    })();
+
     const isOrigin = origenSeleccionado === id;
     const isDestination = destinoSeleccionado === id;
     const isHighlighted = comarcasResaltadas.includes(id);
@@ -75,7 +91,9 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
     if (!esMiTurnoLocalGlobal) {
         territorioBloqueadoVisual = true;
     } else if (faseActual === 'REFUERZO') {
-        territorioBloqueadoVisual = !propietarioEsLocal || (tropasDisponibles ?? 0) === 0;
+        // Permitir: propios, o vacíos reclamables (0 tropas y no es mo, adyacente a uno propio)
+        const puedeReclamarVacio = esVacioReclamable && (tropasDisponibles ?? 0) > 0;
+        territorioBloqueadoVisual = (!propietarioEsLocal && !puedeReclamarVacio) || (tropasDisponibles ?? 0) === 0;
     } else if (faseActual === 'GESTION') {
         const hayTrabajo = Object.entries(estadosBloqueo).some(([idx, e]) => e === 'trabajando' && propietarios[idx] === jugadorLocal);
         const hayInvestigacion = Object.entries(estadosBloqueo).some(([idx, e]) => e && e.startsWith('investigando') && propietarios[idx] === jugadorLocal);
@@ -124,6 +142,7 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
                 }
             }
         } else {
+            // Origen seleccionado: destinos válidos son resaltados (incluye vacíos adyacentes)
             if (!isOrigin && !isDestination && !isHighlighted) {
                 territorioBloqueadoVisual = true;
             }
@@ -168,9 +187,22 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
         if (modoVista === 'REGIONES' && regionId) {
             const esDelJugador = esMismoJugador(propietarios[id], jugadorLocal);
             const color = obtenerColorRegion(regionId, esDelJugador);
-            // Contraste extremo: propio opaco, ajeno muy translúcido
+            // Contraste extremo: propio opaco, ajeno muy traslúdcido
             const opacidad = 1;
             return { color, opacidad, isVivoState: false };
+        }
+
+        // 0b. Territorios vacíos (0 tropas, no propios): dos tonos de negro según interactividad.
+        //     - Reclamables (adyacentes a los nuestros en la fase correcta): negro profundo #111 + borde dorado
+        //     - No reclamables: gris muy oscuro #2e2e2e para distinguirlos visualmente
+        //     EXCEPCIÓN: si están siendo seleccionados/resaltados, pasan al flujo táctico normal.
+        if (esTerritoriuVacio && !isDestination && !isHighlighted && !isOrigin) {
+            const esMiTurnoLocal = esMismoJugador(turnoActual, jugadorLocal);
+            const puedeReclamarAhora = esMiTurnoLocal && esVacioReclamable &&
+                (faseActual === 'REFUERZO' || faseActual === 'FORTIFICACION');
+            // Negro profundo si es reclamable, gris oscuro si no lo es
+            const colorVacio = puedeReclamarAhora ? '#111111' : '#2e2e2e';
+            return { color: colorVacio, opacidad: 1, isVivoState: puedeReclamarAhora };
         }
 
         // 1. Si el territorio está bloqueado visualmente por una tarea activa
@@ -220,7 +252,10 @@ const ComarcaPath = ({ id, d, fill, regionId, hovered, setHovered, adyacentes })
             return { color: colorApagado, opacidad: 1, isVivoState: false };
         }
 
-        // 4. Color neutral por defecto
+        // 4. Territorio vacío ya manejado arriba (isVivoState condicional)
+        //    Este punto no se alcanza; dejamos el fallback neutral.
+
+        // 5. Color neutral por defecto
         return { color: 'var(--color-map-land-neutral)', opacidad: 1, isVivoState: false };
     };
 
