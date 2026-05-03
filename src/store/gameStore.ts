@@ -393,6 +393,28 @@ export const useGameStore = create<EstadoJuego>()(
 
                 set((state) => {
                     const cambioTurno = state.turnoActual !== nuevoTurno;
+                    
+                    // Fusionamos el diccionario de jugadores asegurándonos de no perder propiedades locales (avatar, desconexión)
+                    let nuevoDiccionarioJugadores = { ...state.diccionarioJugadores };
+                    
+                    if (payload.jugadores) {
+                        for (const username of Object.keys(payload.jugadores)) {
+                            nuevoDiccionarioJugadores[username] = {
+                                ...nuevoDiccionarioJugadores[username],
+                                ...payload.jugadores[username]
+                            };
+                        }
+                    }
+                    
+                    if (payload.avatares) {
+                        for (const [username, avatarPath] of Object.entries(payload.avatares)) {
+                            nuevoDiccionarioJugadores[username] = {
+                                ...nuevoDiccionarioJugadores[username],
+                                avatar: avatarPath
+                            };
+                        }
+                    }
+
                     return {
                         faseActual: nuevaFase,
                         haUsadoAtaqueEspecial: haLanzadoEspecialLocal ?? (cambioTurno ? false : state.haUsadoAtaqueEspecial),
@@ -407,7 +429,7 @@ export const useGameStore = create<EstadoJuego>()(
                             tropasDisponibles: tropasReservaActivo,
                         }),
                         jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
-                        diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
+                        diccionarioJugadores: nuevoDiccionarioJugadores,
                         jugadores: payload.jugadores
                             ? Object.keys(payload.jugadores)
                             : state.jugadores,

@@ -40,8 +40,8 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
                 <div className="stat-card destacado">
                     <span className="stat-label">Ranking Mundial</span>
                     <span className="stat-value">
-                        {estadisticas.posicion_ranking != null && estadisticas.num_partidas_ganadas > 0 
-                            ? `#${estadisticas.posicion_ranking}` 
+                        {estadisticas.posicion_ranking != null && estadisticas.num_partidas_ganadas > 0
+                            ? `#${estadisticas.posicion_ranking}`
                             : '-'}
                     </span>
                 </div>
@@ -62,17 +62,17 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
                 </div>
 
                 <div className="stat-card">
-                    <span className="stat-label">Regiones Conquistadas</span>
+                    <span className="stat-label">Comarcas Conquistadas</span>
                     <span className="stat-value">{estadisticas.num_regiones_conquistadas}</span>
                 </div>
 
                 <div className="stat-card">
-                    <span className="stat-label">Continentes Conquistados</span>
+                    <span className="stat-label">Regiones Conquistadas</span>
                     <span className="stat-value">{estadisticas.num_continentes_conquistados}</span>
                 </div>
 
                 <div className="stat-card favorita">
-                    <span className="stat-label">Región Favorita</span>
+                    <span className="stat-label">Comarca Favorita</span>
                     <span className="stat-value">
                         {estadisticas.region_mas_conquistada ? estadisticas.region_mas_conquistada : 'Ninguna (Aún)'}
                     </span>

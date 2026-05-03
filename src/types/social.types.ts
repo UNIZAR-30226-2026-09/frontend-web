@@ -14,6 +14,7 @@ export interface EstadisticasJugador {
     winrate: number;
     region_mas_conquistada: string;
     posicion_ranking?: number; // Puesto en el ranking global
+    avatar?: string;
 }
 
 /**

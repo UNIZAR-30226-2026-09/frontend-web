@@ -29,12 +29,14 @@ export const PlayerList: React.FC = () => {
                 const stats = getEstadisticasJugador(jugadorId);
                 const info = diccionarioJugadores ? diccionarioJugadores[jugadorId] : null;
                 const nombre = info?.nombre || info?.jugador || info?.username || info?.nombre_usuario || (jugadorId.charAt(0).toUpperCase() + jugadorId.slice(1));
+                const avatar = info?.avatar;
 
                 return (
                     <PlayerCard
                         key={jugadorId}
                         idJugador={jugadorId}
                         nombre={nombre}
+                        avatar={avatar}
                         color={coloresJugadores[jugadorId]}
                         territorios={stats.territorios}
                         tropas={stats.tropas}

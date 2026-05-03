@@ -54,7 +54,8 @@ const TopGlobalWidget = () => {
         id: p.nombre_user || idx,
         username: p.nombre_user,
         victorias: p.num_partidas_ganadas,
-        posicion: idx + 1
+        posicion: idx + 1,
+        avatar: p.avatar
       }));
   }, [topUsuarios]);
 
@@ -90,7 +91,7 @@ const TopGlobalWidget = () => {
                   key={p.id}
                   className={`soberania-top-row ${esMiFila ? 'soberania-top-you' : 'soberania-top-clickable'}`}
                   onClick={() => {
-                    if (!esMiFila) setPerfilViendo(p.username);
+                    if (!esMiFila) setPerfilViendo({ username: p.username, avatar: p.avatar });
                   }}
                   style={{ cursor: esMiFila ? 'default' : 'pointer' }}
                 >
@@ -116,7 +117,11 @@ const TopGlobalWidget = () => {
         </div>
       </div>
       {perfilViendo && createPortal(
-        <PanelPerfilJugador username={perfilViendo} onCerrar={() => setPerfilViendo(null)} />,
+        <PanelPerfilJugador 
+          username={perfilViendo.username} 
+          avatarProp={perfilViendo.avatar}
+          onCerrar={() => setPerfilViendo(null)} 
+        />,
         document.getElementById('root') || document.body
       )}
     </div>

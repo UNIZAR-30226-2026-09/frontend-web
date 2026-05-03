@@ -69,7 +69,7 @@ const AmigosActivosWidget = ({ onAbrirAmigos }) => {
                     className="soberania-friends-row"
                     role="button"
                     tabIndex={0}
-                    onClick={() => setPerfilViendo(username)}
+                    onClick={() => setPerfilViendo({ username, avatar: amigo.avatar })}
                   >
                     <div className="soberania-friends-info">
                       <img src={`${BASE_URL}${urlAvatar}`} alt={username} className="soberania-friends-avatar" style={{ border: 'none', background: 'transparent', objectFit: 'cover' }} />
@@ -95,7 +95,8 @@ const AmigosActivosWidget = ({ onAbrirAmigos }) => {
       
       {perfilViendo && createPortal(
         <PanelPerfilJugador 
-          username={perfilViendo} 
+          username={perfilViendo.username}
+          avatarProp={perfilViendo.avatar}
           onCerrar={() => setPerfilViendo(null)} 
         />,
         document.getElementById('root') || document.body
