@@ -95,7 +95,7 @@ const LogPartida = () => {
                         textAlign: 'center',
                     }}
                 >
-                    📜 Log de Partida
+                    MENSAJES DE LA PARTIDA
                 </h3>
             </div>
 
