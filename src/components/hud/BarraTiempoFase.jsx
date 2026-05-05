@@ -44,6 +44,7 @@ const BarraTiempoFase = () => {
 
                 if (seg === 0 && !avanzadoRef.current && esMiTurno) {
                     avanzadoRef.current = true;
+                    useGameStore.getState().mostrarAlerta("Se ha avanzado de fase automáticamente.", "info");
                     pasarFaseBackend();
                 }
 
