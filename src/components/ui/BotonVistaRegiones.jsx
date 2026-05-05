@@ -17,13 +17,13 @@ const BotonVistaRegiones = () => {
 
     return (
         <button
-            className="btn-toggle-mapa"
+            className="btn-toggle-mapa transition-transform duration-200 hover:scale-110 active:scale-95 focus:outline-none"
             onClick={toggleModoVista}
             title={tituloBoton}
         >
             <img
-                src="/mapabutton.png"
-                alt="Toggle Mapa"
+                src="/mapa.png"
+                alt="Ver Mapa"
                 className="btn-toggle-icon"
             />
         </button>

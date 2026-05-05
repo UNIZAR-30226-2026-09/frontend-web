@@ -11,11 +11,15 @@ const BotonArbolTecnologico = () => {
 
     return (
         <button
-            className="btn-arbol-tecnologico"
+            className="btn-arbol-tecnologico transition-transform duration-200 hover:scale-110 active:scale-95 focus:outline-none"
             onClick={toggleArbolTecnologico}
             title="Investigar Tecnologías"
         >
-            <span className="btn-arbol-icon">⚛️</span>
+            <img 
+                src="/arbol.png" 
+                alt="Ver Árbol" 
+                className="btn-arbol-icon"
+            />
         </button>
     );
 };
