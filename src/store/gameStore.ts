@@ -199,7 +199,8 @@ export const useGameStore = create<EstadoJuego>()(
             estadosAlterados: {},
             tropasDisponibles: null,
             movimientoRealizadoEnTurno: false,
-            mensajeErrorGlobal: null,
+            mensajeAlerta: null,
+            tipoAlerta: null,
             historialLog: [],
 
             // Jugador local
@@ -280,11 +281,11 @@ export const useGameStore = create<EstadoJuego>()(
                 }
             },
 
-            // Muestra un error flotante en la UI
-            mostrarErrorGlobal: (mensaje: string) => {
-                set({ mensajeErrorGlobal: mensaje });
+            // Muestra una alerta flotante en la UI (error, info o success)
+            mostrarAlerta: (mensaje: string, tipo: 'error' | 'info' | 'success' = 'error') => {
+                set({ mensajeAlerta: mensaje, tipoAlerta: tipo });
                 setTimeout(() => {
-                    set((state) => state.mensajeErrorGlobal === mensaje ? { mensajeErrorGlobal: null } : state);
+                    set((state) => state.mensajeAlerta === mensaje ? { mensajeAlerta: null, tipoAlerta: null } : state);
                 }, 3000);
             },
 
@@ -856,6 +857,17 @@ export const useGameStore = create<EstadoJuego>()(
                         comarcasResaltadas: [],
                         movimientoRealizadoEnTurno: true,
                     });
+
+                    // AUTO-AVANCE DE FASE TRAS FORTIFICACIÓN (QoL)
+                    // Solo se permite un movimiento, así que tras 800ms pasamos el turno automáticamente.
+                    setTimeout(() => {
+                        const store = useGameStore.getState();
+                        // Verificamos que sigamos en FORTIFICACION y sea nuestro turno antes de saltar
+                        if (store.faseActual === 'FORTIFICACION' && store.movimientoRealizadoEnTurno) {
+                            store.mostrarAlerta("Fin de turno automático.", "info");
+                            store.pasarFaseBackend();
+                        }
+                    }, 800);
                 } catch (error) {
                     console.error('[fortificarBackend] Error:', error);
                     throw error;
@@ -876,7 +888,7 @@ export const useGameStore = create<EstadoJuego>()(
                 }
 
                 if (String(estado.turnoActual).toLowerCase() !== String(estado.jugadorLocal).toLowerCase()) {
-                    estado.mostrarErrorGlobal('No puedes realizar acciones fuera de tu turno.');
+                    estado.mostrarAlerta('No puedes realizar acciones fuera de tu turno.');
                     return;
                 }
 
@@ -888,7 +900,7 @@ export const useGameStore = create<EstadoJuego>()(
                             estado.faseActual === 'REFUERZO' ? 'Refuerzo' : 'Gestión';
                     const nombreEstado = estadoBloqueo.startsWith('investigando') ? 'investigando' : 'trabajando';
 
-                    estado.mostrarErrorGlobal(`Este territorio no puede usarse en la fase de ${nombreFase} porque está ${nombreEstado}.`);
+                    estado.mostrarAlerta(`Este territorio no puede usarse en la fase de ${nombreFase} porque está ${nombreEstado}.`);
                     return;
                 }
 
@@ -896,13 +908,13 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'ATAQUE_ESPECIAL': {
                         if (estado.haUsadoAtaqueEspecial) {
-                            estado.mostrarErrorGlobal('Solo se puede hacer un ataque especial por ronda.');
+                            estado.mostrarAlerta('Solo se puede hacer un ataque especial por ronda.');
                             return;
                         }
 
                         const armaId = estado.armaEspecialSeleccionada;
                         if (!armaId) {
-                            estado.mostrarErrorGlobal('Debes seleccionar un ataque especial.');
+                            estado.mostrarAlerta('Debes seleccionar un ataque especial.');
                             return;
                         }
 
@@ -929,7 +941,7 @@ export const useGameStore = create<EstadoJuego>()(
                         if (idLower === 'propaganda_subversiva' || idLower === 'sanciones_internacionales') {
                             const propietario = estado.propietarios[comarcaId];
                             if (!propietario || String(propietario).toLowerCase() === String(estado.jugadorLocal).toLowerCase()) {
-                                estado.mostrarErrorGlobal('No puedes aplicar esta habilidad sobre ti mismo o un territorio vacío.');
+                                estado.mostrarAlerta('No puedes aplicar esta habilidad sobre ti mismo o un territorio vacío.');
                                 return;
                             }
                             // Se envía el ID del jugador rival como destino, en lugar del ID del territorio
@@ -960,7 +972,7 @@ export const useGameStore = create<EstadoJuego>()(
                                 );
 
                                 if (enemigosAlcanzables.length === 0) {
-                                    estado.mostrarErrorGlobal('Ningún objetivo enemigo a rango.');
+                                    estado.mostrarAlerta('Ningún objetivo enemigo a rango.');
                                     return;
                                 }
                                 set({
@@ -978,7 +990,7 @@ export const useGameStore = create<EstadoJuego>()(
                             if (estado.comarcasResaltadas.includes(comarcaId)) {
                                 get().ejecutarAtaqueEspecialBackend(comarcaId, armaId, estado.origenSeleccionado);
                             } else {
-                                estado.mostrarErrorGlobal('Objetivo fuera de rango.');
+                                estado.mostrarAlerta('Objetivo fuera de rango.');
                                 set({ origenSeleccionado: null, comarcasResaltadas: [] });
                             }
                         }
@@ -995,7 +1007,7 @@ export const useGameStore = create<EstadoJuego>()(
                         const esVacioReclamable = tropasComarca === 0 && !esMio;
 
                         if (!esMio && !esVacioReclamable) {
-                            estado.mostrarErrorGlobal('No puedes reforzar territorios enemigos.');
+                            estado.mostrarAlerta('No puedes reforzar territorios enemigos.');
                             return;
                         }
 
@@ -1006,13 +1018,13 @@ export const useGameStore = create<EstadoJuego>()(
                                 adj => String(estado.propietarios[adj] ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase()
                             ) ?? false;
                             if (!esAdyacenteAMio) {
-                                estado.mostrarErrorGlobal('Solo puedes reclamar territorios vacíos adyacentes a los tuyos.');
+                                estado.mostrarAlerta('Solo puedes reclamar territorios vacíos adyacentes a los tuyos.');
                                 return;
                             }
                         }
 
                         if ((estado.tropasDisponibles ?? 0) <= 0) {
-                            estado.mostrarErrorGlobal('Todos los refuerzos ya han sido desplegados.');
+                            estado.mostrarAlerta('Todos los refuerzos ya han sido desplegados.');
                             return;
                         }
 
@@ -1060,11 +1072,11 @@ export const useGameStore = create<EstadoJuego>()(
 
                         if (!estado.origenSeleccionado) {
                             if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
-                                estado.mostrarErrorGlobal('Solamente puedes realizar ataques desde tus territorios.');
+                                estado.mostrarAlerta('Solamente puedes realizar ataques desde tus territorios.');
                                 return;
                             }
                             if ((estado.tropas[comarcaId] ?? 0) <= 1) {
-                                estado.mostrarErrorGlobal('No puedes atacar con una sola tropa.');
+                                estado.mostrarAlerta('No puedes atacar con una sola tropa.');
                                 return;
                             }
                             if (!estado.grafoGlobal) return;
@@ -1080,7 +1092,7 @@ export const useGameStore = create<EstadoJuego>()(
                             );
 
                             if (enemigosAlcanzables.length === 0) {
-                                estado.mostrarErrorGlobal('No tienes acceso a territorios enemigos desde aquí.');
+                                estado.mostrarAlerta('No tienes acceso a territorios enemigos desde aquí.');
                                 return;
                             }
 
@@ -1112,19 +1124,19 @@ export const useGameStore = create<EstadoJuego>()(
 
                         if (!estado.origenSeleccionado) {
                             if (estado.movimientoRealizadoEnTurno) {
-                                estado.mostrarErrorGlobal('Solamente se puede fortificar una vez por fase.');
+                                estado.mostrarAlerta('Solamente se puede fortificar una vez por fase.');
                                 return;
                             }
                             if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
-                                estado.mostrarErrorGlobal('No puedes fortificar territorios enemigos.');
+                                estado.mostrarAlerta('No puedes fortificar territorios enemigos.');
                                 return;
                             }
                             if ((estado.tropas[comarcaId] ?? 0) <= 1) {
-                                estado.mostrarErrorGlobal('No puedes fortificar con una sola tropa.');
+                                estado.mostrarAlerta('No puedes fortificar con una sola tropa.');
                                 return;
                             }
                             if (estado.estadosBloqueo?.[comarcaId]) {
-                                estado.mostrarErrorGlobal('No puedes fortificar desde un territorio que está trabajando o investigando.');
+                                estado.mostrarAlerta('No puedes fortificar desde un territorio que está trabajando o investigando.');
                                 return;
                             }
 
@@ -1154,7 +1166,7 @@ export const useGameStore = create<EstadoJuego>()(
                             }
 
                             if (alcanzables.size === 0) {
-                                estado.mostrarErrorGlobal('Un territorio aislado no puede fortificarse.');
+                                estado.mostrarAlerta('Un territorio aislado no puede fortificarse.');
                                 return;
                             }
 
@@ -1187,7 +1199,7 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'GESTION': {
                         if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
-                            estado.mostrarErrorGlobal('No puedes gestionar territorios enemigos.');
+                            estado.mostrarAlerta('No puedes gestionar territorios enemigos.');
                             return;
                         }
 
@@ -1196,7 +1208,7 @@ export const useGameStore = create<EstadoJuego>()(
                         const hayInvestigacion = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e && e.startsWith('investigando') && estado.propietarios[id] === estado.jugadorLocal);
 
                         if (hayTrabajo && hayInvestigacion) {
-                            estado.mostrarErrorGlobal('Ya has ordenado trabajar e investigar. No puedes hacer más tareas esta fase.');
+                            estado.mostrarAlerta('Ya has ordenado trabajar e investigar. No puedes hacer más tareas esta fase.');
                             return;
                         }
 
@@ -1999,7 +2011,7 @@ export const useGameStore = create<EstadoJuego>()(
                 } catch (error) {
                     console.error('[iniciarSolicitudPausa] Error:', error);
                     set({ faseVotacionPausa: 'ninguna' });
-                    estado.mostrarErrorGlobal("No se pudo solicitar la pausa al servidor.");
+                    estado.mostrarAlerta("No se pudo solicitar la pausa al servidor.");
                 }
             },
 
@@ -2023,7 +2035,7 @@ export const useGameStore = create<EstadoJuego>()(
                     console.log(`🚀 [REST] Voto de pausa (${voto}) enviado al servidor`);
                 } catch (error) {
                     console.error('[enviarVotoPausa] Error:', error);
-                    estado.mostrarErrorGlobal("Error al registrar tu voto.");
+                    estado.mostrarAlerta("Error al registrar tu voto.");
                 }
             },
         }),

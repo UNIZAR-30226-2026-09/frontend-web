@@ -22,8 +22,8 @@ const calcularSegundosRestantes = (finFaseUtc) => {
  * Al llegar a 0, fuerza el avance de fase si es el turno del jugador local.
  */
 const BarraTiempoFase = () => {
-    const finFaseUtc    = useGameStore((s) => s.finFaseUtc);
-    const faseActual    = useGameStore((s) => s.faseActual);
+    const finFaseUtc = useGameStore((s) => s.finFaseUtc);
+    const faseActual = useGameStore((s) => s.faseActual);
     const pasarFaseBackend = useGameStore((s) => s.pasarFaseBackend);
     const { esMiTurno } = useTurno();
 
@@ -54,8 +54,8 @@ const BarraTiempoFase = () => {
         return () => clearInterval(id);
     }, [finFaseUtc, esMiTurno, pasarFaseBackend]);
 
-    const porcentaje  = Math.min(100, (restante / DURACION_FASE_SEG) * 100);
-    const urgente     = restante <= 15;
+    const porcentaje = Math.min(100, (restante / DURACION_FASE_SEG) * 100);
+    const urgente = restante <= 15;
     const advertencia = restante <= 30 && !urgente;
 
     return (

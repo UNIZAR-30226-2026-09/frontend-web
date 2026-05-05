@@ -23,6 +23,11 @@ const PantallaJuego = () => {
     const cargarCatalogoTecnologias = useGameStore((state) => state.cargarCatalogoTecnologias);
     const cargarLogsPartida = useGameStore((state) => state.cargarLogsPartida);
     const salaId = useGameStore((state) => state.salaActiva?.id);
+    const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
+    const pasarFaseBackend = useGameStore((state) => state.pasarFaseBackend);
+    const mostrarAlerta = useGameStore((state) => state.mostrarAlerta);
+    const turnoActual = useGameStore((state) => state.turnoActual);
+    const jugadorLocal = useGameStore((state) => state.jugadorLocal);
     const user = useAuthStore((state) => state.user);
 
     useEffect(() => {
@@ -74,6 +79,22 @@ const PantallaJuego = () => {
 
         return () => clearInterval(interval);
     }, [faseActual, sincronizarEstadoPartida]);
+
+    // EFECTO: Auto-avance de Fase de REFUERZO (QoL)
+    // Cuando el jugador local agota sus tropas en fase de refuerzo, saltamos de fase tras un delay.
+    useEffect(() => {
+        if (faseActual === 'REFUERZO' && tropasDisponibles === 0 && turnoActual === jugadorLocal) {
+            const timer = setTimeout(() => {
+                // Doble check de seguridad con el estado más fresco del store
+                const state = useGameStore.getState();
+                if (state.faseActual === 'REFUERZO' && state.tropasDisponibles === 0 && state.turnoActual === state.jugadorLocal) {
+                    mostrarAlerta("Se ha avanzado de fase automáticamente.", "info");
+                    pasarFaseBackend();
+                }
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [faseActual, tropasDisponibles, turnoActual, jugadorLocal, pasarFaseBackend, mostrarAlerta]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }}>

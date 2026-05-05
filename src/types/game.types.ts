@@ -96,8 +96,9 @@ export interface EstadoJuego {
 
     movimientoRealizadoEnTurno: boolean;
 
-    // Error global
-    mensajeErrorGlobal: string | null;
+    // Alerta global (Notificaciones)
+    mensajeAlerta: string | null;
+    tipoAlerta: 'error' | 'info' | 'success' | null;
 
     // Log de Partida
     historialLog: string[];
@@ -138,10 +139,11 @@ export interface EstadoJuego {
     cargarMapaEstatico: () => Promise<void>;
 
     /**
-     * Muestra un mensaje de error global en la UI.
-     * @param {string} mensaje El texto del error.
+     * Muestra un mensaje de alerta global en la UI (error, info o success).
+     * @param {string} mensaje El texto del mensaje.
+     * @param {'error' | 'info' | 'success'} tipo El tipo de alerta.
      */
-    mostrarErrorGlobal: (mensaje: string) => void;
+    mostrarAlerta: (mensaje: string, tipo?: 'error' | 'info' | 'success') => void;
 
     /**
      * Añade un mensaje al log en tiempo real de la partida.

@@ -104,7 +104,8 @@ const Tablero = (props) => {
   const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
   const estadosAlterados = useGameStore((state) => state.estadosAlterados) || {};
   const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
-  const mensajeErrorGlobal = useGameStore((state) => state.mensajeErrorGlobal);
+  const mensajeAlerta = useGameStore((state) => state.mensajeAlerta);
+  const tipoAlerta = useGameStore((state) => state.tipoAlerta);
   const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
 
   const hayTrabajo = Object.values(estadosBloqueo).some(e => e === 'trabajando');
@@ -854,9 +855,9 @@ const Tablero = (props) => {
       <AnimacionRefuerzos />
       <ModalVotacionAbandono />
 
-      {/* Notificación Global de Error */}
+      {/* Notificación Global (Alertas) */}
       <AnimatePresence>
-        {mensajeErrorGlobal && (
+        {mensajeAlerta && (
           <motion.div
             initial={{ opacity: 0, y: -50, x: '-50%' }}
             animate={{ opacity: 1, y: 20, x: '-50%' }}
@@ -868,14 +869,22 @@ const Tablero = (props) => {
               left: '50%',
               zIndex: 9999,
               background: 'rgba(20, 20, 20, 0.95)',
-              border: '2px solid var(--color-border-error, #E53E3E)',
+              border: `2px solid ${
+                tipoAlerta === 'success' ? '#48BB78' : 
+                tipoAlerta === 'info' ? '#4299E1' : 
+                '#E53E3E'
+              }`,
               borderRadius: '8px',
               padding: '12px 24px',
               color: 'var(--color-text-primary, white)',
               fontFamily: 'var(--font-family-base)',
               fontSize: '14px',
               fontWeight: 'bold',
-              boxShadow: '0 8px 32px rgba(229, 62, 62, 0.3)',
+              boxShadow: `0 8px 32px ${
+                tipoAlerta === 'success' ? 'rgba(72, 187, 120, 0.3)' : 
+                tipoAlerta === 'info' ? 'rgba(66, 153, 225, 0.3)' : 
+                'rgba(229, 62, 62, 0.3)'
+              }`,
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
@@ -884,8 +893,10 @@ const Tablero = (props) => {
               letterSpacing: '0.5px'
             }}
           >
-            <span style={{ fontSize: '18px' }}>⚠️</span>
-            {mensajeErrorGlobal}
+            <span style={{ fontSize: '18px' }}>
+                {tipoAlerta === 'success' ? '✅' : tipoAlerta === 'info' ? 'ℹ️' : '⚠️'}
+            </span>
+            {mensajeAlerta}
           </motion.div>
         )}
       </AnimatePresence>
