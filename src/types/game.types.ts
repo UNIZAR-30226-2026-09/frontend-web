@@ -101,7 +101,7 @@ export interface EstadoJuego {
     tipoAlerta: 'error' | 'info' | 'success' | null;
 
     // Log de Partida
-    historialLog: string[];
+    historialLog: (string | any)[];
 
     // Árbol Tecnológico y Gestión
     isArbolTecnologicoOpen: boolean;
@@ -382,6 +382,12 @@ export interface EstadoJuego {
     faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando';
     /** Username del jugador que ha iniciado la solicitud de pausa (null si ninguno). */
     jugadorSolicitantePausa: string | null;
+    
+    // Mensajes activos
+    mensajesActivos: Record<string, { tipo: string, contenido: string, timestamp: number, timeoutId?: ReturnType<typeof setTimeout> }>;
+
+    /** Recibe y muestra un mensaje de chat o reaccion por tiempo limitado */
+    recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => void;
 
     /** Cambia la fase local de la votación de pausa. */
     setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => void;

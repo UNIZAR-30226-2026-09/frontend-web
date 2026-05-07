@@ -165,6 +165,15 @@ class SocketService {
         }
     }
 
+    /** Helper para enviar un mensaje de chat o reaccion */
+    public enviarChat(tipo_chat: string, contenido: string) {
+        this.sendRaw({
+            accion: "CHAT",
+            tipo_chat,
+            contenido
+        });
+    }
+
     public sendRaw(data: any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify(data));

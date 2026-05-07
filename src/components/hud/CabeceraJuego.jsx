@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/gameStore';
 import { useTurno } from '../../hooks/useTurno';
 import { useNavigate } from 'react-router-dom';
 import BarraTiempoFase from './BarraTiempoFase';
+import ChatPanel from './ChatPanel';
 import '../../styles/CabeceraJuego.css';
 
 /**
@@ -86,9 +87,16 @@ const CabeceraJuego = () => {
     : 'var(--color-border-gold)';
 
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [chatAbierto, setChatAbierto] = useState(false);
 
   const toggleMenu = () => {
     setMenuAbierto(!menuAbierto);
+    if (chatAbierto) setChatAbierto(false);
+  };
+
+  const toggleChat = () => {
+    setChatAbierto(!chatAbierto);
+    if (menuAbierto) setMenuAbierto(false);
   };
 
   const handlePausar = () => {
@@ -164,23 +172,25 @@ const CabeceraJuego = () => {
       </div>
 
       <div className="zona-derecha">
-        <button
-          className="btn-menu"
-          onClick={toggleMenu}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px',
-            backgroundColor: 'var(--color-ui-panel-overlay)',
-            border: '2px solid var(--color-border-gold)',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            padding: '10px',
-            marginRight: '3rem'
-          }}
-        >
-          ≡
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginRight: '3rem' }}>
+          <button
+            className="btn-menu"
+            onClick={toggleMenu}
+            title="Menú"
+          >
+            ≡
+          </button>
+          
+          <button
+            className="btn-menu"
+            onClick={toggleChat}
+            title="Mensajes y Reacciones"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+              <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+          </button>
+        </div>
 
         {menuAbierto && (
           <div className="menu-desplegable">
@@ -188,6 +198,10 @@ const CabeceraJuego = () => {
               Pausar Partida
             </button>
           </div>
+        )}
+
+        {chatAbierto && (
+          <ChatPanel onClose={() => setChatAbierto(false)} />
         )}
       </div>
     </header>

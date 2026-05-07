@@ -2,6 +2,61 @@ import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const parseLogToString = (log) => {
+    if (typeof log === 'string') return log;
+
+    const d = log.datos || {};
+    const user = log.user ?? '?';
+    switch ((log.tipo_evento || '').toLowerCase()) {
+        case 'partida_iniciada':
+            return `La Guerra por la Soberanía ha comenzado. Participantes: ${(d.jugadores || []).join(', ')}. Las fuerzas de ${d.primer_turno || '?'} toman la iniciativa.`;
+        case 'partida_finalizada':
+            return `¡Conflicto concluido! ${d.ganador || user} ha sometido al resto de facciones y reclama el control absoluto.`;
+        case 'jugador_eliminado':
+            if (d.por_quien) {
+                return `¡Caída de un imperio! Las defensas de ${d.eliminado || user} han colapsado a manos de ${d.por_quien}.`;
+            }
+            return `¡Caída de un imperio! Las defensas de ${d.eliminado || user} han colapsado por desgaste.`;
+        case 'abandonar_partida':
+            return `${d.usuario || user} ha desertado antes de que comience el conflicto.`;
+        case 'ataque_resultado':
+            return `${user} lanza una ofensiva desde ${d.origen || '?'} hacia ${d.destino || '?'}. Causa ${d.bajas_defensor ?? 0} bajas, sufriendo ${d.bajas_atacante ?? 0} pérdidas.`;
+        case 'conquista':
+            return `¡Victoria decisiva! Las tropas de ${user} han ocupado ${d.territorio_conquistado || '?'}, expulsando a las fuerzas de ${d.anterior_dueno || '?'}.`;
+        case 'movimiento_conquista':
+            return `${user} redespliega tácticamente ${d.tropas || 0} batallones desde ${d.origen || '?'} hacia ${d.destino || '?'}.`;
+        case 'tropas_colocadas':
+            return `${user} ha reforzado el frente en ${d.territorio || '?'} desplegando ${d.cantidad || 0} nuevas divisiones.`;
+        case 'cambio_fase':
+            const fn = (d.fase_nueva || '').toLowerCase();
+            if (fn && fn !== 'refuerzo') {
+                return `${user} avanza su campaña: las fuerzas entran en fase de ${d.fase_nueva.replace('_', ' ')}.`;
+            } else if (d.turno_de || fn === 'refuerzo') {
+                return `Alto mando: Inicia el turno de ${d.turno_de || user}. Se movilizan ${d.tropas_recibidas || 0} brigadas de refuerzo.`;
+            }
+            return `Alto mando: Inicia el turno de ${user}.`;
+        case 'trabajar':
+            return `${user} ha movilizado a la población de ${d.territorio || d.territorio_id || '?'} para acelerar la producción de recursos.`;
+
+        case 'investigar':
+            return `${user} ha ordenado a las instalaciones de ${d.territorio || d.territorio_id || '?'} iniciar un desarrollo confidencial.`;
+
+        case 'territorio_actualizado':
+            if (d.estado_bloqueo === 'trabajando') {
+                return `${user} ha movilizado a la población de ${d.territorio || d.territorio_id || '?'} para acelerar la producción de recursos.`;
+            } else if (d.estado_bloqueo?.startsWith('investigando')) {
+                return `${user} ha ordenado a las instalaciones de ${d.territorio || d.territorio_id || '?'} iniciar un desarrollo confidencial.`;
+            }
+            return `[${log.tipo_evento}] Actualización en ${d.territorio || d.territorio_id || '?'}`;
+        case 'comprar_tecnologia':
+            return `${user} ha financiado la tecnología militar '${d.tecnologia || '?'}' por un coste de ${d.precio || 0} de oro.`;
+        case 'ataque_especial':
+            return `¡Lanzamiento táctico! ${user} ejecuta la operación '${d.tipo_ataque || d.tipo || '?'}' con objetivo en ${d.destino || '?'}.`;
+        default:
+            return `[${log.tipo_evento}] ${user}`;
+    }
+};
+
 /**
  * Parsea una frase de log y colorea los nombres de jugadores con su color real.
  * Devuelve un array de spans con el texto troceado.
@@ -117,10 +172,12 @@ const LogPartida = () => {
             >
                 <AnimatePresence initial={false}>
                     {mensajesOrdenados.map((mensaje, index) => {
+                        // Generar un key único dependiendo de si es string u objeto log.id
+                        const msgKey = mensaje?.id ? mensaje.id : `${index}-${typeof mensaje === 'string' ? mensaje.substring(0, 10) : ''}`;
                         const esUltimo = index === mensajesOrdenados.length - 1;
                         return (
                             <motion.div
-                                key={`${mensaje}-${index}`}
+                                key={msgKey}
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.2 }}
@@ -143,7 +200,7 @@ const LogPartida = () => {
                                     transition: 'background 0.3s ease',
                                 }}
                             >
-                                {colorearNombres(mensaje, coloresJugadores)}
+                                {colorearNombres(parseLogToString(mensaje), coloresJugadores)}
                             </motion.div>
                         );
                     })}

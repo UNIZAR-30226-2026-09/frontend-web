@@ -151,34 +151,8 @@ const parsearJugadores = (
     };
 };
 
-/**
- * Convierte un objeto de log del backend (formato docs/logs_partida.md) en una frase
- * legible para mostrar en el panel LogPartida.
- * Soporta todos los tipo_evento definidos en la documentación.
- */
-const logEntradaAFrase = (log: any): string => {
-    const d = log.datos || {};
-    const user = log.user ?? '?';
-    switch ((log.tipo_evento || '').toLowerCase()) {
-        case 'cambio_turno':
-            return `🔄 Turno de ${d.turno_de || user}`;
-        case 'ataque_convencional': {
-            const victoria = d.victoria ? ' ¡Conquista!' : '';
-            return `⚔️ ${user} atacó ${d.origen || '?'} → ${d.destino || '?'} (bajas: ${d.bajas_atacante ?? 0}/${d.bajas_defensor ?? 0})${victoria}`;
-        }
-        case 'conquista':
-            return `🏴 ${user} conquistó ${d.territorio_conquistado || '?'} (antes de ${d.anterior_dueno || '?'})`;
-        case 'ataque_especial':
-            return `💥 ${user} lanzó ${d.tipo_ataque || '?'} sobre ${d.destino || '?'}`;
-        case 'jugador_eliminado':
-            return `💀 ${d.eliminado || user} ha sido eliminado`;
-        case 'fin_partida':
-            return `🏆 Partida terminada — Ganador: ${d.ganador || user}`;
-        default:
-            return `📋 [${log.tipo_evento}] ${user}`;
-    }
-};
-
+// El parseo de los logs crudos devueltos por el backend ahora se hace dinámicamente en LogPartida.jsx
+// para permitir renderizar colores de los jugadores y formateo de texto complejo.
 // Store
 export const useGameStore = create<EstadoJuego>()(
     persist(
@@ -251,6 +225,7 @@ export const useGameStore = create<EstadoJuego>()(
             // UI - Votación Pausa
             faseVotacionPausa: 'ninguna',
             jugadorSolicitantePausa: null,
+            mensajesActivos: {},
             // ACCIONES — MAPA ESTÁTICO
 
             /**
@@ -290,7 +265,8 @@ export const useGameStore = create<EstadoJuego>()(
             },
 
             // Añade un mensaje al log de eventos (máximo 50 mensajes)
-            agregarMensajeLog: (mensaje: string) => {
+            // Ahora acepta tanto strings (logs del frontend) como objetos (logs del backend).
+            agregarMensajeLog: (mensaje: string | any) => {
                 set((state) => {
                     const nuevoHistorial = [mensaje, ...state.historialLog].slice(0, 50);
                     return { historialLog: nuevoHistorial };
@@ -314,10 +290,9 @@ export const useGameStore = create<EstadoJuego>()(
                         return;
                     }
 
-                    // La API devuelve más reciente primero (según el doc)
-                    const frases = logs.map(logEntradaAFrase);
-                    console.log(`[cargarLogsPartida] 📋 Frases generadas:`, frases);
-                    set({ historialLog: frases.slice(0, 50) });
+                    // Guardamos los logs crudos. El renderizado y coloreado se hace en el componente LogPartida.
+                    console.log(`[cargarLogsPartida] 📋 Logs guardados:`, logs);
+                    set({ historialLog: logs.slice(0, 50) });
                 } catch (error) {
                     console.error('[cargarLogsPartida] ❌ Error al llamar al endpoint:', error);
                 }
@@ -1247,6 +1222,33 @@ export const useGameStore = create<EstadoJuego>()(
             },
 
             /**
+             * Recibe un mensaje de chat y lo programa para desaparecer tras 10 segundos.
+             */
+            recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => {
+                const now = Date.now();
+                set((state) => {
+                    const mensajes = { ...state.mensajesActivos };
+                    if (mensajes[emisor]?.timeoutId) {
+                        clearTimeout(mensajes[emisor].timeoutId);
+                    }
+                    
+                    const timeoutId = setTimeout(() => {
+                        set((s) => {
+                            const newMensajes = { ...s.mensajesActivos };
+                            // Solo borrar si sigue siendo el mismo mensaje
+                            if (newMensajes[emisor]?.timestamp === now) {
+                                delete newMensajes[emisor];
+                            }
+                            return { mensajesActivos: newMensajes };
+                        });
+                    }, 10000);
+
+                    mensajes[emisor] = { tipo, contenido, timestamp: now, timeoutId };
+                    return { mensajesActivos: mensajes };
+                });
+            },
+
+            /**
              * Actualiza el estado de la conexión del WebSocket.
              * @param {boolean} status - True si está conectado.
              */
@@ -1274,6 +1276,16 @@ export const useGameStore = create<EstadoJuego>()(
 
 
                 switch (tipo) {
+                    case 'CHAT': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const emisor = payload.emisor || payload.jugador;
+                        const tipoChat = payload.tipo_chat || 'mensaje';
+                        const contenido = payload.contenido || payload.mensaje;
+                        if (emisor && contenido) {
+                            get().recibirMensajeChat(emisor, tipoChat, contenido);
+                        }
+                        break;
+                    }
 
                     //  Lobby: jugador se une 
                     case 'NUEVO_JUGADOR':
@@ -1334,10 +1346,13 @@ export const useGameStore = create<EstadoJuego>()(
 
                         if (eliminadoId) {
                             // Usar el log embebido si viene, si no construir frase de fallback
-                            const frase = mensaje.log
-                                ? logEntradaAFrase(mensaje.log)
-                                : `💀 ${eliminadoId} ha sido eliminado`;
-                            get().agregarMensajeLog(frase);
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'JUGADOR_ELIMINADO',
+                                datos: { eliminado: eliminadoId },
+                                user: 'Sistema'
+                            };
+                            get().agregarMensajeLog(logEntry);
                         }
 
                         set((state) => {
@@ -1450,7 +1465,17 @@ export const useGameStore = create<EstadoJuego>()(
                         // Generar log desde los datos del propio mensaje WS
                         if (jugadorRaw) {
                             const faseDisplay = faseRaw || '?';
-                            get().agregarMensajeLog(`🔄 Turno de ${jugadorRaw} | Fase: ${faseDisplay}`);
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'CAMBIO_FASE',
+                                user: jugadorRaw,
+                                datos: {
+                                    turno_de: jugadorRaw,
+                                    fase_nueva: faseDisplay,
+                                    tropas_recibidas: tropasRecibidas
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
                         }
 
                         set((state) => {
@@ -1522,7 +1547,16 @@ export const useGameStore = create<EstadoJuego>()(
 
                         // Generar log directamente desde los datos del mensaje WS
                         if (data.territorio) {
-                            get().agregarMensajeLog(`🪖 ${jugadorQueColoca} desplegó tropas en ${data.territorio}`);
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'TROPAS_COLOCADAS',
+                                user: jugadorQueColoca,
+                                datos: {
+                                    territorio: data.territorio,
+                                    cantidad: data.tropas_añadidas ?? data.cantidad ?? Math.max(0, data.tropas_totales_ahora - (get().tropas[data.territorio] ?? 0))
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
                         }
 
                         set((state) => {
@@ -1572,8 +1606,31 @@ export const useGameStore = create<EstadoJuego>()(
 
                         // Generar log directamente desde los datos del mensaje WS
                         if (data.destino) {
-                            const victoria = data.victoria ? ' ¡Conquista!' : '';
-                            get().agregarMensajeLog(`⚔️ ${atacante} atacó ${data.origen || '?'} → ${data.destino} (bajas: ${data.bajas_atacante ?? 0}/${data.bajas_defensor ?? 0})${victoria}`);
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'ATAQUE_RESULTADO',
+                                user: atacante,
+                                datos: {
+                                    origen: data.origen,
+                                    destino: data.destino,
+                                    bajas_atacante: data.bajas_atacante,
+                                    bajas_defensor: data.bajas_defensor,
+                                    victoria: data.victoria
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
+
+                            if (data.victoria) {
+                                get().agregarMensajeLog({
+                                    id: 'ws_conq_' + Date.now() + Math.random(),
+                                    tipo_evento: 'conquista',
+                                    user: atacante,
+                                    datos: {
+                                        territorio_conquistado: data.destino,
+                                        anterior_dueno: get().propietarios[data.destino] || '?'
+                                    }
+                                });
+                            }
                         }
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
@@ -1620,6 +1677,16 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'MOVIMIENTO_CONQUISTA': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const userMovimiento = get().propietarios[data.origen] || 'Jugador';
+                        
+                        const logEntry = mensaje.log || {
+                            id: 'ws_' + Date.now() + Math.random(),
+                            tipo_evento: 'movimiento_conquista',
+                            user: userMovimiento,
+                            datos: { origen: data.origen, destino: data.destino, tropas: data.tropas }
+                        };
+                        get().agregarMensajeLog(logEntry);
+
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
                             nuevasTropas[data.origen] =
@@ -1634,6 +1701,64 @@ export const useGameStore = create<EstadoJuego>()(
                                 origenSeleccionado: null,
                                 destinoSeleccionado: null,
                                 popupCoords: null,
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'TERRITORIO_ACTUALIZADO': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const tId = data.territorio_id || data.territorio;
+                        const d = data.detalles || data;
+
+                        if (!tId) break;
+
+                        const ownerAct = d.owner_id || get().propietarios[tId] || '?';
+
+                        if (d.estado_bloqueo === 'trabajando') {
+                             get().agregarMensajeLog({
+                                id: 'ws_work_' + Date.now() + Math.random(),
+                                tipo_evento: 'trabajar',
+                                user: ownerAct,
+                                datos: { territorio: tId }
+                             });
+                        } else if (d.estado_bloqueo && String(d.estado_bloqueo).startsWith('investigando')) {
+                             get().agregarMensajeLog({
+                                id: 'ws_inv_' + Date.now() + Math.random(),
+                                tipo_evento: 'investigar',
+                                user: ownerAct,
+                                datos: { territorio: tId, habilidad: String(d.estado_bloqueo).split(':')[1] }
+                             });
+                        } else if (d.estado_bloqueo) {
+                             get().agregarMensajeLog({
+                                id: 'ws_upd_' + Date.now() + Math.random(),
+                                tipo_evento: 'territorio_actualizado',
+                                user: ownerAct,
+                                datos: { territorio: tId, estado_bloqueo: d.estado_bloqueo }
+                             });
+                        }
+
+                        set((state) => {
+                            const nuevasTropas = { ...state.tropas };
+                            if (d.units !== undefined) nuevasTropas[tId] = d.units;
+
+                            const nuevosPropietarios = { ...state.propietarios };
+                            if (d.owner_id) nuevosPropietarios[tId] = d.owner_id;
+
+                            let nuevosEstadosBloqueo = state.estadosBloqueo || {};
+                            if (d.estado_bloqueo !== undefined) {
+                                nuevosEstadosBloqueo = { ...nuevosEstadosBloqueo };
+                                if (d.estado_bloqueo === null) {
+                                    delete nuevosEstadosBloqueo[tId];
+                                } else {
+                                    nuevosEstadosBloqueo[tId] = d.estado_bloqueo;
+                                }
+                            }
+
+                            return {
+                                tropas: nuevasTropas,
+                                propietarios: nuevosPropietarios,
+                                estadosBloqueo: nuevosEstadosBloqueo
                             };
                         });
                         break;

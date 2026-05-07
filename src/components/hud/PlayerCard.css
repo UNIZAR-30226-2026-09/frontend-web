@@ -5,12 +5,12 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    width: 210px;
+    width: 260px;
     transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .player-card-wrapper.turno-actual {
-    transform: translateX(-10px) scale(1.06);
+    transform: translateX(-15px) scale(1.1);
     filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
     z-index: 10;
 }
@@ -42,8 +42,8 @@
     border: 2px solid;  /* color viene del inline style */
     border-radius: 0 10px 10px 0;
     /* el solapado: margen negativo + padding extra a la izquierda */
-    margin-left: -20px;
-    padding: 5px 10px 5px 26px;
+    margin-left: -29px;
+    padding: 5px 10px 5px 35px;
     z-index: 1;
     min-width: 0;
 }
@@ -115,20 +115,57 @@
     text-transform: uppercase;
     line-height: 1.4;
 }
-
 /* ═══════════════════════════════════════════════════════════
-   BADGE DESCONECTADO: absoluto, debajo del de "Tú"
+   CHAT BUBBLE
    ═══════════════════════════════════════════════════════════ */
-.disconnected-badge {
+.chat-bubble {
     position: absolute;
-    top: 3px;
-    right: 6px;
-    font-size: 11px;
-    color: #ef4444;
-    animation: blink 1.2s infinite;
+    right: calc(100% + 15px); /* Justo a la izquierda del avatar, con 15px de margen */
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--color-ui-panel-overlay, rgba(20, 20, 25, 0.95));
+    border: 2px solid var(--bubble-border-color, var(--color-border-gold, #8C7322));
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    z-index: 20;
+    pointer-events: none; /* Que no bloquee clicks accidentales */
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
 }
 
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
+/* El triangulillo (bocadillo) apuntando hacia la derecha (hacia el avatar) */
+.chat-bubble::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -8px; /* Pegado al borde derecho del bocadillo */
+    transform: translateY(-50%);
+    border-width: 8px 0 8px 8px;
+    border-style: solid;
+    border-color: transparent transparent transparent var(--bubble-border-color, var(--color-border-gold, #8C7322));
+    display: block;
+    width: 0;
+}
+
+.chat-bubble-mensaje {
+    color: var(--color-text-primary, #f0f0f5);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-family-base, sans-serif);
+}
+
+.chat-bubble-reaccion {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+@keyframes popIn {
+    0% { opacity: 0; transform: translateY(-50%) scale(0.5); }
+    100% { opacity: 1; transform: translateY(-50%) scale(1); }
 }
