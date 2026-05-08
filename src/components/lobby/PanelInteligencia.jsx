@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { fetchApi, BASE_URL } from '../../services/api';
+import { fetchApi, BASE_URL, API_URL } from '../../services/api';
 import { socialApi } from '../../services/socialApi';
 import PanelEstadisticas from '../social/PanelEstadisticas';
 import '../../styles/Lobby.css';
@@ -28,14 +28,17 @@ const PanelInteligencia = ({ onCerrar }) => {
   const [username, setUsername] = useState(usernameInicial);
   const [email, setEmail] = useState(emailInicial);
 
-  const [editandoUsername, setEditandoUsername] = useState(false);
   const [editandoEmail, setEditandoEmail] = useState(false);
-
-  const [guardandoUsername, setGuardandoUsername] = useState(false);
   const [guardandoEmail, setGuardandoEmail] = useState(false);
-
-  const [feedbackUsername, setFeedbackUsername] = useState(null); // { ok, msg }
   const [feedbackEmail, setFeedbackEmail] = useState(null);
+
+  // Estados para contraseña
+  const [editandoPassword, setEditandoPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [guardandoPassword, setGuardandoPassword] = useState(false);
+  const [feedbackPassword, setFeedbackPassword] = useState(null);
 
   // Estados para el avatar
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || '/static/perfiles/default.png');
@@ -99,14 +102,7 @@ const PanelInteligencia = ({ onCerrar }) => {
     }
   };
 
-  const handleGuardarUsername = () => {
-    persistirCambio(
-      { username },
-      () => setEditandoUsername(false),
-      setGuardandoUsername,
-      setFeedbackUsername
-    );
-  };
+
 
   const handleGuardarEmail = () => {
     persistirCambio(
@@ -117,8 +113,66 @@ const PanelInteligencia = ({ onCerrar }) => {
     );
   };
 
-  const handleCambiarPassword = () => {
-    alert('Cambio de contraseña pendiente de implementar (endpoint no disponible aún).');
+  const handleCambiarPassword = async () => {
+    if (!editandoPassword) {
+      setEditandoPassword(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setFeedbackPassword({ ok: false, msg: 'Las contraseñas nuevas no coinciden.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setFeedbackPassword({ ok: false, msg: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+      return;
+    }
+
+    setGuardandoPassword(true);
+    setFeedbackPassword(null);
+
+    try {
+      // 1. Verificar contraseña actual usando fetch nativo para evitar el logout global en 401
+      const body = new URLSearchParams({
+        username: user?.username || user?.nombre_usuario || usernameInicial,
+        password: currentPassword
+      }).toString();
+
+      const responseLogin = await fetch(`${API_URL}/v1/usuarios/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      });
+
+      if (!responseLogin.ok) {
+        setFeedbackPassword({ ok: false, msg: 'La contraseña actual es incorrecta.' });
+        setGuardandoPassword(false);
+        return;
+      }
+
+      // 2. Si el login funciona, actualizamos la contraseña
+      await fetchApi('/v1/usuarios/me', {
+        method: 'PUT',
+        body: JSON.stringify({ password: newPassword })
+      });
+
+      setFeedbackPassword({ ok: true, msg: 'Contraseña cambiada correctamente.' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setEditandoPassword(false); // Cerramos automáticamente el panel de cambio
+
+      // Limpiamos el mensaje de éxito después de un rato
+      setTimeout(() => {
+        setFeedbackPassword(null);
+      }, 4000);
+
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error);
+      setFeedbackPassword({ ok: false, msg: error.message || 'Error al cambiar contraseña.' });
+    } finally {
+      setGuardandoPassword(false);
+    }
   };
 
   const handleSeleccionarAvatar = async (nombreArchivo) => {
@@ -164,10 +218,10 @@ const PanelInteligencia = ({ onCerrar }) => {
           }}>
             <h3 style={{ color: 'var(--color-primary-light)', marginTop: 0, marginBottom: '2rem', fontSize: '1.5rem' }}>Seleccionar Foto de Perfil</h3>
 
-            <div style={{
+            <div className="intel-scroll-area" style={{
               display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '30px 15px', maxHeight: '60vh', overflowY: 'auto', marginBottom: '30px',
-              padding: '10px'
+              padding: '10px 15px 10px 10px'
             }}>
               {avataresDisponibles.map((avatarName, index) => (
                 <div
@@ -221,7 +275,7 @@ const PanelInteligencia = ({ onCerrar }) => {
         <button className="intel-cerrar" onClick={onCerrar} aria-label="Cerrar">✕</button>
 
         {/* Zona scrollable: todo excepto el botón de logout */}
-        <div style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-sm)', paddingBottom: 'var(--spacing-sm)' }}>
+        <div className="intel-scroll-area" style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-sm)', paddingBottom: 'var(--spacing-sm)', paddingRight: '15px' }}>
 
           <div className="intel-perfil-grid">
 
@@ -249,45 +303,11 @@ const PanelInteligencia = ({ onCerrar }) => {
               {/* Username */}
               <div className="intel-campo">
                 <span className="intel-campo__label">Nombre de usuario</span>
-                {editandoUsername ? (
-                  <>
-                    <div className="intel-campo__fila">
-                      <input
-                        className="intel-campo__input"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && handleGuardarUsername()}
-                      />
-                      <button
-                        className="intel-campo__btn"
-                        onClick={handleGuardarUsername}
-                        disabled={guardandoUsername}
-                      >
-                        {guardandoUsername ? '…' : '✓'}
-                      </button>
-                      <button
-                        className="intel-campo__btn-cancelar"
-                        onClick={() => { setEditandoUsername(false); setUsername(usernameInicial); setFeedbackUsername(null); }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    {feedbackUsername && (
-                      <p className={feedbackUsername.ok ? 'intel-campo__ok' : 'intel-campo__err'}>
-                        {feedbackUsername.msg}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="intel-campo__fila">
-                      <span className="intel-campo__valor">{username}</span>
-                      <button className="intel-campo__btn-editar" onClick={() => { setEditandoUsername(true); setFeedbackUsername(null); }}>✎</button>
-                    </div>
-                    {feedbackUsername?.ok && <p className="intel-campo__ok">{feedbackUsername.msg}</p>}
-                  </>
-                )}
+                <div className="intel-campo__fila">
+                  <span className="intel-campo__valor" style={{ color: 'var(--color-primary-light)', fontWeight: 'bold' }}>
+                    {username}
+                  </span>
+                </div>
               </div>
 
               {/* Email */}
@@ -335,9 +355,80 @@ const PanelInteligencia = ({ onCerrar }) => {
                 )}
               </div>
 
-              <button className="lobby-boton-secundario intel-btn-password" onClick={handleCambiarPassword}>
-                Cambiar Contraseña
-              </button>
+              {editandoPassword ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border-bronze)' }}>
+                  <span className="intel-campo__label">Contraseña Actual</span>
+                  <input
+                    type="password"
+                    className="intel-campo__input"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Contraseña actual"
+                    style={{ fontSize: '1rem', padding: '0.6rem' }}
+                  />
+                  <span className="intel-campo__label" style={{ marginTop: '0.5rem' }}>Nueva Contraseña</span>
+                  <input
+                    type="password"
+                    className="intel-campo__input"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    style={{ fontSize: '1rem', padding: '0.6rem' }}
+                  />
+                  <span className="intel-campo__label" style={{ marginTop: '0.5rem' }}>Confirmar Nueva Contraseña</span>
+                  <input
+                    type="password"
+                    className="intel-campo__input"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCambiarPassword()}
+                    placeholder="Repite la nueva contraseña"
+                    style={{ fontSize: '1rem', padding: '0.6rem' }}
+                  />
+                  
+                  {feedbackPassword && !feedbackPassword.ok && (
+                    <p className="intel-campo__err" style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                      {feedbackPassword.msg}
+                    </p>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button 
+                      className="lobby-boton-secundario" 
+                      style={{ flex: 1, padding: '0.6rem' }}
+                      onClick={() => {
+                        setEditandoPassword(false);
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                        setFeedbackPassword(null);
+                      }}
+                      disabled={guardandoPassword}
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      className="lobby-boton-primario" 
+                      style={{ flex: 1, padding: '0.6rem' }}
+                      onClick={handleCambiarPassword}
+                      disabled={guardandoPassword}
+                    >
+                      {guardandoPassword ? 'Guardando...' : 'Confirmar'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button className="lobby-boton-secundario intel-btn-password" onClick={() => setEditandoPassword(true)}>
+                    Cambiar Contraseña
+                  </button>
+                  {feedbackPassword?.ok && (
+                    <p className="intel-campo__ok" style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                      ✓ {feedbackPassword.msg}
+                    </p>
+                  )}
+                </>
+              )}
 
             </div>
           </div>

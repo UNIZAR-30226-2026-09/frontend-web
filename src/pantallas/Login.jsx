@@ -17,6 +17,8 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [error, setError] = useState(null);
+  const [exito, setExito] = useState(null);
 
   const login = useAuthStore((state) => state.login);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -34,14 +36,24 @@ const Login = () => {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    setExito(null);
 
     if (isRegistering) {
+      if (username.length < 6) {
+        setError("El nombre de usuario debe tener al menos 6 caracteres.");
+        return;
+      }
+      if (password.length < 6) {
+        setError("La contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
       if (email !== confirmEmail) {
-        alert("Los correos electrónicos no coinciden.");
+        setError("Los correos electrónicos no coinciden.");
         return;
       }
       if (password !== confirmPassword) {
-        alert("Las contraseñas no coinciden.");
+        setError("Las contraseñas no coinciden.");
         return;
       }
     }
@@ -80,13 +92,15 @@ const Login = () => {
         login(data.usuario || { nombre_usuario: username }, jwtToken);
         navigate('/lobby');
       } else if (isRegistering) {
-        alert("Registro exitoso Ahora inicia sesión.");
+        setExito("Registro exitoso. Ahora inicia sesión.");
         setIsRegistering(false);
+        setPassword('');
+        setConfirmPassword('');
       }
 
-    } catch (error) {
-      console.error("Error:", error.message);
-      alert(error.message);
+    } catch (err) {
+      console.error("Error:", err.message);
+      setError(err.message);
     }
   };
 
@@ -95,6 +109,8 @@ const Login = () => {
     setEmail('');
     setConfirmEmail('');
     setConfirmPassword('');
+    setError(null);
+    setExito(null);
   };
 
   const abrirFormulario = (modoRegistro) => {
@@ -103,6 +119,8 @@ const Login = () => {
     setEmail('');
     setConfirmEmail('');
     setConfirmPassword('');
+    setError(null);
+    setExito(null);
   };
 
   const estiloPanelAcceso = {
@@ -154,6 +172,9 @@ const Login = () => {
             {tituloFormulario}
           </h2>
 
+          {error && <p className="lobby-error">⚠ {error}</p>}
+          {exito && <p style={{ color: 'var(--color-state-success)', fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center', margin: 0 }}>✓ {exito}</p>}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Usuario</label>
             <input
@@ -200,7 +221,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 6 caracteres"
               style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border-bronze)', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)' }}
             />
           </div>

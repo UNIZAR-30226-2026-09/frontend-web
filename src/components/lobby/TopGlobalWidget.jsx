@@ -80,7 +80,7 @@ const TopGlobalWidget = () => {
   return (
     <div className="soberania-inicial__panel" aria-label="Top global (ganadas)">
       <div className="soberania-inicial__panel-inner">
-        <h3 className="soberania-inicial__titulo">Top global</h3>
+        <h3 className="soberania-inicial__titulo">Top global por victorias</h3>
 
         <div className="soberania-top-list">
           <div className="soberania-top-scroll" aria-label="Top 10 (ganadas)">
@@ -117,10 +117,10 @@ const TopGlobalWidget = () => {
         </div>
       </div>
       {perfilViendo && createPortal(
-        <PanelPerfilJugador 
-          username={perfilViendo.username} 
+        <PanelPerfilJugador
+          username={perfilViendo.username}
           avatarProp={perfilViendo.avatar}
-          onCerrar={() => setPerfilViendo(null)} 
+          onCerrar={() => setPerfilViendo(null)}
         />,
         document.getElementById('root') || document.body
       )}
