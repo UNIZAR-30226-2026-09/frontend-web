@@ -182,9 +182,6 @@ const PanelAlianzas = ({ onCerrar }) => {
                                     </div>
                                 </div>
                                 <div className="alianzas-acciones">
-                                    {amigo.estado_conexion === 'EN_PARTIDA' && (
-                                        <button className="btn-accion btn-accion-principal" onClick={() => alert('Espectando sala: ' + amigo.salaActivaId)}>Espectar</button>
-                                    )}
                                 </div>
                             </div>
                         );

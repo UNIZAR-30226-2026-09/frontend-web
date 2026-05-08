@@ -74,9 +74,6 @@ const TopGlobalWidget = () => {
     }
   }
 
-  // Aseguramos que sea numero y este en top 10
-  const estaEnTop10 = typeof miPos === 'number' && miPos >= 1 && miPos <= 10;
-
   return (
     <div className="soberania-inicial__panel" aria-label="Top global (ganadas)">
       <div className="soberania-inicial__panel-inner">
@@ -85,7 +82,7 @@ const TopGlobalWidget = () => {
         <div className="soberania-top-list">
           <div className="soberania-top-scroll" aria-label="Top 10 (ganadas)">
             {top10.map((p) => {
-              const esMiFila = p.username === nombreMostrar || (estaEnTop10 && p.posicion === miPos);
+              const esMiFila = p.username === nombreMostrar;
               return (
                 <div
                   key={p.id}
@@ -105,15 +102,13 @@ const TopGlobalWidget = () => {
             })}
           </div>
 
-          {!estaEnTop10 && (
-            <div className="soberania-top-you soberania-top-you-fixed">
-              <div className="soberania-top-left">
-                <div className="soberania-top-rank">{miPos}</div>
-                <div className="soberania-top-user">{nombreMostrar}</div>
-              </div>
-              <div className="soberania-top-victorias">{victoriasUsuario}</div>
+          <div className="soberania-top-you soberania-top-you-fixed">
+            <div className="soberania-top-left">
+              <div className="soberania-top-rank">{miPos}</div>
+              <div className="soberania-top-user">{nombreMostrar}</div>
             </div>
-          )}
+            <div className="soberania-top-victorias">{victoriasUsuario}</div>
+          </div>
         </div>
       </div>
       {perfilViendo && createPortal(

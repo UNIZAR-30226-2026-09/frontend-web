@@ -1413,20 +1413,26 @@ export const useGameStore = create<EstadoJuego>()(
                                 };
                             }
 
-                            const propietariosRestantes = new Set(Object.values(state.propietarios));
-                            propietariosRestantes.delete(String(eliminadoId));
-                            const mapaVacio = Object.keys(state.propietarios).length === 0;
-
-                            const esVictoria =
-                                !mapaVacio &&
-                                !!state.jugadorLocal &&
-                                propietariosRestantes.size === 1 &&
-                                propietariosRestantes.has(state.jugadorLocal);
-
                             return {
-                                diccionarioJugadores: nuevoDiccionario,
-                                ...(esVictoria && { estadoPartidaLocal: 'VICTORIA' }),
+                                diccionarioJugadores: nuevoDiccionario
                             };
+                        });
+                        break;
+                    }
+
+                    case 'PARTIDA_FINALIZADA': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const ganador = data.ganador;
+                        
+                        set((state) => ({
+                            estadoPartidaLocal: ganador === state.jugadorLocal ? 'VICTORIA' : 'DERROTA',
+                        }));
+                        
+                        get().agregarMensajeLog({
+                            id: 'ws_final_' + Date.now(),
+                            tipo_evento: 'PARTIDA_FINALIZADA',
+                            user: 'Sistema',
+                            datos: { ganador }
                         });
                         break;
                     }
@@ -1744,8 +1750,7 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'PAUSA_RECHAZADA': {
-                        set({ faseVotacionPausa: 'ninguna', jugadorSolicitantePausa: null });
-                        alert('La votación de pausa ha sido rechazada. La guerra continúa.');
+                        set({ faseVotacionPausa: 'rechazada', jugadorSolicitantePausa: null });
                         break;
                     }
 

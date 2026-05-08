@@ -11,7 +11,7 @@
 
 .player-card-wrapper.turno-actual {
     transform: translateX(-15px) scale(1.1);
-    filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
     z-index: 10;
 }
 
@@ -19,15 +19,16 @@
    AVATAR: circular, z-index alto, siempre sobre la info-box
    ═══════════════════════════════════════════════════════════ */
 .player-avatar-badge {
-    width: 58px;
-    height: 58px;
-    min-width: 58px;
-    min-height: 58px;
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    min-height: 60px;
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid #fff;
     flex-shrink: 0;
     position: relative;
+    top: 2px;
     z-index: 2;
 }
 
@@ -39,13 +40,19 @@
     position: relative;
     flex: 1;
     background-color: rgba(15, 20, 35, 0.92);
-    border: 2px solid;  /* color viene del inline style */
+    border: 2px solid;
+    /* color viene del inline style */
     border-radius: 0 10px 10px 0;
     /* el solapado: margen negativo + padding extra a la izquierda */
     margin-left: -29px;
-    padding: 5px 10px 5px 35px;
+    padding: 0 10px 0 35px;
     z-index: 1;
     min-width: 0;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -115,12 +122,14 @@
     text-transform: uppercase;
     line-height: 1.4;
 }
+
 /* ═══════════════════════════════════════════════════════════
    CHAT BUBBLE
    ═══════════════════════════════════════════════════════════ */
 .chat-bubble {
     position: absolute;
-    right: calc(100% + 15px); /* Justo a la izquierda del avatar, con 15px de margen */
+    right: calc(100% + 15px);
+    /* Justo a la izquierda del avatar, con 15px de margen */
     top: 50%;
     transform: translateY(-50%);
     background-color: var(--color-ui-panel-overlay, rgba(20, 20, 25, 0.95));
@@ -129,7 +138,8 @@
     padding: 8px 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
     z-index: 20;
-    pointer-events: none; /* Que no bloquee clicks accidentales */
+    pointer-events: none;
+    /* Que no bloquee clicks accidentales */
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     display: flex;
     align-items: center;
@@ -142,7 +152,8 @@
     content: '';
     position: absolute;
     top: 50%;
-    right: -8px; /* Pegado al borde derecho del bocadillo */
+    right: -8px;
+    /* Pegado al borde derecho del bocadillo */
     transform: translateY(-50%);
     border-width: 8px 0 8px 8px;
     border-style: solid;
@@ -166,6 +177,13 @@
 }
 
 @keyframes popIn {
-    0% { opacity: 0; transform: translateY(-50%) scale(0.5); }
-    100% { opacity: 1; transform: translateY(-50%) scale(1); }
+    0% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.5);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
 }

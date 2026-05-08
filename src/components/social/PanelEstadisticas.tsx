@@ -63,18 +63,18 @@ const PanelEstadisticas: React.FC<Props> = ({ estadisticas, isLoading }) => {
 
                 <div className="stat-card">
                     <span className="stat-label">Comarcas Conquistadas</span>
-                    <span className="stat-value">{estadisticas.num_regiones_conquistadas}</span>
+                    <span className="stat-value">{estadisticas.num_comarcas_conquistadas}</span>
                 </div>
 
                 <div className="stat-card">
                     <span className="stat-label">Regiones Conquistadas</span>
-                    <span className="stat-value">{estadisticas.num_continentes_conquistados}</span>
+                    <span className="stat-value">{estadisticas.num_regiones_conquistadas}</span>
                 </div>
 
                 <div className="stat-card favorita">
                     <span className="stat-label">Comarca Favorita</span>
                     <span className="stat-value">
-                        {estadisticas.region_mas_conquistada ? estadisticas.region_mas_conquistada : 'Ninguna (Aún)'}
+                        {estadisticas.comarca_mas_conquistada ? estadisticas.comarca_mas_conquistada : 'Ninguna (Aún)'}
                     </span>
                 </div>
             </div>

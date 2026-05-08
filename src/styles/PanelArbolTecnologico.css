@@ -11,7 +11,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
+  z-index: 4000;
   box-sizing: border-box;
 }
 
@@ -274,7 +274,7 @@
 .tooltip-nodo-overlay {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  z-index: 5000;
   display: flex;
   justify-content: center;
   align-items: center;

@@ -42,6 +42,17 @@ const AmigosActivosWidget = ({ onAbrirAmigos }) => {
     fetchAmigos();
   }, []);
 
+  const handleCortarAmistad = async (username) => {
+    try {
+      await socialApi.eliminarAmistad(username);
+      setActivos(prev => prev.filter(a => a.username !== username));
+      setPerfilViendo(null);
+    } catch (error) {
+      console.error("Error al cortar alianza:", error);
+      alert(`Error al cortar alianza: ${error.message || 'Error desconocido'}`);
+    }
+  };
+
   return (
     <div className="soberania-inicial__panel" aria-label="Amigos (preview)">
       <div className="soberania-inicial__panel-inner">
@@ -98,6 +109,8 @@ const AmigosActivosWidget = ({ onAbrirAmigos }) => {
           username={perfilViendo.username}
           avatarProp={perfilViendo.avatar}
           onCerrar={() => setPerfilViendo(null)} 
+          esAmigo={true}
+          onCortarAmistad={handleCortarAmistad}
         />,
         document.getElementById('root') || document.body
       )}

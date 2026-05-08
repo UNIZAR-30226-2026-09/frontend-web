@@ -98,7 +98,7 @@ const PanelPerfilJugador = ({ username, onCerrar, esAmigo = false, onCortarAmist
         <button className="intel-cerrar" onClick={onCerrar} aria-label="Cerrar">✕</button>
 
         {/* Zona scrollable */}
-        <div style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-sm)', paddingBottom: 'var(--spacing-sm)' }}>
+        <div className="intel-scroll-area" style={{ flex: 1, overflowY: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-sm)', paddingBottom: 'var(--spacing-sm)' }}>
 
           <div className="intel-perfil-grid">
 

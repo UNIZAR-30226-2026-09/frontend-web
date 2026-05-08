@@ -59,6 +59,17 @@ const ModalVotacionPausa = () => {
                     </>
                 )}
 
+                {/* ESTADO 5: Pausa rechazada */}
+                {fase === 'rechazada' && (
+                    <>
+                        <h2>Votación Rechazada</h2>
+                        <p>El Alto Mando no ha llegado a un acuerdo unánime. La guerra continúa.</p>
+                        <div className="modal-botones-columna">
+                            <button className="btn-si" onClick={() => setFase('ninguna')}>ENTENDIDO</button>
+                        </div>
+                    </>
+                )}
+
             </div>
 
             {/* Puedes mantener los mismos estilos, solo he cambiado los nombres de las clases principales de 'abandono' a 'pausa' */}
@@ -74,15 +85,15 @@ const ModalVotacionPausa = () => {
                 }
 
                 .modal-content-pausa {
-                    background-color: #2A1F0F;
-                    border: 1.4px solid var(--color-border-gold, #D4AF37);
+                    background-color: var(--color-ui-bg-secondary, #1E1E1E);
+                    border: 2px solid var(--color-border-gold, #D4AF37);
                     border-radius: 16px;
-                    box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.6);
+                    box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.8);
                     width: 90%;
                     max-width: 400px;
                     padding: 24px;
                     text-align: center;
-                    color: white;
+                    color: var(--color-text-primary, #FFFFFF);
                     font-family: var(--font-family-base, sans-serif);
                 }
 
@@ -97,7 +108,7 @@ const ModalVotacionPausa = () => {
                     font-size: 0.95rem;
                     line-height: 1.4;
                     margin-bottom: 24px;
-                    color: #E0D6C8;
+                    color: var(--color-text-secondary, #B0B0B0);
                 }
 
                 .modal-botones-columna {
@@ -113,23 +124,32 @@ const ModalVotacionPausa = () => {
                     font-size: 1rem;
                     cursor: pointer;
                     transition: all 0.2s ease;
+                    font-weight: 800;
                 }
 
                 .btn-si {
                     background-color: var(--color-border-gold, #D4AF37);
-                    color: #1A1200;
-                    font-weight: 800;
+                    color: var(--color-ui-bg-secondary, #1E1E1E);
                     border: none;
                 }
-                .btn-si:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
                 .btn-no {
-                    background-color: #3A2E1A;
-                    color: #FFFFFF;
+                    background-color: var(--color-ui-bg-secondary, #1E1E1E);
+                    color: var(--color-border-gold, #D4AF37);
                     border: 1px solid var(--color-border-gold, #D4AF37);
-                    font-weight: 600;
                 }
-                .btn-no:hover { background-color: #4A3A22; }
+
+                .btn-si:hover { 
+                    filter: brightness(1.1);
+                    transform: translateY(-1px); 
+                    box-shadow: 0 4px 8px rgba(197, 160, 89, 0.4);
+                }
+
+                .btn-no:hover { 
+                    background-color: rgba(197, 160, 89, 0.2); 
+                    transform: translateY(-1px); 
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                }
 
                 .spinner-espera {
                     font-size: 2rem;

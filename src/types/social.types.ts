@@ -8,11 +8,11 @@ export interface EstadisticasJugador {
     nombre_user: string;
     num_partidas_jugadas: number;
     num_partidas_ganadas: number;
-    num_continentes_conquistados: number;
+    num_comarcas_conquistadas: number;
     num_regiones_conquistadas: number;
     num_soldados_matados: number;
     winrate: number;
-    region_mas_conquistada: string;
+    comarca_mas_conquistada: string;
     posicion_ranking?: number; // Puesto en el ranking global
     avatar?: string;
 }
