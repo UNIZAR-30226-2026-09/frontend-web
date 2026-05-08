@@ -43,7 +43,8 @@ const CabeceraJuego = () => {
     turnoActual,
     jugadorLocal,
     abandonarSoberania,
-    setFaseVotacionPausa
+    setFaseVotacionPausa,
+    estadoPartidaLocal
   } = useGameStore();
 
   const navigate = useNavigate();
@@ -93,8 +94,11 @@ const CabeceraJuego = () => {
   };
 
   const handlePausar = () => {
-    // Usamos el nuevo nombre de la función
-    setFaseVotacionPausa('confirmando_local');
+    if (estadoPartidaLocal === 'ESPECTANDO') {
+      setFaseVotacionPausa('confirmar_abandono_espectador');
+    } else {
+      setFaseVotacionPausa('confirmando_local');
+    }
   };
 
   // Construir renderizado condicional del botón central
@@ -168,11 +172,17 @@ const CabeceraJuego = () => {
           <button
             className="btn-menu"
             onClick={handlePausar}
-            title="Pausar Partida"
+            title={estadoPartidaLocal === 'ESPECTANDO' ? "Dejar de Espectar" : "Pausar Partida"}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
-              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-            </svg>
+            {estadoPartidaLocal === 'ESPECTANDO' ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+                <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+            )}
           </button>
           
           <button

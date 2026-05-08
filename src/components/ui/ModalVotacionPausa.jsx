@@ -70,6 +70,18 @@ const ModalVotacionPausa = () => {
                     </>
                 )}
 
+                {/* ESTADO 6: Espectador quiere abandonar */}
+                {fase === 'confirmar_abandono_espectador' && (
+                    <>
+                        <h2>¿Dejar de espectar?</h2>
+                        <p>Saldrás de la partida y volverás al cuartel general. Esta acción es inmediata.</p>
+                        <div className="modal-botones-columna">
+                            <button className="btn-si" onClick={() => window.location.href = '/lobby'}>SÍ, SALIR</button>
+                            <button className="btn-no" onClick={() => setFase('ninguna')}>CANCELAR</button>
+                        </div>
+                    </>
+                )}
+
             </div>
 
             {/* Puedes mantener los mismos estilos, solo he cambiado los nombres de las clases principales de 'abandono' a 'pausa' */}

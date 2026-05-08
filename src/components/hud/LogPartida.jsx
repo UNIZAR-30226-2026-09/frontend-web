@@ -2,11 +2,24 @@ import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const parseLogToString = (log) => {
+/**
+ * Traduce un ID de comarca/territorio al nombre real del mapa estático.
+ * Fallback: convierte "comarca_del_aranda" -> "Comarca Del Aranda".
+ */
+const getNombreComarca = (id, mapaEstatico) => {
+    if (!id) return '?';
+    const nombreReal = mapaEstatico?.comarcas?.[id]?.name;
+    if (nombreReal) return nombreReal;
+    return id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
+const parseLogToString = (log, mapaEstatico) => {
     if (typeof log === 'string') return log;
 
     const d = log.datos || {};
     const user = log.user ?? '?';
+    const geo = (id) => getNombreComarca(id, mapaEstatico);
+
     switch ((log.tipo_evento || '').toLowerCase()) {
         case 'partida_iniciada':
             return `La Guerra por la Soberanía ha comenzado. Participantes: ${(d.jugadores || []).join(', ')}. Las fuerzas de ${d.primer_turno || '?'} toman la iniciativa.`;
@@ -20,13 +33,13 @@ const parseLogToString = (log) => {
         case 'abandonar_partida':
             return `${d.usuario || user} ha desertado antes de que comience el conflicto.`;
         case 'ataque_resultado':
-            return `${user} lanza una ofensiva desde ${d.origen || '?'} hacia ${d.destino || '?'}. Causa ${d.bajas_defensor ?? 0} bajas, sufriendo ${d.bajas_atacante ?? 0} pérdidas.`;
+            return `${user} lanza una ofensiva desde ${geo(d.origen)} hacia ${geo(d.destino)}. Causa ${d.bajas_defensor ?? 0} bajas, sufriendo ${d.bajas_atacante ?? 0} pérdidas.`;
         case 'conquista':
-            return `¡Victoria decisiva! Las tropas de ${user} han ocupado ${d.territorio_conquistado || '?'}, expulsando a las fuerzas de ${d.anterior_dueno || '?'}.`;
+            return `¡Victoria decisiva! Las tropas de ${user} han ocupado ${geo(d.territorio_conquistado)}, expulsando a las fuerzas de ${d.anterior_dueno || '?'}.`;
         case 'movimiento_conquista':
-            return `${user} redespliega tácticamente ${d.tropas || 0} batallones desde ${d.origen || '?'} hacia ${d.destino || '?'}.`;
+            return `${user} redespliega tácticamente ${d.tropas || 0} batallones desde ${geo(d.origen)} hacia ${geo(d.destino)}.`;
         case 'tropas_colocadas':
-            return `${user} ha reforzado el frente en ${d.territorio || '?'} desplegando ${d.cantidad || 0} nuevas divisiones.`;
+            return `${user} ha reforzado el frente en ${geo(d.territorio)} desplegando ${d.cantidad || 0} nuevas divisiones.`;
         case 'cambio_fase':
             const fn = (d.fase_nueva || '').toLowerCase();
             if (fn && fn !== 'refuerzo') {
@@ -36,22 +49,22 @@ const parseLogToString = (log) => {
             }
             return `Alto mando: Inicia el turno de ${user}.`;
         case 'trabajar':
-            return `${user} ha movilizado a la población de ${d.territorio || d.territorio_id || '?'} para acelerar la producción de recursos.`;
+            return `${user} ha movilizado a la población de ${geo(d.territorio || d.territorio_id)} para acelerar la producción de recursos.`;
 
         case 'investigar':
-            return `${user} ha ordenado a las instalaciones de ${d.territorio || d.territorio_id || '?'} iniciar un desarrollo confidencial.`;
+            return `${user} ha ordenado a las instalaciones de ${geo(d.territorio || d.territorio_id)} iniciar un desarrollo confidencial.`;
 
         case 'territorio_actualizado':
             if (d.estado_bloqueo === 'trabajando') {
-                return `${user} ha movilizado a la población de ${d.territorio || d.territorio_id || '?'} para acelerar la producción de recursos.`;
+                return `${user} ha movilizado a la población de ${geo(d.territorio || d.territorio_id)} para acelerar la producción de recursos.`;
             } else if (d.estado_bloqueo?.startsWith('investigando')) {
-                return `${user} ha ordenado a las instalaciones de ${d.territorio || d.territorio_id || '?'} iniciar un desarrollo confidencial.`;
+                return `${user} ha ordenado a las instalaciones de ${geo(d.territorio || d.territorio_id)} iniciar un desarrollo confidencial.`;
             }
-            return `[${log.tipo_evento}] Actualización en ${d.territorio || d.territorio_id || '?'}`;
+            return `[${log.tipo_evento}] Actualización en ${geo(d.territorio || d.territorio_id)}`;
         case 'comprar_tecnologia':
-            return `${user} ha financiado la tecnología militar '${d.tecnologia || '?'}' por un coste de ${d.precio || 0} de oro.`;
+            return null; // Silenciado: el ataque especial que sigue ya lo hace evidente
         case 'ataque_especial':
-            return `¡Lanzamiento táctico! ${user} ejecuta la operación '${d.tipo_ataque || d.tipo || '?'}' con objetivo en ${d.destino || '?'}.`;
+            return `¡Lanzamiento táctico! ${user} ejecuta la operación '${d.tipo_ataque || d.tipo || '?'}' con objetivo en ${geo(d.destino)}.`;
         default:
             return `[${log.tipo_evento}] ${user}`;
     }
@@ -96,6 +109,7 @@ const colorearNombres = (frase, coloresJugadores) => {
 const LogPartida = () => {
     const historialLog = useGameStore((state) => state.historialLog);
     const coloresJugadores = useGameStore((state) => state.coloresJugadores);
+    const mapaEstatico = useGameStore((state) => state.mapaEstatico);
     const containerRef = useRef(null);
 
     // Los mensajes más nuevos están al principio del array (index 0).
@@ -175,6 +189,11 @@ const LogPartida = () => {
                         // Generar un key único dependiendo de si es string u objeto log.id
                         const msgKey = mensaje?.id ? mensaje.id : `${index}-${typeof mensaje === 'string' ? mensaje.substring(0, 10) : ''}`;
                         const esUltimo = index === mensajesOrdenados.length - 1;
+
+                        // Parsear aquí para poder filtrar entradas silenciadas (null)
+                        const textoParseado = parseLogToString(mensaje, mapaEstatico);
+                        if (textoParseado === null) return null;
+
                         return (
                             <motion.div
                                 key={msgKey}
@@ -200,7 +219,7 @@ const LogPartida = () => {
                                     transition: 'background 0.3s ease',
                                 }}
                             >
-                                {colorearNombres(parseLogToString(mensaje), coloresJugadores)}
+                                {colorearNombres(textoParseado, coloresJugadores)}
                             </motion.div>
                         );
                     })}

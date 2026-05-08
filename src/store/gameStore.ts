@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { EstadoJuego, FaseJuego } from '../types/game.types';
-import { calcularComarcasEnRango, construirGrafoComarcas } from '../utils/graphUtils';
+import { calcularComarcasEnRango, calcularComarcasADistanciaExacta, construirGrafoComarcas } from '../utils/graphUtils';
 import { ComarcaDTO } from '../types/mapa.types';
 import { fetchApi } from '../services/api';
 import { gameApi } from '../services/gameApi';
@@ -226,6 +226,7 @@ export const useGameStore = create<EstadoJuego>()(
             faseVotacionPausa: 'ninguna',
             jugadorSolicitantePausa: null,
             mensajesActivos: {},
+            ganadorFinal: null,
             // ACCIONES — MAPA ESTÁTICO
 
             /**
@@ -932,15 +933,19 @@ export const useGameStore = create<EstadoJuego>()(
                         }
 
                         // Caso B: Rango numérico -> requiere origen
+                        // Las armas de rango exacto (ej: mortero_tactico) solo permiten disparar
+                        // a exactamente `rango` saltos; el resto permiten hasta `rango` saltos.
+                        const ARMAS_RANGO_EXACTO = ['mortero_tactico'];
+                        const esRangoExacto = ARMAS_RANGO_EXACTO.includes(idLower);
+
                         if (!estado.origenSeleccionado) {
                             // Seleccionar origen
                             if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
                                 if (!estado.grafoGlobal) return;
-                                const alcanzables = calcularComarcasEnRango(
-                                    estado.grafoGlobal,
-                                    comarcaId,
-                                    rango
-                                );
+
+                                const alcanzables = esRangoExacto
+                                    ? calcularComarcasADistanciaExacta(estado.grafoGlobal, comarcaId, rango)
+                                    : calcularComarcasEnRango(estado.grafoGlobal, comarcaId, rango);
 
                                 const enemigosAlcanzables = Array.from(alcanzables).filter(
                                     id => estado.propietarios[id] !== estado.jugadorLocal
@@ -1424,9 +1429,19 @@ export const useGameStore = create<EstadoJuego>()(
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const ganador = data.ganador;
                         
-                        set((state) => ({
-                            estadoPartidaLocal: ganador === state.jugadorLocal ? 'VICTORIA' : 'DERROTA',
-                        }));
+                        set((state) => {
+                            // Si estaba espectando, el juego ha terminado: pasar a estado FINALIZADA_ESPECTANDO
+                            if (state.estadoPartidaLocal === 'ESPECTANDO') {
+                                return {
+                                    ganadorFinal: ganador,
+                                    estadoPartidaLocal: 'FINALIZADA_ESPECTANDO'
+                                };
+                            }
+                            return {
+                                ganadorFinal: ganador,
+                                estadoPartidaLocal: ganador === state.jugadorLocal ? 'VICTORIA' : 'DERROTA',
+                            };
+                        });
                         
                         get().agregarMensajeLog({
                             id: 'ws_final_' + Date.now(),
@@ -1706,6 +1721,18 @@ export const useGameStore = create<EstadoJuego>()(
                     case 'ataque_especial': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const afectados = data.resultado?.afectados || [];
+
+                        // Registrar en el log de partida
+                        get().agregarMensajeLog({
+                            id: 'ws_ataque_especial_' + Date.now(),
+                            tipo_evento: 'ataque_especial',
+                            user: data.atacante || data.jugador || data.user || 'Alguien',
+                            datos: {
+                                tipo: data.tipo || data.tipo_ataque,
+                                destino: data.destino,
+                                origen: data.origen,
+                            }
+                        });
 
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
