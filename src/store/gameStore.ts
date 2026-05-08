@@ -369,10 +369,10 @@ export const useGameStore = create<EstadoJuego>()(
 
                 set((state) => {
                     const cambioTurno = state.turnoActual !== nuevoTurno;
-                    
+
                     // Fusionamos el diccionario de jugadores asegurándonos de no perder propiedades locales (avatar, desconexión)
                     let nuevoDiccionarioJugadores = { ...state.diccionarioJugadores };
-                    
+
                     if (payload.jugadores) {
                         for (const username of Object.keys(payload.jugadores)) {
                             nuevoDiccionarioJugadores[username] = {
@@ -381,7 +381,7 @@ export const useGameStore = create<EstadoJuego>()(
                             };
                         }
                     }
-                    
+
                     if (payload.avatares) {
                         for (const [username, avatarPath] of Object.entries(payload.avatares)) {
                             nuevoDiccionarioJugadores[username] = {
@@ -765,7 +765,7 @@ export const useGameStore = create<EstadoJuego>()(
              * Ejecuta una acción de ataque entre dos territorios.
              * @param {string} origen - ID comarca atacante.
              * @param {string} destino - ID comarca defensora.
-             * @param {number} tropas - Número de unidades enviadas.
+             * @param {number} tropas - Unidades enviadas.
              * @returns {Promise<any>} Resultado del combate.
              */
             ejecutarAtaque: async (origen: string, destino: string, tropas: number) => {
@@ -1231,7 +1231,7 @@ export const useGameStore = create<EstadoJuego>()(
                     if (mensajes[emisor]?.timeoutId) {
                         clearTimeout(mensajes[emisor].timeoutId);
                     }
-                    
+
                     const timeoutId = setTimeout(() => {
                         set((s) => {
                             const newMensajes = { ...s.mensajesActivos };
@@ -1258,22 +1258,28 @@ export const useGameStore = create<EstadoJuego>()(
              * Inyecta el evento del WebSocket directamente en Zustand.
              */
             actualizarDesdeSocket: (mensaje: any) => {
-                console.log('%c🔄 Tablero actualizado por otro jugador', 'color: cyan; font-weight: bold;');
-                console.log('📡 [WS RECIBIDO]:', mensaje);
-
-                if (mensaje.estado_partida) {
-                    get().setEstadoDinamico(mensaje.estado_partida);
-                    return;
-                }
-
+                console.log('[DEBUG SOCKET] mensaje recibido:', mensaje);
                 const tipo = mensaje.tipo_evento ?? mensaje.type ?? mensaje.tipo ?? '';
+                console.log('[DEBUG SOCKET] tipo detectado:', tipo);
 
-                // Soporte para alias y recarga forzada si el mensaje es parcial
-                if (tipo === 'ESTADO_ACTUALIZADO' || tipo === 'ACTUALIZACION_MAPA') {
-                    get().setEstadoDinamico(mensaje.data ?? mensaje.payload ?? mensaje);
+                if (tipo === 'ESTADO_ACTUALIZADO' || tipo === 'ACTUALIZACION_MAPA' || tipo === 'SYNC_INICIAL_PAUSADA') {
+                    const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                    get().setEstadoDinamico(payload);
+                    
+                    const onlineList = (payload.jugadores_online || []).map((u: any) => String(u).toLowerCase());
+                    
+                    if (onlineList.length > 0 || tipo === 'SYNC_INICIAL_PAUSADA') {
+                        set((state) => ({
+                            jugadoresLobby: state.jugadoresLobby.map(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                const match = onlineList.includes(jId) || onlineList.includes(jUser);
+                                return match ? { ...j, online: true } : j;
+                            })
+                        }));
+                    }
                     return;
                 }
-
 
                 switch (tipo) {
                     case 'CHAT': {
@@ -1287,25 +1293,54 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
-                    //  Lobby: jugador se une 
+                    case 'JUGADORES_ONLINE_SALA': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const onlineList = (payload.jugadores || []).map((u: any) => String(u).toLowerCase());
+                        
+                        set((state) => {
+                            const nuevosLobby = state.jugadoresLobby.map(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                const match = onlineList.includes(jId) || onlineList.includes(jUser);
+                                
+                                return match ? { ...j, online: true } : j;
+                            });
+                            return { jugadoresLobby: nuevosLobby };
+                        });
+                        break;
+                    }
+
                     case 'NUEVO_JUGADOR':
                     case 'JUGADOR_UNIDO': {
                         const nuevo = mensaje.data ?? mensaje.payload ?? mensaje;
-                        const id = nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '';
+                        const id = String(nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '').toLowerCase();
                         const displayName = nuevo.username ?? nuevo.jugador ?? id;
+                        
                         set((state) => {
-                            const yaExiste = state.jugadoresLobby.some(
-                                (j) => j.id === id || j.id === displayName
-                            );
-                            if (yaExiste) return state;
+                            const yaExisteIndex = state.jugadoresLobby.findIndex(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                return jId === id || jUser === id || jId === String(displayName).toLowerCase() || jUser === String(displayName).toLowerCase();
+                            });
+                            
+                            if (yaExisteIndex !== -1) {
+                                const nuevosJugadores = [...state.jugadoresLobby];
+                                nuevosJugadores[yaExisteIndex] = {
+                                    ...nuevosJugadores[yaExisteIndex],
+                                    online: true
+                                };
+                                return { jugadoresLobby: nuevosJugadores };
+                            }
+                            
                             return {
                                 jugadoresLobby: [
                                     ...state.jugadoresLobby,
                                     {
-                                        id,
+                                        id: nuevo.usuario_id ?? nuevo.id ?? nuevo.jugador ?? id,
                                         username: displayName,
                                         numeroJugador: state.jugadoresLobby.length + 1,
                                         esCreador: false,
+                                        online: true
                                     },
                                 ],
                             };
@@ -1313,7 +1348,6 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
-                    //  Lobby: jugador sale 
                     case 'DESCONEXION':
                     case 'JUGADOR_SALIO': {
                         const saliente = mensaje.data ?? mensaje.payload ?? mensaje;
@@ -1330,9 +1364,15 @@ export const useGameStore = create<EstadoJuego>()(
                             }
 
                             return {
-                                jugadoresLobby: state.jugadoresLobby.filter(
-                                    (j) => j.id !== idSaliente && j.username !== idSaliente
-                                ),
+                                jugadoresLobby: state.salaActiva?.estado === 'pausada'
+                                    ? state.jugadoresLobby.map(j =>
+                                        j.id?.toLowerCase() === idSaliente.toLowerCase() || j.username?.toLowerCase() === idSaliente.toLowerCase()
+                                            ? { ...j, online: false }
+                                            : j
+                                    )
+                                    : state.jugadoresLobby.filter(
+                                        (j) => j.id?.toLowerCase() !== idSaliente.toLowerCase() && j.username?.toLowerCase() !== idSaliente.toLowerCase()
+                                    ),
                                 diccionarioJugadores: nuevoDiccionario
                             };
                         });
@@ -1341,11 +1381,9 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'JUGADOR_ELIMINADO': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                        // Soportar tanto "jugador" como "username"
                         const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
 
                         if (eliminadoId) {
-                            // Usar el log embebido si viene, si no construir frase de fallback
                             const logEntry = mensaje.log || {
                                 id: 'ws_' + Date.now() + Math.random(),
                                 tipo_evento: 'JUGADOR_ELIMINADO',
@@ -1376,9 +1414,6 @@ export const useGameStore = create<EstadoJuego>()(
                             }
 
                             const propietariosRestantes = new Set(Object.values(state.propietarios));
-
-                            // Eliminamos al jugador que sale de la lista de propietarios.
-                            // Convertimos a string por seguridad tipográfica.
                             propietariosRestantes.delete(String(eliminadoId));
                             const mapaVacio = Object.keys(state.propietarios).length === 0;
 
@@ -1406,7 +1441,6 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'PARTIDA_REANUDADA': {
-                        console.log("🚀 [WS] ¡El Cuartel General ha dado luz verde! Reanudando operación...");
                         set((state) => ({
                             salaActiva: { ...state.salaActiva, estado: 'activa' },
                             jugadoresLobby: mensaje.jugadores ? Object.values(mensaje.jugadores).map((j: any) => ({
@@ -1432,29 +1466,6 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
-                    case 'CHAT': {
-                        const msj = mensaje.mensaje ?? mensaje.data?.mensaje ?? '';
-                        if (msj === '@@SYS_SYNC_PHASE@@') {
-                            const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
-                            if (emisor !== get().jugadorLocal) {
-                                // AÑADIMOS RETRASO PARA EVITAR CONDICIÓN DE CARRERA
-                                setTimeout(() => {
-                                    get().sincronizarEstadoPartida();
-                                }, 800);
-                            }
-                        } else if (msj === '@@SYS_SYNC_TROOP@@') {
-                            const emisor = mensaje.emisor ?? mensaje.data?.emisor ?? '';
-                            if (emisor !== get().jugadorLocal) {
-                                // Sincronización ligera: recargar estado para que el rival
-                                // vea el nuevo propietario del territorio reclamado
-                                setTimeout(() => {
-                                    get().sincronizarEstadoPartida();
-                                }, 400);
-                            }
-                        }
-                        break;
-                    }
-
                     case 'FASE_CAMBIADA':
                     case 'CAMBIO_FASE': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
@@ -1462,7 +1473,6 @@ export const useGameStore = create<EstadoJuego>()(
                         const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
                         const tropasRecibidas: number = data.tropas_recibidas ?? 0;
 
-                        // Generar log desde los datos del propio mensaje WS
                         if (jugadorRaw) {
                             const faseDisplay = faseRaw || '?';
                             const logEntry = mensaje.log || {
@@ -1485,7 +1495,6 @@ export const useGameStore = create<EstadoJuego>()(
                             const esMiTurno = jugadorActivo === state.jugadorLocal;
                             const esEntrandoAGestion = nuevaFase === 'GESTION';
 
-                            // Si cambia de jugador reseteamos marcadores de gestion
                             const cambioTurno = jugadorActivo !== state.turnoActual;
 
                             return {
@@ -1493,17 +1502,13 @@ export const useGameStore = create<EstadoJuego>()(
                                 finFaseUtc: data.fin_fase_utc ?? null,
                                 turnoActual: jugadorActivo,
 
-                                // Reseteo forzado de tareas al entrar en Gestión o cambiar de turno
                                 ...((cambioTurno || esEntrandoAGestion) && {
                                     territorioTrabajando: null,
                                     territorioInvestigando: null
                                 }),
 
-                                // Limpiar ataque especial pendiente al cambiar de fase
                                 preparandoAtaqueEspecial: null,
 
-                                // Sincronización de tropas disponibles: ahora se actualiza para todos
-                                // para que el rival vea cuántas tropas tiene el activo.
                                 tropasDisponibles:
                                     esRefuerzo && tropasRecibidas > 0
                                         ? (state.tropasDisponibles ?? 0) + tropasRecibidas
@@ -1514,8 +1519,6 @@ export const useGameStore = create<EstadoJuego>()(
                                 refuerzosRecibidos:
                                     esRefuerzo ? tropasRecibidas : state.refuerzosRecibidos,
 
-                                // LIMPIEZA CRÍTICA: Limpiar selecciones locales para que la UI 
-                                // se refresque (botones se oculten, comarcas se de-resalten)
                                 origenSeleccionado: null,
                                 destinoSeleccionado: null,
                                 comarcasResaltadas: [],
@@ -1529,11 +1532,8 @@ export const useGameStore = create<EstadoJuego>()(
                             };
                         });
 
-                        // REFRESCO CRÍTICO: Sincronizar estado completo al cambiar de fase
-                        // para capturar monedas generadas, tecnologías desbloqueadas, etc.
                         setTimeout(() => {
                             get().sincronizarEstadoPartida().then(() => {
-                                // Recargar catálogo para reflejar nuevos desbloqueos
                                 get().cargarCatalogoTecnologias();
                             });
                         }, 800);
@@ -1545,7 +1545,6 @@ export const useGameStore = create<EstadoJuego>()(
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const jugadorQueColoca = data.jugador || get().turnoActual;
 
-                        // Generar log directamente desde los datos del mensaje WS
                         if (data.territorio) {
                             const logEntry = mensaje.log || {
                                 id: 'ws_' + Date.now() + Math.random(),
@@ -1560,17 +1559,9 @@ export const useGameStore = create<EstadoJuego>()(
                         }
 
                         set((state) => {
-                            // Calculamos cuántas se han puesto comparando con el estado actual
                             const tropasPrevias = state.tropas[data.territorio] ?? 0;
                             const cantidadColocada = Math.max(0, data.tropas_totales_ahora - tropasPrevias);
-
                             const esMiAccion = esMismoJugador(jugadorQueColoca, state.jugadorLocal);
-
-                            // Determinar el nuevo propietario:
-                            // 1. Si el backend lo manda explícitamente → usarlo.
-                            // 2. Si el territorio tenía 0 tropas (era vacío/neutral) → inferir que
-                            //    el jugador que colocó tropas es ahora el dueño. Esta heurística es
-                            //    segura: solo el backend permite desplegar en territorios vacíos adyacentes.
                             const eraVacio = tropasPrevias === 0;
                             const nuevoPropietario =
                                 data.nuevo_propietario ??
@@ -1587,9 +1578,6 @@ export const useGameStore = create<EstadoJuego>()(
                                     [data.territorio]: data.tropas_totales_ahora,
                                 },
                                 propietarios: nuevosPropietarios,
-                                // Si NO soy yo quien las puso (o si queremos ser deterministas con el socket),
-                                // restamos de la reserva global. 
-                                // Nota: El local ya restó optimísticamente en confirmarRefuerzo.
                                 ...(!esMiAccion && {
                                     tropasDisponibles: Math.max(0, (state.tropasDisponibles ?? 0) - cantidadColocada)
                                 })
@@ -1598,13 +1586,10 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
-
                     case 'ATAQUE_RESULTADO': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const atacante = get().propietarios[data.origen] || 'Alguien';
-                        const victoriaStr = data.victoria ? ' ¡Conquistado!' : '';
 
-                        // Generar log directamente desde los datos del mensaje WS
                         if (data.destino) {
                             const logEntry = mensaje.log || {
                                 id: 'ws_' + Date.now() + Math.random(),
@@ -1619,18 +1604,6 @@ export const useGameStore = create<EstadoJuego>()(
                                 }
                             };
                             get().agregarMensajeLog(logEntry);
-
-                            if (data.victoria) {
-                                get().agregarMensajeLog({
-                                    id: 'ws_conq_' + Date.now() + Math.random(),
-                                    tipo_evento: 'conquista',
-                                    user: atacante,
-                                    datos: {
-                                        territorio_conquistado: data.destino,
-                                        anterior_dueno: get().propietarios[data.destino] || '?'
-                                    }
-                                });
-                            }
                         }
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
@@ -1645,15 +1618,12 @@ export const useGameStore = create<EstadoJuego>()(
                                     state.propietarios[data.origen];
                             }
 
-                            // Si el territorio fue conquistado, limpiar su bloqueo (tarea activa)
-                            // en tiempo real para todos los jugadores, sin esperar al cambio de fase.
                             let nuevosEstadosBloqueo = state.estadosBloqueo;
                             if (data.victoria && data.destino && state.estadosBloqueo?.[data.destino]) {
                                 nuevosEstadosBloqueo = { ...state.estadosBloqueo };
                                 delete nuevosEstadosBloqueo[data.destino];
                             }
 
-                            // Limpiar también los marcadores locales si el territorio era el que tenía tarea
                             const territorioConquistado = data.destino;
                             const limpiarTrabajando = state.territorioTrabajando === territorioConquistado;
                             const limpiarInvestigando = state.territorioInvestigando === territorioConquistado;
@@ -1665,9 +1635,6 @@ export const useGameStore = create<EstadoJuego>()(
                                 ...(limpiarTrabajando && { territorioTrabajando: null }),
                                 ...(limpiarInvestigando && { territorioInvestigando: null }),
                                 preparandoAtaque: false,
-                                // El trigger de movimientoConquistaPendiente se quita de aquí
-                                // para que sea el jugador atacante quien lo dispare manualmente
-                                // tras cerrar el resumen de batalla.
                                 comarcasResaltadas: [],
                                 popupCoords: null,
                             };
@@ -1677,16 +1644,6 @@ export const useGameStore = create<EstadoJuego>()(
 
                     case 'MOVIMIENTO_CONQUISTA': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                        const userMovimiento = get().propietarios[data.origen] || 'Jugador';
-                        
-                        const logEntry = mensaje.log || {
-                            id: 'ws_' + Date.now() + Math.random(),
-                            tipo_evento: 'movimiento_conquista',
-                            user: userMovimiento,
-                            datos: { origen: data.origen, destino: data.destino, tropas: data.tropas }
-                        };
-                        get().agregarMensajeLog(logEntry);
-
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
                             nuevasTropas[data.origen] =
@@ -1712,31 +1669,6 @@ export const useGameStore = create<EstadoJuego>()(
                         const d = data.detalles || data;
 
                         if (!tId) break;
-
-                        const ownerAct = d.owner_id || get().propietarios[tId] || '?';
-
-                        if (d.estado_bloqueo === 'trabajando') {
-                             get().agregarMensajeLog({
-                                id: 'ws_work_' + Date.now() + Math.random(),
-                                tipo_evento: 'trabajar',
-                                user: ownerAct,
-                                datos: { territorio: tId }
-                             });
-                        } else if (d.estado_bloqueo && String(d.estado_bloqueo).startsWith('investigando')) {
-                             get().agregarMensajeLog({
-                                id: 'ws_inv_' + Date.now() + Math.random(),
-                                tipo_evento: 'investigar',
-                                user: ownerAct,
-                                datos: { territorio: tId, habilidad: String(d.estado_bloqueo).split(':')[1] }
-                             });
-                        } else if (d.estado_bloqueo) {
-                             get().agregarMensajeLog({
-                                id: 'ws_upd_' + Date.now() + Math.random(),
-                                tipo_evento: 'territorio_actualizado',
-                                user: ownerAct,
-                                datos: { territorio: tId, estado_bloqueo: d.estado_bloqueo }
-                             });
-                        }
 
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
@@ -1764,18 +1696,10 @@ export const useGameStore = create<EstadoJuego>()(
                         break;
                     }
 
-                    case 'ACTUALIZACION_MAPA': {
-                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
-                        get().setEstadoDinamico(payload);
-                        break;
-                    }
-
                     case 'ATAQUE_ESPECIAL':
                     case 'ataque_especial': {
                         const data = mensaje.data ?? mensaje.payload ?? mensaje;
                         const afectados = data.resultado?.afectados || [];
-
-                        console.log(`Ataque Especial detectado: ${data.tipo} por ${data.atacante}`);
 
                         set((state) => {
                             const nuevasTropas = { ...state.tropas };
@@ -1783,15 +1707,11 @@ export const useGameStore = create<EstadoJuego>()(
 
                             afectados.forEach((afectado: any) => {
                                 const id = afectado.territorio_id;
-                                if (!id) return; // Si es un ataque a jugador (Sanción/Propaganda), lo ignoramos aquí
-
-                                // 1. Impacto directo: Aplicar bajas inmediatas (Misiles, Bombas, Coronavirus inicial)
+                                if (!id) return;
                                 if (afectado.bajas || afectado.bajas_iniciales) {
                                     const bajas = afectado.bajas || afectado.bajas_iniciales;
                                     nuevasTropas[id] = Math.max(0, (nuevasTropas[id] ?? 0) - bajas);
                                 }
-
-                                // 2. Efecto persistente: Aplicar el icono al instante (Gripe, Inhibidor)
                                 if (afectado.efecto_añadido) {
                                     const actuales = nuevosEstadosAlterados[id] || [];
                                     if (!actuales.includes(afectado.efecto_añadido)) {
@@ -1812,21 +1732,14 @@ export const useGameStore = create<EstadoJuego>()(
                         const data = mensaje.data || mensaje.payload || mensaje;
                         const solicitante = data.jugador_solicitante || data.solicitante || data.jugador || data.usuario_id || data.username;
 
-                        // Verificamos si no somos nosotros para mostrar el modal de voto
                         if (!esMismoJugador(solicitante, get().jugadorLocal)) {
                             set({
                                 faseVotacionPausa: 'votando',
                                 jugadorSolicitantePausa: solicitante
                             });
                         } else {
-                            // Si somos nosotros los que lo hemos pedido, nos forzamos a la pantalla de espera
                             set({ faseVotacionPausa: 'esperando', jugadorSolicitantePausa: solicitante });
                         }
-                        break;
-                    }
-
-                    case 'VOTO_PAUSA': {
-                        // El backend avisa que alguien ha votado. Lo ignoramos para que no salga el error amarillo.
                         break;
                     }
 
@@ -1837,10 +1750,7 @@ export const useGameStore = create<EstadoJuego>()(
                     }
 
                     case 'PARTIDA_PAUSADA': {
-                        set({ faseVotacionPausa: 'ninguna' });
-                        alert('La partida ha sido pausada correctamente. Podréis reanudarla más adelante.');
-                        // Aquí el juego debería cerrarse o mandarte al lobby
-                        window.location.href = '/lobby';
+                        set({ faseVotacionPausa: 'pausada' });
                         break;
                     }
 
@@ -1999,20 +1909,42 @@ export const useGameStore = create<EstadoJuego>()(
                 const user = useAuthStore.getState().user;
                 const miUsuario = user?.username || user?.nombre_usuario || 'unknown';
 
-                // 1. Identificamos si eres el Host
-                const creadorReal = partida.creador || partida.nombreCreador || partida.host || partida.creador_id;
-                const isHost = creadorReal === miUsuario || miUsuario === 'unknown';
-
-                // 2. PROTOCOLO DE REALIDAD: Al entrar, solo estás tú.
-                // Tu amigo aparecerá cuando el WebSocket dispare el evento de conexión normal.
-                const jugadoresData = [
-                    {
-                        id: miUsuario,
-                        username: miUsuario,
-                        numeroJugador: isHost ? 1 : 2, // Si eres host vas al 1, si no, vas al 2 (o al que toque)
-                        esCreador: isHost
+                let todosLosJugadores: any[] = [];
+                try {
+                    const estadoReq = await fetchApi(`/v1/partidas/${partida.id}/estado`);
+                    if (estadoReq && estadoReq.jugadores) {
+                        const nombresJugadores = Object.keys(estadoReq.jugadores);
+                        console.log('[DEBUG LOBBY] prepararSalaPausada: nombres del backend:', nombresJugadores, 'miUsuario:', miUsuario);
+                        todosLosJugadores = nombresJugadores.map((nombre, index) => {
+                            const isHost = partida.creador === nombre || partida.creador_id === nombre;
+                            const isOnline = nombre.toLowerCase() === miUsuario.toLowerCase();
+                            console.log(`[DEBUG LOBBY]   ${nombre} -> isOnline: ${isOnline} (compare: ${nombre.toLowerCase()} vs ${miUsuario.toLowerCase()})`);
+                            return {
+                                id: nombre,
+                                username: nombre,
+                                numeroJugador: index + 1,
+                                esCreador: isHost,
+                                online: isOnline // Lo marcamos según si soy yo
+                            };
+                        });
                     }
-                ];
+                } catch (err) {
+                    console.error("Error obteniendo estado de la partida pausada", err);
+                }
+
+                if (todosLosJugadores.length === 0) {
+                    const creadorReal = partida.creador || partida.nombreCreador || partida.host || partida.creador_id;
+                    const isHost = creadorReal === miUsuario || miUsuario === 'unknown';
+                    todosLosJugadores = [
+                        {
+                            id: miUsuario,
+                            username: miUsuario,
+                            numeroJugador: isHost ? 1 : 2,
+                            esCreador: isHost,
+                            online: true
+                        }
+                    ];
+                }
 
                 set((state) => ({
                     salaActiva: {
@@ -2023,13 +1955,12 @@ export const useGameStore = create<EstadoJuego>()(
                         config_max_players: partida.config_max_players || 4,
                     },
                     jugadorLocal: miUsuario,
-                    esCreadorSala: isHost,
-                    jugadoresLobby: jugadoresData,
+                    esCreadorSala: partida.creador === miUsuario || partida.creador_id === miUsuario,
+                    jugadoresLobby: todosLosJugadores,
                     faseVotacionPausa: 'ninguna',
                 }));
 
                 try {
-                    // Bajamos el tablero en segundo plano, pero NO sacamos a los jugadores de ahí
                     await get().sincronizarEstadoPartida();
                 } catch (e) {
                     console.warn("Aviso: Sincronización inicial omitida", e);
@@ -2097,11 +2028,11 @@ export const useGameStore = create<EstadoJuego>()(
             /**
              * Cambia la fase local de la votación de pausa.
             
-            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => {
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => {
                 set({ faseVotacionPausa: fase });
             },
             */
-            setFaseVotacionPausa: (fase) => set({ faseVotacionPausa: fase }),
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => set({ faseVotacionPausa: fase }),
 
             /**
              * El jugador local inicia una solicitud de pausa por consenso mediante API REST.

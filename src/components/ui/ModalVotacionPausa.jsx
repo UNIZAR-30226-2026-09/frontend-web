@@ -48,6 +48,17 @@ const ModalVotacionPausa = () => {
                     </>
                 )}
 
+                {/* ESTADO 4: Partida pausada */}
+                {fase === 'pausada' && (
+                    <>
+                        <h2>Partida Pausada</h2>
+                        <p>La partida ha sido pausada correctamente. Podréis reanudarla más tarde.</p>
+                        <div className="modal-botones-columna">
+                            <button className="btn-si" onClick={() => window.location.href = '/lobby'}>ENTENDIDO</button>
+                        </div>
+                    </>
+                )}
+
             </div>
 
             {/* Puedes mantener los mismos estilos, solo he cambiado los nombres de las clases principales de 'abandono' a 'pausa' */}

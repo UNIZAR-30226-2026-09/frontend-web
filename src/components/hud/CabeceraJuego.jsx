@@ -86,23 +86,15 @@ const CabeceraJuego = () => {
     ? coloresJugadores[turnoActual]
     : 'var(--color-border-gold)';
 
-  const [menuAbierto, setMenuAbierto] = useState(false);
   const [chatAbierto, setChatAbierto] = useState(false);
-
-  const toggleMenu = () => {
-    setMenuAbierto(!menuAbierto);
-    if (chatAbierto) setChatAbierto(false);
-  };
 
   const toggleChat = () => {
     setChatAbierto(!chatAbierto);
-    if (menuAbierto) setMenuAbierto(false);
   };
 
   const handlePausar = () => {
     // Usamos el nuevo nombre de la función
     setFaseVotacionPausa('confirmando_local');
-    setMenuAbierto(false); // Cerramos el menú pequeñito
   };
 
   // Construir renderizado condicional del botón central
@@ -175,10 +167,12 @@ const CabeceraJuego = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginRight: '3rem' }}>
           <button
             className="btn-menu"
-            onClick={toggleMenu}
-            title="Menú"
+            onClick={handlePausar}
+            title="Pausar Partida"
           >
-            ≡
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
           </button>
           
           <button
@@ -191,14 +185,6 @@ const CabeceraJuego = () => {
             </svg>
           </button>
         </div>
-
-        {menuAbierto && (
-          <div className="menu-desplegable">
-            <button className="btn-menu-item btn-rendirse" onClick={handlePausar}>
-              Pausar Partida
-            </button>
-          </div>
-        )}
 
         {chatAbierto && (
           <ChatPanel onClose={() => setChatAbierto(false)} />

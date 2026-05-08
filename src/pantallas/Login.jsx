@@ -89,7 +89,12 @@ const Login = () => {
 
       const jwtToken = data.access_token || data.token;
       if (jwtToken) {
-        login(data.usuario || { nombre_usuario: username }, jwtToken);
+        // Pedimos los datos completos del perfil (incluyendo el avatar) antes de guardarlos en local
+        const userProfile = await fetchApi('/v1/usuarios/me', {
+          headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        
+        login(userProfile || data.usuario || { nombre_usuario: username }, jwtToken);
         navigate('/lobby');
       } else if (isRegistering) {
         setExito("Registro exitoso. Ahora inicia sesión.");

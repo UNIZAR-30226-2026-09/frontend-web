@@ -59,7 +59,7 @@ export interface EstadoJuego {
     };
 
     // Jugadores presentes en el lobby de la sala activa
-    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string; esCreador?: boolean }[];
+    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string; esCreador?: boolean; online?: boolean }[];
 
     // true si este cliente creo la sala (HOST); false si se unio con codigo (GUEST)
     esCreadorSala: boolean;
@@ -379,7 +379,7 @@ export interface EstadoJuego {
 
     // Votación Pausa
     /** Fase actual del flujo de pausa por consenso. */
-    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando';
+    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada';
     /** Username del jugador que ha iniciado la solicitud de pausa (null si ninguno). */
     jugadorSolicitantePausa: string | null;
     
@@ -390,7 +390,7 @@ export interface EstadoJuego {
     recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => void;
 
     /** Cambia la fase local de la votación de pausa. */
-    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando') => void;
+    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => void;
 
     /** Inicia el flujo de solicitud de pausa y lo emite por WebSocket. */
     iniciarSolicitudPausa: () => void;

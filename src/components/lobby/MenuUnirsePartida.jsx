@@ -29,11 +29,10 @@ const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
     setCargandoLista(true);
     try {
       const resp = await fetchApi('/v1/partidas');
-      // Inyectar datos mock de "jugadores actuales" e "inventor" por petición del usuario
       const enriquecidas = resp.map(p => ({
         ...p,
-        jugadoresActuales: 67,
-        nombreCreador: nombresRandom[Math.floor(Math.random() * nombresRandom.length)]
+        jugadoresActuales: p.jugadores_actuales || 0,
+        nombreCreador: p.creador || nombresRandom[Math.floor(Math.random() * nombresRandom.length)]
       }));
       setPartidasPublicas(enriquecidas);
     } catch (err) {
