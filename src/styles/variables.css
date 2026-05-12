@@ -20,6 +20,12 @@
    --color-state-danger: #d32f2f;
    --color-state-disabled: #616161;
 
+   /* --- ESTADOS DE TERRITORIO (visibles en FichaTropas para todos los jugadores) --- */
+   --color-estado-trabajando:       #B7791F;  /* Ámbar oscuro: generando economía */
+   --color-estado-trabajando-borde: #F6E05E;  /* Amarillo vivo: acento del círculo */
+   --color-estado-investigando:       #3730A3; /* Índigo oscuro: investigación activa */
+   --color-estado-investigando-borde: #818CF8; /* Lavanda: acento del círculo */
+
    /* --- COLORES JUGADORES (Base / Fuerte) --- */
    --color-jugador-1: #E54545;
    /* Rojo carmesí brillante */

@@ -1,6 +1,7 @@
 // src/services/api.js
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+export const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000/api`;
+export const BASE_URL = API_URL.replace(/\/api$/, '');
 
 /**
  * Envoltorio base para realizar peticiones HTTP al servidor.
@@ -21,14 +22,14 @@ export const fetchApi = async (endpoint, options = {}) => {
         ...options.headers,
     };
 
-    if (token) {
+    if (token && !endpoint.includes('/login') && !endpoint.includes('/registro')) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 && !endpoint.includes('/login') && !endpoint.includes('/registro')) {
             // El token es inválido o ha caducado
             localStorage.removeItem('soberania_token');
             localStorage.removeItem('soberania_user');
@@ -36,8 +37,16 @@ export const fetchApi = async (endpoint, options = {}) => {
         }
 
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || `Error HTTP: ${response.status}`);
+        const detail = errorData.detail;
+        const mensaje = typeof detail === 'string' ? detail
+            : Array.isArray(detail) ? detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+            : detail ? JSON.stringify(detail)
+            : errorData.message || `Error HTTP: ${response.status}`;
+        throw new Error(mensaje);
     }
+
+    // 204 No Content (ej: DELETE exitoso) no tiene cuerpo
+    if (response.status === 204) return null;
 
     return response.json();
 };

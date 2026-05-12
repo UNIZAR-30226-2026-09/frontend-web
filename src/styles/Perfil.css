@@ -1,0 +1,41 @@
+/* src/styles/Perfil.css */
+
+.pantalla-perfil {
+    padding: 2rem;
+    min-height: 100vh;
+    background-color: var(--color-bg-base, #0a0a0a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.titulo-seccion {
+    color: var(--color-border-gold, #b89947);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-family: 'Times New Roman', Times, serif;
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px rgba(140, 115, 34, 0.3);
+}
+
+.perfil-layout {
+    display: flex;
+    gap: 2rem;
+    width: 100%;
+    max-width: 1200px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+    /* Para que se adapte si la pantalla es muy pequeña */
+}
+
+.perfil-columna-izq {
+    flex: 1;
+    min-width: 300px;
+    max-width: 450px;
+}
+
+.perfil-columna-der {
+    flex: 1.5;
+    min-width: 350px;
+}

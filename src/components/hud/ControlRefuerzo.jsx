@@ -15,6 +15,7 @@ const ControlRefuerzo = () => {
     const confirmarRefuerzo = useGameStore((state) => state.confirmarRefuerzo);
     const faseActual = useGameStore((state) => state.faseActual);
     const mapaEstatico = useGameStore((state) => state.mapaEstatico);
+    const popupCoords = useGameStore((state) => state.popupCoords);
     const { esMiTurno } = useTurno();
 
     if (faseActual !== 'REFUERZO') {
@@ -32,8 +33,8 @@ const ControlRefuerzo = () => {
 
     const handleValidChange = (e) => {
         let val = parseInt(e.target.value, 10);
-        if (isNaN(val)) val = 0;
-        if (val < 0) val = 0;
+        if (isNaN(val)) val = 1;
+        if (val < 1) val = 1;
         if (val > (tropasDisponibles ?? 0)) val = (tropasDisponibles ?? 0);
         setTropasAAsignar(val);
     };
@@ -45,7 +46,7 @@ const ControlRefuerzo = () => {
     };
 
     const decrementar = () => {
-        if (tropasAAsignar > 0) {
+        if (tropasAAsignar > 1) {
             setTropasAAsignar(tropasAAsignar - 1);
         }
     };
@@ -55,47 +56,70 @@ const ControlRefuerzo = () => {
         clasesPendientes += ' agotados';
     }
 
-    let hintUI = null;
-    if (!comarcaRefuerzo && (tropasDisponibles ?? 0) > 0) {
-        hintUI = <div className="refuerzo-hint">Selecciona un territorio azul para reforzar</div>;
-    }
-
     let controlesUI = null;
-    if (comarcaRefuerzo) {
+    if (comarcaRefuerzo && (tropasDisponibles ?? 0) > 0) {
+        // Si por alguna razón perdemos las coordenadas, no renderizamos el popup en el medio de la nada
+        if (!popupCoords) return null;
+
+        const top = popupCoords.y;
+        const left = popupCoords.x;
+        const transformY = popupCoords.orientacionArriba ? '-100%' : '15px';
+
         controlesUI = (
-            <div className="refuerzo-box-activa">
+            <div className="refuerzo-box-activa" style={{
+                position: 'fixed', top: top, left: left, transform: `translate(-50%, ${transformY})`, zIndex: 1000,
+                backgroundColor: 'var(--color-ui-bg-secondary)', border: '2px solid var(--color-border-bronze)',
+                borderRadius: 'var(--radius-md)', padding: '15px 20px', boxShadow: '0 8px 12px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(4px)', minWidth: '220px'
+            }}>
                 <h3 className="control-refuerzo-header">Reforzar en {nombreComarca}</h3>
 
                 <div className="control-refuerzo-body">
-                    <div className="refuerzo-input-group">
-                        <button
-                            className="refuerzo-btn-math"
-                            onClick={decrementar}
-                            disabled={tropasAAsignar <= 0}
-                        >
-                            -
-                        </button>
-                        <input
-                            type="number"
-                            className="refuerzo-input"
-                            value={tropasAAsignar}
-                            onChange={handleValidChange}
-                            min="0"
-                            max={tropasDisponibles ?? 0}
-                        />
-                        <button
-                            className="refuerzo-btn-math"
-                            onClick={incrementar}
-                            disabled={tropasAAsignar >= (tropasDisponibles ?? 0)}
-                        >
-                            +
-                        </button>
-                    </div>
+                    {(tropasDisponibles ?? 0) > 1 ? (
+                        <div className="refuerzo-input-group">
+                            <button
+                                className="refuerzo-btn-math"
+                                onClick={decrementar}
+                                disabled={tropasAAsignar <= 1}
+                            >
+                                -
+                            </button>
+                            <input
+                                type="range"
+                                className="refuerzo-slider"
+                                min="1"
+                                max={tropasDisponibles ?? 0}
+                                value={tropasAAsignar}
+                                onChange={handleValidChange}
+                            />
+                            <input
+                                type="number"
+                                className="refuerzo-input"
+                                value={tropasAAsignar}
+                                onChange={handleValidChange}
+                                min="1"
+                                max={tropasDisponibles ?? 0}
+                            />
+                            <button
+                                className="refuerzo-btn-math"
+                                onClick={incrementar}
+                                disabled={tropasAAsignar >= (tropasDisponibles ?? 0)}
+                            >
+                                +
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="refuerzo-simple-group" style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <span className="refuerzo-simple-text" style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>
+                                1
+                            </span>
+                        </div>
+                    )}
 
                     <button
                         className="refuerzo-btn-confirmar"
                         onClick={confirmarRefuerzo}
-                        disabled={tropasAAsignar === 0 || !esMiTurno}
+                        disabled={tropasAAsignar < 1 || !esMiTurno}
                     >
                         Confirmar
                     </button>
@@ -105,17 +129,18 @@ const ControlRefuerzo = () => {
     }
 
     return (
-        <div className="control-refuerzo-container">
-            <div className="refuerzo-global-info">
-                <span>Refuerzos Pendientes:</span>
-                <span className={clasesPendientes}>
-                    {tropasDisponibles ?? '...'}
-                </span>
+        <>
+            <div className="control-refuerzo-container">
+                <div className="refuerzo-global-info">
+                    <span>Refuerzos Pendientes:</span>
+                    <span className={clasesPendientes}>
+                        {tropasDisponibles ?? '...'}
+                    </span>
+                </div>
             </div>
 
-            {hintUI}
             {controlesUI}
-        </div>
+        </>
     );
 };
 

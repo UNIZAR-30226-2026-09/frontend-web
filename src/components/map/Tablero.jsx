@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { select } from 'd3-selection';
-import { zoom } from 'd3-zoom';
+import { zoom, zoomIdentity } from 'd3-zoom';
 import { useGameStore } from '../../store/gameStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import ComarcaPath from './ComarcaPath';
 import FichaTropas from './FichaTropas';
+import ModalVotacionAbandono from '../ui/ModalVotacionPausa';
 import BotonVistaRegiones from '../ui/BotonVistaRegiones';
+import BotonArbolTecnologico from '../ui/BotonArbolTecnologico';
+import PanelArbolTecnologico from '../ui/PanelArbolTecnologico';
 import ControlRefuerzo from '../hud/ControlRefuerzo';
+import ControlGestion from '../hud/ControlGestion';
+import ControlAtaqueEspecial from '../hud/ControlAtaqueEspecial';
 import AnimacionRefuerzos from '../hud/AnimacionRefuerzos';
 import { COMARCAS_SVG_DATA, CONTINENTES_SVG_DATA, PUENTES_SVG_DATA } from '../../data/comarcasSvg';
+import '../../styles/Tablero.css';
 
 /**
  * Agrupa las comarcas por región, calcula el dominio del jugador local
@@ -85,11 +92,25 @@ const Tablero = (props) => {
   const faseActual = useGameStore((state) => state.faseActual);
   const turnoActual = useGameStore((state) => state.turnoActual);
   const jugadorLocal = useGameStore((state) => state.jugadorLocal);
+  const armaEspecialSeleccionada = useGameStore((state) => state.armaEspecialSeleccionada);
   const tropasDisponibles = useGameStore((state) => state.tropasDisponibles);
 
   const mapaEstatico = useGameStore((state) => state.mapaEstatico);
   const cargarMapaEstatico = useGameStore((state) => state.cargarMapaEstatico);
   const errorMapaEstatico = useGameStore((state) => state.errorMapaEstatico);
+
+  const territorioTrabajando = useGameStore((state) => state.territorioTrabajando);
+  const territorioInvestigando = useGameStore((state) => state.territorioInvestigando);
+  const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+  const estadosAlterados = useGameStore((state) => state.estadosAlterados) || {};
+  const preparandoAtaqueEspecial = useGameStore((state) => state.preparandoAtaqueEspecial);
+  const mensajeAlerta = useGameStore((state) => state.mensajeAlerta);
+  const tipoAlerta = useGameStore((state) => state.tipoAlerta);
+  const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
+
+  const hayTrabajo = Object.values(estadosBloqueo).some(e => e === 'trabajando');
+  const hayInvestigacion = Object.values(estadosBloqueo).some(e => e && e.startsWith('investigando'));
+  const gestionCompletada = faseActual === 'GESTION' && hayTrabajo && hayInvestigacion;
 
   // EFECTO 1: Descargar el mapa estático al montar si no está
   useEffect(() => {
@@ -102,18 +123,21 @@ const Tablero = (props) => {
   useEffect(() => {
     if (mapaEstatico && mapaEstatico.comarcas) {
       const rawData = Object.entries(mapaEstatico.comarcas).map(([id, info]) => ({
-          id,
-          nombre: info.name,
-          adyacentes: info.adjacent_to
+        id,
+        nombre: info.name,
+        adyacentes: info.adjacent_to
       }));
       inicializarJuego(rawData);
     }
   }, [mapaEstatico, inicializarJuego]);
 
   const comarcasCompletas = useMemo(() => {
-    if (!mapaEstatico || !mapaEstatico.comarcas) return [];
-    
-    return COMARCAS_SVG_DATA.map((svgItem) => {
+    if (!mapaEstatico || !mapaEstatico.comarcas) {
+      console.warn('❌ mapaEstatico o comarcas no están disponibles', { mapaEstatico });
+      return [];
+    }
+
+    const resultado = COMARCAS_SVG_DATA.map((svgItem) => {
       const serverInfo = mapaEstatico.comarcas[svgItem.id];
       if (serverInfo) {
         return {
@@ -123,8 +147,16 @@ const Tablero = (props) => {
           adjacent_to: serverInfo.adjacent_to
         };
       }
+      console.warn(`⚠️ No encontrado en servidor: ${svgItem.id}`);
       return svgItem;
     });
+
+    console.log('📍 comarcasCompletas construidas:', resultado.length, 'comarcas con region_id:', resultado.filter(c => c.region_id).length);
+    if (resultado.length > 0) {
+      console.log('Primer comarca:', resultado[0]);
+    }
+
+    return resultado;
   }, [mapaEstatico]);
 
   const modoVista = useGameStore((state) => state.modoVista);
@@ -143,6 +175,16 @@ const Tablero = (props) => {
         [-400, -250],
         [50, 300]
       ])
+      .on('start', () => {
+        // Cuando el usuario mueve el mapa o hace zoom, ocultamos los popups temporales (no el origen porque rompería ataques)
+        useGameStore.setState({
+          comarcaRefuerzo: null,
+          popupCoords: null,
+          preparandoAtaque: false,
+          destinoSeleccionado: null,
+          preparandoFortificacion: false
+        });
+      })
       .on('zoom', (evento) => {
         gElement.attr('transform', evento.transform);
         setZoomScale(evento.transform.k);
@@ -150,10 +192,14 @@ const Tablero = (props) => {
 
     // Desactivar zoom nativo por doble clic para evitar chocar con interactividad rápida
     svgElement.call(zoomBehavior).on('dblclick.zoom', null);
+
+    // Movemos el mapa 0 píxeles en horizontal (X) y -110 píxeles en vertical (Y, hacia arriba)
+    const transformInicial = zoomIdentity.translate(0, -55).scale(1);
+    svgElement.call(zoomBehavior.transform, transformInicial);
   }, [mapaEstatico]);
 
   // --- ZONA DE GUARD CLAUSES ---
-  
+
   // ESTADOS DE CARGA / ERROR QUE BLOQUEAN LA PANTALLA PRINCIPAL
   if (errorMapaEstatico) {
     return (
@@ -252,6 +298,7 @@ const Tablero = (props) => {
   const handleFondoClick = (e) => {
     if (e.target.tagName === 'svg' || e.target.tagName === 'image' || e.target.tagName === 'rect') {
       limpiarSeleccion();
+      useGameStore.setState({ comarcaRefuerzo: null, popupCoords: null });
     }
   };
 
@@ -272,7 +319,7 @@ const Tablero = (props) => {
         preserveAspectRatio="xMidYMid meet"
         {...props}
         onClick={handleFondoClick}
-        style={{ width: '100%', height: '100%', cursor: 'grab' }}
+        style={{ width: '100%', height: '100%', cursor: preparandoAtaqueEspecial ? 'crosshair' : 'grab' }}
       >
         <g ref={gRef}>
           <rect
@@ -285,9 +332,9 @@ const Tablero = (props) => {
           />
 
 
-          {/*imagen de fondo, ELIMINAR SI HAY LAG AL AMPLIAR*/}
+          {/*imagen de fondo del tablero, centrada para mantener el mapa alineado*/}
           <image
-            href="/fondoPrueba2.png"
+            href="/fondoTablero.png"
             x="-900"
             y="-390"
             width="1440"
@@ -295,6 +342,50 @@ const Tablero = (props) => {
             preserveAspectRatio="xMidYMid slice"
           />
 
+          {/* GRUPO 1: CONTINENTES APAGADOS (no dominados) - ATRÁS */}
+          {CONTINENTES_SVG_DATA.map((continente) => {
+            let strokeColor = 'var(--color-border-gold)';
+            let strokeWidth = 1.5 * 2;
+            let filterStyle = 'none';
+            let isDominado = false;
+
+            if (modoVista === 'REGIONES') {
+              return null; // En modo REGIONES no mostrar aquí, se muestran al final
+            }
+
+            // Comprobar si un solo jugador domina TODO el continente
+            const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
+
+            if (comarcasDelContinente.length > 0 && propietarios) {
+              const primerDueño = propietarios[comarcasDelContinente[0].id];
+
+              if (primerDueño !== undefined && primerDueño !== null) {
+                const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
+
+                if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
+                  isDominado = true;
+                }
+              }
+            }
+
+            // SOLO renderizar si NO está dominado
+            if (isDominado) return null;
+
+            return (
+              <path
+                key={`continente-apagado-${continente.id}`}
+                d={continente.d}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                clipPath={`url(#clip-${continente.id})`}
+                style={{ transition: 'all 0.5s ease' }}
+                pointerEvents="none"
+              />
+            );
+          })}
 
           {sortedComarcas.map((comarca) => (
             <ComarcaPath
@@ -305,11 +396,15 @@ const Tablero = (props) => {
               regionId={comarca.region_id}
               hovered={hovered}
               setHovered={setHovered}
+              adyacentes={comarca.adjacent_to}
             />
           ))}
 
           {/* DEFINIMOS LAS MÁSCARAS DE RECORTE PARA LOGRAR INNER STROKES */}
           <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-border-gold-vivo)" />
+            </marker>
             {CONTINENTES_SVG_DATA.map((continente) => (
               <clipPath key={`clip-${continente.id}`} id={`clip-${continente.id}`}>
                 <path d={continente.d} />
@@ -322,25 +417,68 @@ const Tablero = (props) => {
             ))}
           </defs>
 
-          {/* DIBUJAR CONTORNOS DE LOS CONTINENTES POR ENCIMA DE TODO EL TABLERO */}
+
+
+          {/* DIBUJAR CONTORNOS DE LOS CONTINENTES ENCENDIDOS ANTES DE BORDES DE SELECCIÓN (GRUPO 3) */}
           {CONTINENTES_SVG_DATA.map((continente) => {
             let strokeColor = 'var(--color-border-gold)';
-            // Damos el doble de grosor. Al recortarlo con clipPath por su propia forma, 
-            // desaparece el 50% exterior y se queda el 50% interior (simulando border-inside de 1.5)
             let strokeWidth = 1.5 * 2;
+            let filterStyle = 'none';
+            let isDominado = false;
 
             if (modoVista === 'REGIONES') {
               strokeColor = `var(--color-region-${continente.id}-fuerte)`;
+              // En modo REGIONES renderizar todos
+              return (
+                <path
+                  key={`continente-regiones-${continente.id}`}
+                  d={continente.d}
+                  fill="none"
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  clipPath={`url(#clip-${continente.id})`}
+                  style={{ filter: filterStyle, transition: 'all 0.5s ease' }}
+                  pointerEvents="none"
+                />
+              );
             }
+
+            // En modo COMARCAS: Comprobar si un solo jugador domina TODO el continente
+            const comarcasDelContinente = comarcasCompletas.filter(c => c.region_id === continente.id);
+
+            if (comarcasDelContinente.length > 0 && propietarios) {
+              const primerDueño = propietarios[comarcasDelContinente[0].id];
+
+              // Verificar que el primer dueño existe y todos los territorios pertenecen al mismo jugador
+              if (primerDueño !== undefined && primerDueño !== null) {
+                const todasPertenecenAlMismo = comarcasDelContinente.every(c => propietarios[c.id] === primerDueño);
+
+                if (todasPertenecenAlMismo && coloresJugadores && coloresJugadores[primerDueño]) {
+                  strokeColor = coloresJugadores[primerDueño];
+                  strokeWidth = 3.5 * 2;
+                  filterStyle = 'none';
+                  isDominado = true;
+                }
+              }
+            }
+
+            // SOLO renderizar si ESTÁ dominado
+            if (!isDominado) return null;
 
             return (
               <path
-                key={`continente-${continente.id}`}
+                key={`continente-encendido-${continente.id}`}
                 d={continente.d}
                 fill="none"
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 clipPath={`url(#clip-${continente.id})`}
+                className={isDominado ? 'continente-dominado' : ''}
+                style={{ filter: filterStyle, transition: 'all 0.5s ease' }}
                 pointerEvents="none"
               />
             );
@@ -355,29 +493,128 @@ const Tablero = (props) => {
             const isHovered = hovered === comarca.id;
 
             const propietarioId = propietarios[comarca.id];
-            const esSuTurno = String(propietarioId) === String(turnoActual);
+            const esMio = String(propietarioId) === String(jugadorLocal);
+            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
             const cantidadTropas = tropas[comarca.id] || 0;
 
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isOrigin || isDestination || isHighlighted) isVivoState = true;
-              if (propietarioId) {
-                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+
+              // Territorio reclamable: 0 tropas y no es nuestro, adyacente a uno propio
+              // (No depende de !propietarioId, por si el backend reporta dueño antiguo)
+              const esTerritoriuVacio2 = !propietarioId && cantidadTropas === 0; // para visualización de color negro
+              const esVacioReclamable = cantidadTropas === 0 && !esMio && esMiTurnoLocal &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+
+              if (esMiTurnoLocal) {
+                // Territorios vacíos reclamables en REFUERZO y FORTIFICACION
+                if (esVacioReclamable && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esVacioReclamable && faseActual === 'FORTIFICACION' && !origenSeleccionado) isVivoState = true;
+
+                if (propietarioId && esMio) {
+                  if (faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                  if (faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                    const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                    if (hasEnemyAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                    const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                    if (hasAlliedAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL') isVivoState = true;
+                }
+                // En modo ataque especial, los territorios ENEMIGOS son objetivos válidos
+                if (preparandoAtaqueEspecial && !esMio && propietarioId) isVivoState = true;
               }
+
+              // Evitar que se ilumine si está bloqueado por una tarea (en cualquier fase)
+              if (estadosBloqueo[comarca.id] && esMio) {
+                isVivoState = false;
+              }
+            }
+
+            // Lógica unificada de bloqueo visual según fase (usado para silueta y ficha)
+            let estaBloqueadoVisualmente = false;
+            if (!esMiTurnoLocal) {
+              estaBloqueadoVisualmente = true;
+            } else if (faseActual === 'REFUERZO') {
+              // Vacíos (0 tropas, no propios) adyacentes son reclamables
+              const esReclamable = cantidadTropas === 0 && !esMio &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+              const puedeReforzar = esMio || (esReclamable && (tropasDisponibles ?? 0) > 0);
+              estaBloqueadoVisualmente = !puedeReforzar || (tropasDisponibles ?? 0) === 0;
+            } else if (faseActual === 'GESTION') {
+              estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
+            } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
+              if (!origenSeleccionado) {
+                  if (!esMio) {
+                      estaBloqueadoVisualmente = true;
+                  } else if (estadosBloqueo[comarca.id]) {
+                      estaBloqueadoVisualmente = true;
+                  } else {
+                      if (cantidadTropas <= 1) {
+                          estaBloqueadoVisualmente = true;
+                      } else {
+                          const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                          if (!hasEnemyAdjacent) {
+                              estaBloqueadoVisualmente = true;
+                          }
+                      }
+                  }
+              } else {
+                  if (!isOrigin && !isDestination && !isHighlighted) {
+                      estaBloqueadoVisualmente = true;
+                  }
+              }
+            } else if (faseActual === 'FORTIFICACION') {
+              if (movimientoRealizadoEnTurno) {
+                  estaBloqueadoVisualmente = true;
+              } else if (!origenSeleccionado) {
+                  if (!esMio) {
+                      estaBloqueadoVisualmente = true;
+                  } else if (estadosBloqueo[comarca.id]) {
+                      estaBloqueadoVisualmente = true;
+                  } else {
+                      if (cantidadTropas <= 1) {
+                          estaBloqueadoVisualmente = true;
+                      } else {
+                          const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                          if (!hasAlliedAdjacent) {
+                              estaBloqueadoVisualmente = true;
+                          }
+                      }
+                  }
+              } else {
+                  if (!isOrigin && !isDestination && !isHighlighted) {
+                      estaBloqueadoVisualmente = true;
+                  }
+              }
+            } else if (faseActual === 'ATAQUE_ESPECIAL') {
+              if (!armaEspecialSeleccionada) {
+                  estaBloqueadoVisualmente = true;
+              }
+            } else {
+              estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
             }
 
             if (modoVista === 'REGIONES') {
               if (!isHovered && !isSelected) return null;
             } else {
+              if (estaBloqueadoVisualmente) return null;
               if (!isHovered && !isSelected && !isVivoState) return null;
             }
 
-            let strokeColor = 'var(--color-border-gold-vivo)';
+            let strokeColor = 'var(--color-border-gold)';
+
             if (modoVista === 'REGIONES') {
               strokeColor = 'var(--color-text-primary)';
-            } else if (isOrigin) {
+            } else if (isOrigin || isHovered || isSelected) {
               strokeColor = 'var(--color-text-primary)';
+            } else if (isVivoState && !estaBloqueadoVisualmente) {
+              strokeColor = 'var(--color-border-gold-vivo)';
+            } else if (!esMiTurnoLocal) {
+              strokeColor = 'var(--color-border-gold)';
             }
 
             return (
@@ -425,12 +662,44 @@ const Tablero = (props) => {
             </g>
           ))}
 
+          {/* ────── FLECHAS DE ATAQUE ────── */}
+          {(faseActual === 'ATAQUE_CONVENCIONAL' || faseActual === 'ATAQUE_ESPECIAL') && origenSeleccionado && (
+            <g pointerEvents="none">
+              {comarcasResaltadas.map(destinoId => {
+                const dest = COMARCAS_SVG_DATA.find(c => c.id === destinoId);
+                const orig = COMARCAS_SVG_DATA.find(c => c.id === origenSeleccionado);
+                if (orig && dest) {
+                  return (
+                    <line
+                      key={`arrow-${origenSeleccionado}-${destinoId}`}
+                      x1={orig.centro[0]}
+                      y1={orig.centro[1]}
+                      x2={dest.centro[0]}
+                      y2={dest.centro[1]}
+                      stroke="var(--color-border-gold-vivo)"
+                      strokeWidth="4"
+                      strokeDasharray="8 6"
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        values="14;0"
+                        dur="0.8s"
+                        repeatCount="indefinite"
+                      />
+                    </line>
+                  );
+                }
+                return null;
+              })}
+            </g>
+          )}
+
           {mostrarTropas && sortedComarcas.map((comarca) => {
             const rawName = comarca.name || comarca.id;
             const cantidadTropas = tropas[comarca.id] || 0;
             const dueño = propietarios ? propietarios[comarca.id] : null;
 
-            let colorActual = 'var(--color-state-disabled)';
+            let colorActual = '#111111'; // Territorios sin dueño: negro
             if (dueño && coloresJugadores && coloresJugadores[dueño]) {
               colorActual = coloresJugadores[dueño];
             }
@@ -441,14 +710,41 @@ const Tablero = (props) => {
             const isSelected = isOrigin || isDestination || isHighlighted;
             const isHovered = hovered === comarca.id;
 
-            const esSuTurno = String(dueño) === String(turnoActual);
+            const esMio = String(dueño) === String(jugadorLocal);
+            const esMiTurnoLocal = String(turnoActual) === String(jugadorLocal);
 
             let isVivoState = false;
             if (modoVista !== 'REGIONES') {
               if (isSelected) isVivoState = true;
-              if (dueño) {
-                if (esSuTurno && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
-                if (esSuTurno && faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) isVivoState = true;
+
+              // Territorio reclamable: 0 tropas, no es nuestro, adyacente a uno propio
+              const esVacioReclamable = cantidadTropas === 0 && !esMio && esMiTurnoLocal &&
+                comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+
+              if (esMiTurnoLocal) {
+                if (esVacioReclamable && faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                if (esVacioReclamable && faseActual === 'FORTIFICACION' && !origenSeleccionado) isVivoState = true;
+
+                if (dueño && esMio) {
+                  if (faseActual === 'REFUERZO' && (tropasDisponibles ?? 0) > 0) isVivoState = true;
+                  if (faseActual === 'ATAQUE_CONVENCIONAL' && cantidadTropas > 1) {
+                    const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                    if (hasEnemyAdjacent) isVivoState = true;
+                  }
+                  if (faseActual === 'FORTIFICACION' && cantidadTropas > 1) {
+                    const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                    if (hasAlliedAdjacent) isVivoState = true;
+                  }
+                  // En GESTION y ATAQUE_ESPECIAL todos los territorios propios son interactuables
+                  if (faseActual === 'GESTION' || faseActual === 'ATAQUE_ESPECIAL') isVivoState = true;
+                  // En modo ataque especial, los territorios ENEMIGOS son objetivos
+                  if (armaEspecialSeleccionada && !esMio && dueño) isVivoState = true;
+                }
+              }
+
+              // Evitar que se ilumine el borde de la ficha si está bloqueado por una tarea
+              if (estadosBloqueo[comarca.id] && esMio) {
+                isVivoState = false;
               }
             }
 
@@ -456,10 +752,74 @@ const Tablero = (props) => {
             if (modoVista === 'REGIONES') {
               if (isHovered || isSelected) strokeFicha = 'var(--color-text-primary)';
             } else {
-              if (isHovered || isSelected || isVivoState) {
-                if (isOrigin) {
-                  strokeFicha = 'var(--color-text-primary)';
+              let estaBloqueadoVisualmente = false;
+              if (!esMiTurnoLocal) {
+                  estaBloqueadoVisualmente = true;
+              } else if (faseActual === 'REFUERZO') {
+                const esReclamable = cantidadTropas === 0 && !esMio &&
+                  comarca.adjacent_to?.some(adj => propietarios[adj] && String(propietarios[adj]).toLowerCase() === String(jugadorLocal).toLowerCase());
+                const puedeReforzar = esMio || (esReclamable && (tropasDisponibles ?? 0) > 0);
+                estaBloqueadoVisualmente = !puedeReforzar || (tropasDisponibles ?? 0) === 0;
+              } else if (faseActual === 'GESTION') {
+                estaBloqueadoVisualmente = !esMio || ((estadosBloqueo[comarca.id] || gestionCompletada) && esMio);
+              } else if (faseActual === 'ATAQUE_CONVENCIONAL') {
+                if (!origenSeleccionado) {
+                    if (!esMio) {
+                        estaBloqueadoVisualmente = true;
+                    } else if (estadosBloqueo[comarca.id]) {
+                        estaBloqueadoVisualmente = true;
+                    } else {
+                        if (cantidadTropas <= 1) {
+                            estaBloqueadoVisualmente = true;
+                        } else {
+                            const hasEnemyAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] !== jugadorLocal);
+                            if (!hasEnemyAdjacent) {
+                                estaBloqueadoVisualmente = true;
+                            }
+                        }
+                    }
                 } else {
+                    if (!isOrigin && !isDestination && !isHighlighted) {
+                        estaBloqueadoVisualmente = true;
+                    }
+                }
+              } else if (faseActual === 'FORTIFICACION') {
+                if (movimientoRealizadoEnTurno) {
+                    estaBloqueadoVisualmente = true;
+                } else if (!origenSeleccionado) {
+                    if (!esMio) {
+                        estaBloqueadoVisualmente = true;
+                    } else if (estadosBloqueo[comarca.id]) {
+                        estaBloqueadoVisualmente = true;
+                    } else {
+                        if (cantidadTropas <= 1) {
+                            estaBloqueadoVisualmente = true;
+                        } else {
+                            const hasAlliedAdjacent = comarca.adjacent_to?.some(adj => propietarios[adj] === jugadorLocal);
+                            if (!hasAlliedAdjacent) {
+                                estaBloqueadoVisualmente = true;
+                            }
+                        }
+                    }
+                } else {
+                    if (!isOrigin && !isDestination && !isHighlighted) {
+                        estaBloqueadoVisualmente = true;
+                    }
+                }
+              } else if (faseActual === 'ATAQUE_ESPECIAL') {
+                if (!armaEspecialSeleccionada) {
+                    estaBloqueadoVisualmente = true;
+                }
+              } else {
+                estaBloqueadoVisualmente = estadosBloqueo[comarca.id] && esMio;
+              }
+
+              if (!estaBloqueadoVisualmente && (isHovered || isSelected || isVivoState)) {
+                if (isOrigin || isHovered || isSelected) {
+                  strokeFicha = 'var(--color-text-primary)';
+                } else if (!esMiTurnoLocal) {
+                  strokeFicha = 'var(--color-border-gold)';
+                } else if (isVivoState) {
                   strokeFicha = 'var(--color-border-gold-vivo)';
                 }
               }
@@ -475,6 +835,9 @@ const Tablero = (props) => {
                 zoomScale={zoomScale}
                 colorFondo={colorActual}
                 strokeFondo={strokeFicha}
+                isTrabajando={estadosBloqueo[comarca.id] === 'trabajando'}
+                isInvestigando={estadosBloqueo[comarca.id] && estadosBloqueo[comarca.id].startsWith('investigando')}
+                estadosAlterados={estadosAlterados[comarca.id] || []}
               />
             );
           })}
@@ -482,9 +845,61 @@ const Tablero = (props) => {
           {etiquetasRegiones}
         </g>
       </svg>
+
       <BotonVistaRegiones />
+      <BotonArbolTecnologico />
+      <PanelArbolTecnologico />
       <ControlRefuerzo />
+      <ControlGestion />
+      <ControlAtaqueEspecial />
       <AnimacionRefuerzos />
+      <ModalVotacionAbandono />
+
+      {/* Notificación Global (Alertas) */}
+      <AnimatePresence>
+        {mensajeAlerta && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 20, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            style={{
+              position: 'fixed',
+              top: '0',
+              left: '50%',
+              zIndex: 9999,
+              background: 'rgba(20, 20, 20, 0.95)',
+              border: `2px solid ${
+                tipoAlerta === 'success' ? '#48BB78' : 
+                tipoAlerta === 'info' ? '#4299E1' : 
+                '#E53E3E'
+              }`,
+              borderRadius: '8px',
+              padding: '12px 24px',
+              color: 'var(--color-text-primary, white)',
+              fontFamily: 'var(--font-family-base)',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              boxShadow: `0 8px 32px ${
+                tipoAlerta === 'success' ? 'rgba(72, 187, 120, 0.3)' : 
+                tipoAlerta === 'info' ? 'rgba(66, 153, 225, 0.3)' : 
+                'rgba(229, 62, 62, 0.3)'
+              }`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              pointerEvents: 'none',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+          >
+            <span style={{ fontSize: '18px' }}>
+                {tipoAlerta === 'success' ? '✅' : tipoAlerta === 'info' ? 'ℹ️' : '⚠️'}
+            </span>
+            {mensajeAlerta}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

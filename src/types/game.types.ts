@@ -6,27 +6,45 @@ import { GrafoSoberania } from './mapa.types';
 export type FaseJuego =
     | 'REFUERZO'
     | 'ATAQUE_CONVENCIONAL'
-    | 'FORTIFICACION';
+    | 'FORTIFICACION'
+    | 'GESTION'
+    | 'ATAQUE_ESPECIAL';
 
 export type ModoVista = 'COMARCAS' | 'REGIONES';
+
+/**
+ * Catalog entry for a single technology from GET /api/v1/partidas/tecnologias.
+ */
+export interface CatalogoTecnologia {
+    nombre: string;
+    descripcion: string;
+    requisitos: string[];
+    precio: number;
+    rango?: number | null;
+}
+
 
 /**
  * Interfaz principal que define el almacén global de estado del juego.
  */
 export interface EstadoJuego {
     grafoGlobal: GrafoSoberania | null;
-    mapaEstatico: { 
+    mapaEstatico: {
         metadata?: any;
         regions?: Record<string, { name: string; bonus_troops: number; comarcas: string[] }>;
-        comarcas: Record<string, { name: string; region_id: string; adjacent_to: string[] }> 
+        comarcas: Record<string, { name: string; region_id: string; adjacent_to: string[] }>
     } | null;
     errorMapaEstatico: string | null;
 
     faseActual: FaseJuego | null;
+    finFaseUtc: string | null;       // ISO 8601 timestamp del fin de fase enviado por el backend
     modoVista: ModoVista;
-    estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO';
+    estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO' | 'FINALIZADA_ESPECTANDO';
 
-    dinero: number;
+    /** Username del ganador de la partida (null si aún no ha terminado). */
+    ganadorFinal: string | null;
+
+    monedas: number;
     tropasDisponibles: number | null;
 
     // Control de jugadores
@@ -44,7 +62,7 @@ export interface EstadoJuego {
     };
 
     // Jugadores presentes en el lobby de la sala activa
-    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string; esCreador?: boolean }[];
+    jugadoresLobby: { id: string; username: string; numeroJugador: number; color?: string; esCreador?: boolean; online?: boolean }[];
 
     // true si este cliente creo la sala (HOST); false si se unio con codigo (GUEST)
     esCreadorSala: boolean;
@@ -57,6 +75,7 @@ export interface EstadoJuego {
     // Estado temporal de interacción en el mapa interactivo
     origenSeleccionado: string | null;
     destinoSeleccionado: string | null;
+    popupCoords: { x: number, y: number, orientacionArriba?: boolean } | null;
 
     // Estado temporal durante la fase de refuerzo
     comarcaRefuerzo: string | null;
@@ -78,6 +97,39 @@ export interface EstadoJuego {
     // Región bajo el puntero del jugador (modo REGIONES)
     regionHover: string | null;
 
+    movimientoRealizadoEnTurno: boolean;
+
+    // Alerta global (Notificaciones)
+    mensajeAlerta: string | null;
+    tipoAlerta: 'error' | 'info' | 'success' | null;
+
+    // Log de Partida
+    historialLog: (string | any)[];
+
+    // Árbol Tecnológico y Gestión
+    isArbolTecnologicoOpen: boolean;
+    tecnologiasDesbloqueadas: string[];
+    /** Mapeo de territorio_id -> estado de tarea (trabajando, investigando, etc) global */
+    estadosBloqueo: Record<string, string | null>;
+    estadosAlterados: Record<string, string[]>;
+    territorioTrabajando: string | null;
+    territorioInvestigando: string | null;
+    ramaInvestigando: string | null;
+    /** ID del territorio que abrió el árbol para investigar (antes de limpiar selección) */
+    territorioInvestigandoPendiente: string | null;
+
+    // Arsenal / Ataques Especiales
+    /** Catálogo global de tecnologías descargado de /api/v1/partidas/tecnologias */
+    catalogoTecnologias: Record<string, CatalogoTecnologia> | null;
+    /** Armas listas en el arsenal (compradas) */
+    armasCompradas: string[];
+    /** Arma actualmente seleccionada en el arsenal para ser usada */
+    armaEspecialSeleccionada: string | null;
+    /** ID de la habilidad comprada, esperando selección de objetivo en el mapa */
+    preparandoAtaqueEspecial: string | null;
+    /** Si el jugador ya ha usado un ataque especial en este turno */
+    haUsadoAtaqueEspecial: boolean;
+
     /**
      * Inicializa la estructura de grafos y asigna los datos predeterminados.
      * @param {import('./mapa.types').ComarcaDTO[]} rawData JSON de entrada bruto.
@@ -88,6 +140,24 @@ export interface EstadoJuego {
      * Descarga el mapa estático del backend y lo guarda en el store.
      */
     cargarMapaEstatico: () => Promise<void>;
+
+    /**
+     * Muestra un mensaje de alerta global en la UI (error, info o success).
+     * @param {string} mensaje El texto del mensaje.
+     * @param {'error' | 'info' | 'success'} tipo El tipo de alerta.
+     */
+    mostrarAlerta: (mensaje: string, tipo?: 'error' | 'info' | 'success') => void;
+
+    /**
+     * Añade un mensaje al log en tiempo real de la partida.
+     */
+    agregarMensajeLog: (mensaje: string | object) => void;
+
+    /**
+     * Carga el historial de logs desde el backend (para reconexiones y recarga de página).
+     * @param overrideId - ID opcional de la partida como fallback.
+     */
+    cargarLogsPartida: (overrideId?: number | string) => Promise<void>;
 
     /**
      * Obliga a la máquina de estados a saltar a una fase específica y limpia la UI.
@@ -164,8 +234,9 @@ export interface EstadoJuego {
     /**
      * Enrutador para gestionar la lógica de acción sobre una comarca dependiente de su fase asignada.
      * @param {string} comarcaId Clave identificadora del nodo presionado.
+     * @param {{x: number, y: number, orientacionArriba?: boolean}} [coords] Coordenadas en pantalla del territorio.
      */
-    manejarClickComarca: (comarcaId: string) => void;
+    manejarClickComarca: (comarcaId: string, coords?: { x: number, y: number, orientacionArriba?: boolean }) => void;
 
     /**
      * Obtiene el total de territorios y tropas de un jugador específico.
@@ -208,6 +279,18 @@ export interface EstadoJuego {
     unirsePartidaBackend: (codigo: string) => Promise<any>;
 
     /**
+     * 1. INFILTRACIÓN: Mete al jugador en el Lobby localmente y conecta 
+     * el WebSocket SIN llamar al endpoint /unirse (que da error 400).
+     */
+    prepararSalaPausada: (partida: any) => Promise<void>;
+
+    /**
+     * 2. REANUDAR REAL: El anfitrión llama a esto desde el Lobby cuando 
+     * todos los jugadores han entrado silenciosamente (2/2 listos).
+     */
+    ejecutarReanudarPartida: () => Promise<void>;
+
+    /**
      * Sincroniza el estado completo de la partida desde el servidor.
      */
     sincronizarEstadoPartida: () => Promise<void>;
@@ -233,5 +316,91 @@ export interface EstadoJuego {
     /**
      * Define el estado local de la partida (victoria, derrota, espectador).
      */
-    setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO') => void;
+    setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO' | 'FINALIZADA_ESPECTANDO') => void;
+
+    /**
+     * Alterna la visibilidad del panel del árbol tecnológico.
+     */
+    toggleArbolTecnologico: () => void;
+
+    /**
+     * Establece el listado de tecnologías desbloqueadas.
+     */
+    setTecnologiasDesbloqueadas: (techs: string[]) => void;
+
+    /**
+     * Llama al backend para investigar una nueva tecnología en el territorio actual.
+     * @param {string} tecnologiaId 
+     * @param {string} territorioId 
+     */
+    investigarBackend: (tecnologiaId: string, territorioId: string) => Promise<void>;
+
+    /**
+     * Llama al backend para poner un territorio a trabajar y generar dinero.
+     * @param {string} territorioId 
+     */
+    trabajarBackend: (territorioId: string) => Promise<void>;
+
+    // ARSENAL — Acciones de Ataques Especiales
+
+    /**
+     * Descarga el catálogo global de tecnologías con nombres, descripciones y precios.
+     * @param overrideId - ID opcional de partida como fallback si salaActiva.id no está disponible.
+     */
+    cargarCatalogoTecnologias: (overrideId?: number | string) => Promise<void>;
+
+    /**
+     * Llama al backend para comprar una tecnología/arma y la añade al arsenal local.
+     * @param tecnologiaId - ID de la tecnología a comprar.
+     */
+    comprarTecnologiaBackend: (tecnologiaId: string) => Promise<any>;
+
+    /**
+     * Activa el modo de selección de objetivo en el mapa para un arma ya comprada.
+     * @param tecnologiaId - ID del arma a preparar.
+     */
+    prepararArmaEspecial: (tecnologiaId: string) => void;
+
+    /**
+     * Compra una habilidad tecnológica y activa el modo de selección de objetivo en el mapa.
+     * @param tecnologiaId - ID de la tecnología a comprar.
+     */
+    comprarYPrepararAtaque: (tecnologiaId: string) => Promise<void>;
+
+    /**
+     * Cancela el modo de selección de objetivo del ataque especial.
+     */
+    cancelarAtaqueEspecial: () => void;
+
+    /**
+     * Ejecuta el ataque especial sobre el territorio destino seleccionado.
+     * @param destinoId - ID del territorio objetivo.
+     * @param tipoAtaque - Identificador de la tecnología/arma a usar.
+     * @param origenId - ID del territorio origen (opcional, sólo para armas con rango).
+     */
+    ejecutarAtaqueEspecialBackend: (destinoId: string, tipoAtaque: string, origenId?: string | null) => Promise<void>;
+
+    // Votación Pausa
+    /** Fase actual del flujo de pausa por consenso. */
+    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador';
+    /** Username del jugador que ha iniciado la solicitud de pausa (null si ninguno). */
+    jugadorSolicitantePausa: string | null;
+    
+    // Mensajes activos
+    mensajesActivos: Record<string, { tipo: string, contenido: string, timestamp: number, timeoutId?: ReturnType<typeof setTimeout> }>;
+
+    /** Recibe y muestra un mensaje de chat o reaccion por tiempo limitado */
+    recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => void;
+
+    /** Cambia la fase local de la votación de pausa. */
+    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => void;
+
+    /** Inicia el flujo de solicitud de pausa y lo emite por WebSocket. */
+    iniciarSolicitudPausa: () => void;
+
+    /**
+     * Emite el voto del jugador local sobre la pausa.
+     * @param voto true = acepta pausar, false = rechaza.
+     */
+    enviarVotoPausa: (voto: boolean) => void;
 }

@@ -43,16 +43,24 @@ const ControlTrasladoConquista = () => {
                     Has conquistado <b>{destino}</b> desde <b>{origen}</b>.
                 </p>
                 <div style={styles.sliderContainer}>
-                    <label>Traslada fuerzas de ocupación (mínimo 1): {cantidad}</label>
-                    <input 
-                        type="range" 
-                        min="1" 
-                        max={maxTropas} 
-                        value={cantidad} 
-                        onChange={e => setCantidad(Number(e.target.value))} 
-                        style={styles.slider}
-                        disabled={moviendo}
-                    />
+                    {maxTropas > 1 ? (
+                        <>
+                            <label>Traslada fuerzas de ocupación (mínimo 1): {cantidad}</label>
+                            <input 
+                                type="range" 
+                                min="1" 
+                                max={maxTropas} 
+                                value={cantidad} 
+                                onChange={e => setCantidad(Number(e.target.value))} 
+                                style={styles.slider}
+                                disabled={moviendo}
+                            />
+                        </>
+                    ) : (
+                        <div style={styles.simpleGroup}>
+                            <span style={styles.simpleText}>Mover 1 tropa</span>
+                        </div>
+                    )}
                 </div>
                 <button style={styles.btnConfirmar} onClick={confirmarTraslado} disabled={moviendo}>
                     {moviendo ? "Procesando..." : "Ocupar Territorio"}
@@ -101,6 +109,16 @@ const styles = {
         cursor: 'pointer',
         fontWeight: 'bold',
         fontSize: '1.1rem'
+    },
+    simpleGroup: {
+        margin: '24px 0',
+        display: 'flex',
+        justifyContent: 'center'
+    },
+    simpleText: {
+        color: '#FFF',
+        fontSize: '16px',
+        fontWeight: 'bold'
     }
 };
 

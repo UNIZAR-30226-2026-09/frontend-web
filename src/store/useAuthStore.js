@@ -1,5 +1,6 @@
 // src/store/useAuthStore.js
 import { create } from 'zustand';
+import { socketService } from '../services/socketService';
 
 /**
  * Gestor de estado de sesión. Controla la autenticación global
@@ -24,6 +25,12 @@ export const useAuthStore = create((set) => ({
             token: jwtToken,
             isAuthenticated: true,
         });
+
+        // Abrir WebSocket de presencia global para que el backend nos marque como CONECTADO
+        const username = userData?.username ?? userData?.nombre_usuario ?? null;
+        if (username) {
+            socketService.connectToGlobal(username, jwtToken);
+        }
     },
 
     /**
@@ -37,6 +44,9 @@ export const useAuthStore = create((set) => ({
             token: null,
             isAuthenticated: false,
         });
+
+        // Cerrar WS de presencia: el backend nos marcará como DESCONECTADO
+        socketService.disconnectGlobal();
     },
 
     /**
@@ -57,6 +67,13 @@ export const useAuthStore = create((set) => ({
                 console.error('Error parseando al usuario guardado:', e);
             }
             set({ token: savedToken, user: parsedUser, isAuthenticated: true });
+
+            // Reconectar presencia global tras recargar la página
+            const username = parsedUser?.username ?? parsedUser?.nombre_usuario ?? null;
+            if (username) {
+                socketService.connectToGlobal(username, savedToken);
+            }
         }
     }
 }));
+

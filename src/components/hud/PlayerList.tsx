@@ -6,10 +6,10 @@ import './PlayerList.css';
 
 export const PlayerList: React.FC = () => {
     // Suscripción al store
-    const { 
-        jugadores, 
-        jugadorLocal, 
-        turnoActual, 
+    const {
+        jugadores,
+        jugadorLocal,
+        turnoActual,
         coloresJugadores,
         diccionarioJugadores,
         getEstadisticasJugador
@@ -22,25 +22,29 @@ export const PlayerList: React.FC = () => {
 
     const user = useAuthStore(state => state.user);
     const miUsername = user?.username || user?.nombre_usuario || user?.nombre;
+    const monedasLocales = useGameStore(state => state.monedas);
 
     return (
         <div className="player-list-container">
             {jugadores.map((jugadorId) => {
                 const stats = getEstadisticasJugador(jugadorId);
                 const info = diccionarioJugadores ? diccionarioJugadores[jugadorId] : null;
-                const nombre = info?.nombre || info?.jugador || info?.username || info?.nombre_usuario || (jugadorId.charAt(0).toUpperCase() + jugadorId.slice(1));
-                
+                const nombre = info?.nombre || info?.jugador || info?.username || info?.nombre_usuario || jugadorId;
+                const avatar = info?.avatar;
+
                 return (
                     <PlayerCard
                         key={jugadorId}
                         idJugador={jugadorId}
                         nombre={nombre}
+                        avatar={avatar}
                         color={coloresJugadores[jugadorId]}
                         territorios={stats.territorios}
                         tropas={stats.tropas}
                         isTurnoActual={String(jugadorId) === String(turnoActual)}
                         isLocal={String(jugadorId) === String(jugadorLocal) || (miUsername && String(nombre).toLowerCase() === String(miUsername).toLowerCase())}
                         isDisconnected={info?.esta_desconectado}
+                        monedas={String(jugadorId) === String(jugadorLocal) ? monedasLocales : undefined}
                     />
                 );
             })}

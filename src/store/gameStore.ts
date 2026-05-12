@@ -1,7 +1,8 @@
 // src/store/gameStore.ts
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { EstadoJuego, FaseJuego } from '../types/game.types';
-import { calcularComarcasEnRango, construirGrafoComarcas } from '../utils/graphUtils';
+import { calcularComarcasEnRango, calcularComarcasADistanciaExacta, construirGrafoComarcas } from '../utils/graphUtils';
 import { ComarcaDTO } from '../types/mapa.types';
 import { fetchApi } from '../services/api';
 import { gameApi } from '../services/gameApi';
@@ -9,6 +10,14 @@ import { useAuthStore } from './useAuthStore';
 import { socketService } from '../services/socketService';
 
 // Helpers internos
+
+/**
+ * Compara dos identificadores de jugador ignorando mayúsculas.
+ */
+const esMismoJugador = (j1: string | null, j2: string | null): boolean => {
+    if (!j1 || !j2) return false;
+    return String(j1).toLowerCase() === String(j2).toLowerCase();
+};
 
 /**
  * Normaliza la fase del backend al formato del frontend.
@@ -25,15 +34,32 @@ const normalizarFase = (faseBackend: string): FaseJuego =>
  */
 const parsearMapa = (
     mapa: Record<string, any>
-): { tropas: Record<string, number>; propietarios: Record<string, string> } => {
+): {
+    tropas: Record<string, number>;
+    propietarios: Record<string, string>;
+    estadosBloqueo: Record<string, string | null>;
+    estadosAlterados: Record<string, string[]>;
+} => {
     const tropas: Record<string, number> = {};
     const propietarios: Record<string, string> = {};
+    const estadosBloqueo: Record<string, string | null> = {};
+    const estadosAlterados: Record<string, string[]> = {};
+
     for (const [id, t] of Object.entries(mapa)) {
         tropas[id] = t.units;
         propietarios[id] = t.owner_id;
+        estadosBloqueo[id] = t.estado_bloqueo || null;
+
+        // El backend manda un array de objetos en "efectos". Extraemos solo el "tipo_efecto".
+        if (t.efectos && Array.isArray(t.efectos)) {
+            estadosAlterados[id] = t.efectos.map((e: any) => e.tipo_efecto);
+        } else {
+            estadosAlterados[id] = [];
+        }
     }
-    return { tropas, propietarios };
+    return { tropas, propietarios, estadosBloqueo, estadosAlterados };
 };
+
 
 /**
  * Procesa el diccionario de jugadores para asignar colores y detectar la reserva local.
@@ -51,6 +77,13 @@ const parsearJugadores = (
     tropasReservaLocal: number | null;
     tropasReservaActivo: number | null;
     jugadorLocalId: string | null;
+    monedasLocal: number | null;
+    tecnologiasLocal: string[] | null;
+    armasCompradasLocal: string[] | null;
+    territorioTrabajandoLocal: string | null;
+    territorioInvestigandoLocal: string | null;
+    ramaInvestigandoLocal: string | null;
+    haLanzadoEspecialLocal: boolean | null;
 } => {
     const MAP_COLORS = [
         'var(--color-jugador-1)',
@@ -62,6 +95,13 @@ const parsearJugadores = (
     const coloresJugadores: Record<string, string> = {};
     let tropasReservaLocal: number | null = null;
     let tropasReservaActivo: number | null = null;
+    let monedasLocal: number | null = null;
+    let tecnologiasLocal: string[] | null = null;
+    let armasCompradasLocal: string[] | null = null;
+    let territorioTrabajandoLocal: string | null = null;
+    let territorioInvestigandoLocal: string | null = null;
+    let ramaInvestigandoLocal: string | null = null;
+    let haLanzadoEspecialLocal: boolean | null = null;
 
     const miUsername =
         useAuthStore.getState().user?.username ??
@@ -78,13 +118,20 @@ const parsearJugadores = (
                 MAP_COLORS[(info.numero_jugador - 1) % MAP_COLORS.length];
         }
 
-        // La clave del diccionario ES el username → comparación directa.
-        if (username === miUsername && info.tropas_reserva !== undefined) {
-            tropasReservaLocal = info.tropas_reserva;
+        // Datos del jugador local (Matching robusto case-insensitive)
+        if (esMismoJugador(username, miUsername)) {
+            if (info.tropas_reserva !== undefined) tropasReservaLocal = info.tropas_reserva;
+            if (info.monedas !== undefined) monedasLocal = info.monedas;
+            if (info.tecnologias_predesbloqueadas !== undefined) tecnologiasLocal = info.tecnologias_predesbloqueadas;
+            if (info.tecnologias_compradas !== undefined) armasCompradasLocal = info.tecnologias_compradas;
+            if (info.territorio_trabajando !== undefined) territorioTrabajandoLocal = info.territorio_trabajando;
+            if (info.territorio_investigando !== undefined) territorioInvestigandoLocal = info.territorio_investigando;
+            if (info.rama_investigando !== undefined) ramaInvestigandoLocal = info.rama_investigando;
+            if (info.ha_lanzado_especial !== undefined) haLanzadoEspecialLocal = info.ha_lanzado_especial;
         }
 
         // Si es el jugador del turno, guardamos su reserva para que todos la vean
-        if (username === turnoActual && info.tropas_reserva !== undefined) {
+        if (esMismoJugador(username, turnoActual) && info.tropas_reserva !== undefined) {
             tropasReservaActivo = info.tropas_reserva;
         }
     }
@@ -94,940 +141,2056 @@ const parsearJugadores = (
         tropasReservaLocal,
         tropasReservaActivo,
         jugadorLocalId: miUsername || null,
+        monedasLocal,
+        tecnologiasLocal,
+        armasCompradasLocal,
+        territorioTrabajandoLocal,
+        territorioInvestigandoLocal,
+        ramaInvestigandoLocal,
+        haLanzadoEspecialLocal
     };
 };
 
+// El parseo de los logs crudos devueltos por el backend ahora se hace dinámicamente en LogPartida.jsx
+// para permitir renderizar colores de los jugadores y formateo de texto complejo.
 // Store
-export const useGameStore = create<EstadoJuego>((set, get) => ({
+export const useGameStore = create<EstadoJuego>()(
+    persist(
+        (set, get) => ({
 
-    // Mapa estructural
-    grafoGlobal: null,
-    mapaEstatico: null,
-    errorMapaEstatico: null,
+            // Mapa estructural
+            grafoGlobal: null,
+            mapaEstatico: null,
+            errorMapaEstatico: null,
 
-    // Estado de partida
-    faseActual: null,
-    modoVista: 'COMARCAS',
-    estadoPartidaLocal: 'JUGANDO',
-    dinero: 0,
-    tropasDisponibles: null,
+            // Estado de partida
+            faseActual: null,
+            finFaseUtc: null,
+            modoVista: 'COMARCAS',
+            estadoPartidaLocal: 'JUGANDO',
+            monedas: 0,
+            estadosBloqueo: {},
+            estadosAlterados: {},
+            tropasDisponibles: null,
+            movimientoRealizadoEnTurno: false,
+            mensajeAlerta: null,
+            tipoAlerta: null,
+            historialLog: [],
 
-    // Jugador local
-    jugadorLocal: null,
-    turnoActual: null,
-    jugadores: [],
-    diccionarioJugadores: {},
+            // Jugador local
+            jugadorLocal: null,
+            turnoActual: null,
+            jugadores: [],
+            diccionarioJugadores: {},
 
-    // Sala / lobby
-    salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
-    jugadoresLobby: [],
-    esCreadorSala: false,
+            // Sala / lobby
+            salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+            jugadoresLobby: [],
+            esCreadorSala: false,
 
-    // Estado dinámico del mundo
-    tropas: {},
-    propietarios: {},
-    coloresJugadores: {},
+            // Estado dinámico del mundo
+            tropas: {},
+            propietarios: {},
+            coloresJugadores: {},
 
-    // UI de selección e interacción
-    origenSeleccionado: null,
-    destinoSeleccionado: null,
-    comarcasResaltadas: [],
-    regionHover: null,
-    comarcaRefuerzo: null,
-    tropasAAsignar: 0,
-    mostrarAnimacionRefuerzos: false,
-    refuerzosRecibidos: 0,
-    isSocketConnected: false,
+            // UI de selección e interacción
+            origenSeleccionado: null,
+            destinoSeleccionado: null,
+            popupCoords: null,
+            comarcasResaltadas: [],
+            regionHover: null,
+            comarcaRefuerzo: null,
+            tropasAAsignar: 0,
+            mostrarAnimacionRefuerzos: false,
+            refuerzosRecibidos: 0,
+            isArbolTecnologicoOpen: false,
+            tecnologiasDesbloqueadas: [],
+            armasCompradas: [],
+            armaEspecialSeleccionada: null,
+            territorioTrabajando: null,
+            territorioInvestigando: null,
+            ramaInvestigando: null,
+            territorioInvestigandoPendiente: null,
+            isSocketConnected: false,
+            catalogoTecnologias: null,
+            preparandoAtaqueEspecial: null,
+            haUsadoAtaqueEspecial: false,
 
-    preparandoAtaque: false,
-    movimientoConquistaPendiente: false,
-    origenConquista: null,
-    destinoConquista: null,
-    preparandoFortificacion: false,
+            preparandoAtaque: false,
+            movimientoConquistaPendiente: false,
+            origenConquista: null,
+            destinoConquista: null,
+            preparandoFortificacion: false,
 
-    // ACCIONES — MAPA ESTÁTICO
+            // UI - Votación Pausa
+            faseVotacionPausa: 'ninguna',
+            jugadorSolicitantePausa: null,
+            mensajesActivos: {},
+            ganadorFinal: null,
+            // ACCIONES — MAPA ESTÁTICO
 
-    /**
-     * Descarga el mapa estático del backend y lo almacena.
-     */
-    cargarMapaEstatico: async () => {
-        try {
-            set({ errorMapaEstatico: null });
-            const data = await fetchApi('/v1/mapa');
-            set({ mapaEstatico: data });
-        } catch (error) {
-            console.error('[cargarMapaEstatico] Error:', error);
-            set({ errorMapaEstatico: 'Fallo de conexión al descargar cartografía.' });
-        }
-    },
-
-    /**
-     * Construye el grafo de adyacencias a partir de los datos del mapa.
-     * @param {ComarcaDTO[]} rawData - Lista de comarcas descargadas.
-     */
-    inicializarJuego: (rawData: ComarcaDTO[]) => {
-        try {
-            const grafo = construirGrafoComarcas(rawData);
-            set({ grafoGlobal: grafo });
-            console.log('[inicializarJuego] Grafo inicializado.');
-        } catch (error) {
-            console.error('[inicializarJuego] Error al construir grafo:', error);
-        }
-    },
-
-    // ACCIONES — SINCRONIZACIÓN CON BACKEND
-
-    /**
-     * Recupera el estado completo de la partida desde el endpoint REST.
-     * Endpoint: GET /v1/partidas/{partida_id}/estado
-     *
-     * Se usa para:
-     *   - Recargar estado tras reconexión WebSocket.
-     *   - Resolver inconsistencias entre UI y servidor.
-     */
-    sincronizarEstadoPartida: async () => {
-        const { salaActiva } = get();
-        if (!salaActiva?.id) return;
-
-        try {
-            const data = await fetchApi(`/v1/partidas/${salaActiva.id}/estado`);
-            get().setEstadoDinamico(data);
-            console.log('[sincronizarEstadoPartida] Estado sincronizado.');
-        } catch (error) {
-            console.error('[sincronizarEstadoPartida] Error:', error);
-        }
-    },
-
-    setEstadoDinamico: (payload: any) => {
-        const { tropas, propietarios } = payload.mapa
-            ? parsearMapa(payload.mapa)
-            : { tropas: get().tropas, propietarios: get().propietarios };
-
-        const { coloresJugadores, tropasReservaLocal, tropasReservaActivo, jugadorLocalId } = payload.jugadores
-            ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
-            : {
-                coloresJugadores: get().coloresJugadores,
-                tropasReservaLocal: null,
-                tropasReservaActivo: null,
-                jugadorLocalId: get().jugadorLocal,
-            };
-
-        set((state) => ({
-            faseActual: payload.fase_actual
-                ? normalizarFase(payload.fase_actual)
-                : state.faseActual,
-            turnoActual: payload.turno_de ?? state.turnoActual,
-            ...(payload.mapa && { tropas, propietarios }),
-            coloresJugadores: {
-                ...state.coloresJugadores,
-                ...coloresJugadores,
+            /**
+             * Descarga el mapa estático del backend y lo almacena.
+             */
+            cargarMapaEstatico: async () => {
+                try {
+                    set({ errorMapaEstatico: null });
+                    const data = await fetchApi('/v1/mapa');
+                    set({ mapaEstatico: data });
+                } catch (error) {
+                    console.error('[cargarMapaEstatico] Error:', error);
+                    set({ errorMapaEstatico: 'Fallo de conexión al descargar cartografía.' });
+                }
             },
-            ...(tropasReservaActivo !== null && {
-                tropasDisponibles: tropasReservaActivo,
-            }),
-            jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
-            diccionarioJugadores: payload.jugadores ?? state.diccionarioJugadores,
-            jugadores: payload.jugadores
-                ? Object.keys(payload.jugadores)
-                : state.jugadores,
-        }));
-    },
 
-    setEstadoPartidaLocal: (nuevoEstado: any) => set({ estadoPartidaLocal: nuevoEstado }),
+            /**
+             * Construye el grafo de adyacencias a partir de los datos del mapa.
+             * @param {ComarcaDTO[]} rawData - Lista de comarcas descargadas.
+             */
+            inicializarJuego: (rawData: ComarcaDTO[]) => {
+                try {
+                    const grafo = construirGrafoComarcas(rawData);
+                    set({ grafoGlobal: grafo });
+                    console.log('[inicializarJuego] Grafo inicializado.');
+                } catch (error) {
+                    console.error('[inicializarJuego] Error al construir grafo:', error);
+                }
+            },
 
-    // ACCIONES — UI
+            // Muestra una alerta flotante en la UI (error, info o success)
+            mostrarAlerta: (mensaje: string, tipo: 'error' | 'info' | 'success' = 'error') => {
+                set({ mensajeAlerta: mensaje, tipoAlerta: tipo });
+                setTimeout(() => {
+                    set((state) => state.mensajeAlerta === mensaje ? { mensajeAlerta: null, tipoAlerta: null } : state);
+                }, 3000);
+            },
 
-    toggleModoVista: () =>
-        set((state) => ({
-            modoVista: state.modoVista === 'COMARCAS' ? 'REGIONES' : 'COMARCAS',
-        })),
+            // Añade un mensaje al log de eventos (máximo 50 mensajes)
+            // Ahora acepta tanto strings (logs del frontend) como objetos (logs del backend).
+            agregarMensajeLog: (mensaje: string | any) => {
+                set((state) => {
+                    const nuevoHistorial = [mensaje, ...state.historialLog].slice(0, 50);
+                    return { historialLog: nuevoHistorial };
+                });
+            },
 
-    setRegionHover: (regionId: string | null) => set({ regionHover: regionId }),
-
-    limpiarSeleccion: () =>
-        set({
-            origenSeleccionado: null,
-            destinoSeleccionado: null,
-            comarcasResaltadas: [],
-        }),
-
-    cerrarAnimacionRefuerzos: () => set({ mostrarAnimacionRefuerzos: false }),
-
-    setFase: (nuevaFase: FaseJuego) =>
-        set({
-            faseActual: nuevaFase,
-            origenSeleccionado: null,
-            destinoSeleccionado: null,
-            comarcasResaltadas: [],
-        }),
-
-    setTropas: (nuevasTropas: Record<string, number>) => set({ tropas: nuevasTropas }),
-
-    setEstadoMundo: (
-        nuevosPropietarios: Record<string, string>,
-        nuevosColores: Record<string, string>
-    ) => set({ propietarios: nuevosPropietarios, coloresJugadores: nuevosColores }),
-
-    // ACCIONES — REFUERZO (colocación de tropas)
-
-    /**
-     * Ajusta cuántas tropas se pre-asignarán en la comarca seleccionada.
-     * Valida que la cantidad esté en el rango [0, tropasDisponibles].
-     */
-    setTropasAAsignar: (cantidad: number) => {
-        set((state) => {
-            const disponibles = state.tropasDisponibles ?? 0;
-            if (cantidad < 0 || cantidad > disponibles) return state;
-            return { tropasAAsignar: cantidad };
-        });
-    },
-
-    /**
-     * Ejecuta la orden de refuerzo enviando la petición al backend.
-     * @returns {Promise<void>}
-     */
-    confirmarRefuerzo: async () => {
-        const estado = get();
-
-        if (!estado.comarcaRefuerzo || !estado.salaActiva?.id) {
-            console.warn('[confirmarRefuerzo] Falta comarca o sala activa.');
-            return;
-        }
-        if (estado.tropasAAsignar <= 0) {
-            console.warn('[confirmarRefuerzo] Tropas a asignar deben ser > 0.');
-            return;
-        }
-        if (String(estado.turnoActual) !== String(estado.jugadorLocal)) {
-            console.warn('[confirmarRefuerzo] No es el turno del jugador local.');
-            return;
-        }
-        if ((estado.tropasDisponibles ?? 0) <= 0) {
-            console.warn('[confirmarRefuerzo] Sin tropas en reserva.');
-            return;
-        }
-
-        const comarca = estado.comarcaRefuerzo;
-        const cantidad = estado.tropasAAsignar;
-
-        // Descuento optimista: el jugador ve el gasto inmediatamente sin
-        // esperar al round-trip de red. ACTUALIZACION_MAPA lo corregirá si hay
-        // diferencia con el servidor.
-        set((state) => ({
-            tropasDisponibles: (state.tropasDisponibles ?? 0) - cantidad,
-            comarcaRefuerzo: null,
-            tropasAAsignar: 0,
-        }));
-
-        try {
-            await gameApi.colocarTropas(estado.salaActiva.id, comarca, cantidad);
-            await get().sincronizarEstadoPartida();
-        } catch (error) {
-            console.error('[confirmarRefuerzo] Error al colocar tropas:', error);
-            set((state) => ({
-                tropasDisponibles: (state.tropasDisponibles ?? 0) + cantidad,
-                comarcaRefuerzo: comarca,
-                tropasAAsignar: cantidad,
-            }));
-        }
-    },
-
-    // ACCIONES — ATAQUE / CONQUISTA / FORTIFICACIÓN
-
-    /**
-     * Solicita al servidor el avance de fase.
-     * NO predice la nueva fase localmente: espera CAMBIO_FASE por WebSocket.
-     * Sí limpia la UI inmediatamente para feedback visual rápido.
-     */
-    pasarFaseBackend: async () => {
-        const estado = get();
-        if (!estado.salaActiva?.id) return;
-
-        set({
-            origenSeleccionado: null,
-            destinoSeleccionado: null,
-            comarcasResaltadas: [],
-            comarcaRefuerzo: null,
-            tropasAAsignar: 0,
-        });
-
-        try {
-            await gameApi.pasarFase(estado.salaActiva.id);
-            await get().sincronizarEstadoPartida();
-        } catch (error) {
-            console.error('[pasarFaseBackend] Error:', error);
-        }
-    },
-
-    /**
-     * Ejecuta una acción de ataque entre dos territorios.
-     * @param {string} origen - ID comarca atacante.
-     * @param {string} destino - ID comarca defensora.
-     * @param {number} tropas - Número de unidades enviadas.
-     * @returns {Promise<any>} Resultado del combate.
-     */
-    ejecutarAtaque: async (origen: string, destino: string, tropas: number) => {
-        const estado = get();
-        if (!estado.salaActiva?.id) return;
-        try {
-            const result = await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, tropas);
-            await get().sincronizarEstadoPartida();
-            return result;
-        } catch (error) {
-            console.error('[ejecutarAtaque] Error:', error);
-            throw error;
-        }
-    },
-
-    moverTropasConquista: async (tropas: number) => {
-        const estado = get();
-        if (!estado.salaActiva?.id) return;
-        try {
-            await gameApi.moverConquista(estado.salaActiva.id, tropas);
-            await get().sincronizarEstadoPartida();
-        } catch (error) {
-            console.error('[moverTropasConquista] Error:', error);
-            throw error;
-        }
-    },
-
-    prepararTrasladoConquista: (origen: string, destino: string) => {
-        set({
-            movimientoConquistaPendiente: true,
-            origenConquista: origen,
-            destinoConquista: destino,
-            origenSeleccionado: origen,
-            destinoSeleccionado: destino,
-        });
-    },
-
-    /**
-     * Ejecuta una fortificación entre dos comarcas propias.
-     * @param {string} origen - Comarca de salida.
-     * @param {string} destino - Comarca de llegada.
-     * @param {number} tropas - Unidades a mover.
-     * @returns {Promise<void>}
-     */
-    fortificarBackend: async (origen: string, destino: string, tropas: number) => {
-        const estado = get();
-        if (!estado.salaActiva?.id) return;
-        try {
-            await gameApi.fortificar(estado.salaActiva.id, origen, destino, tropas);
-            await get().sincronizarEstadoPartida();
-            set({
-                preparandoFortificacion: false,
-                origenSeleccionado: null,
-                destinoSeleccionado: null,
-                comarcasResaltadas: [],
-            });
-        } catch (error) {
-            console.error('[fortificarBackend] Error:', error);
-            throw error;
-        }
-    },
-
-    /**
-     * Enrutador central de interacciones tácticas sobre el mapa.
-     * @param {string} comarcaId - Identificador de la comarca pulsada.
-     */
-    manejarClickComarca: (comarcaId: string) => {
-        const estado = get();
-
-        if (estado.estadoPartidaLocal === 'ESPECTANDO') {
-            console.log('[manejarClickComarca] Estás en modo espectador.');
-            return;
-        }
-
-        if (String(estado.turnoActual) !== String(estado.jugadorLocal)) {
-            console.log('[manejarClickComarca] No es tu turno.');
-            return;
-        }
-
-        switch (estado.faseActual) {
-
-            case 'REFUERZO': {
-                if ((estado.tropasDisponibles ?? 0) <= 0) {
-                    console.log('[manejarClickComarca] Sin tropas disponibles en reserva.');
+            // Carga el historial de logs de la partida desde el backend (para reconexiones/F5)
+            // Formato según docs/logs_partida.md: tipo_evento, user, datos
+            cargarLogsPartida: async (overrideId?: number | string) => {
+                const idToUse = overrideId || get().salaActiva?.id;
+                console.log(`[cargarLogsPartida] Solicitando logs para partida: ${idToUse}`);
+                if (!idToUse) {
+                    console.warn('[cargarLogsPartida] ⚠️ No hay ID de partida disponible');
                     return;
                 }
-                if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
-                    set({ comarcaRefuerzo: comarcaId, tropasAAsignar: 0 });
-                }
-                break;
-            }
-
-            case 'ATAQUE_CONVENCIONAL': {
-                const RANGO_ATAQUE = 1;
-
-                if (estado.preparandoAtaque || estado.movimientoConquistaPendiente) return;
-
-                if (estado.origenSeleccionado === comarcaId) {
-                    set({
-                        origenSeleccionado: null,
-                        destinoSeleccionado: null,
-                        comarcasResaltadas: [],
-                    });
-                    return;
-                }
-
-                if (estado.destinoSeleccionado === comarcaId) {
-                    set({ destinoSeleccionado: null });
-                    if (estado.grafoGlobal && estado.origenSeleccionado) {
-                        const alcanzables = calcularComarcasEnRango(
-                            estado.grafoGlobal,
-                            estado.origenSeleccionado,
-                            RANGO_ATAQUE
-                        );
-                        const propietarioOrigen =
-                            estado.propietarios[estado.origenSeleccionado];
-                        set({
-                            comarcasResaltadas: Array.from(alcanzables).filter(
-                                (id) => estado.propietarios[id] !== propietarioOrigen
-                            ),
-                        });
-                    }
-                    return;
-                }
-
-                if (!estado.origenSeleccionado) {
-                    if (
-                        estado.propietarios[comarcaId] !== estado.jugadorLocal ||
-                        (estado.tropas[comarcaId] ?? 0) <= 1
-                    ) {
-                        console.log('[manejarClickComarca] Origen inválido para atacar.');
+                try {
+                    const logs: any[] = await fetchApi(`/v1/partidas/${idToUse}/logs`);
+                    console.log(`[cargarLogsPartida] ✅ Respuesta del backend:`, logs);
+                    if (!Array.isArray(logs) || logs.length === 0) {
+                        console.log('[cargarLogsPartida] ℹ️ El endpoint devolvió 0 logs (array vacío)');
                         return;
                     }
-                    if (!estado.grafoGlobal) return;
 
-                    const alcanzables = calcularComarcasEnRango(
-                        estado.grafoGlobal,
-                        comarcaId,
-                        RANGO_ATAQUE
-                    );
-                    const propietarioOrigen = estado.propietarios[comarcaId];
-                    set({
-                        origenSeleccionado: comarcaId,
-                        comarcasResaltadas: Array.from(alcanzables).filter(
-                            (id) => estado.propietarios[id] !== propietarioOrigen
-                        ),
-                    });
+                    // Guardamos los logs crudos. El renderizado y coloreado se hace en el componente LogPartida.
+                    console.log(`[cargarLogsPartida] 📋 Logs guardados:`, logs);
+                    set({ historialLog: logs.slice(0, 50) });
+                } catch (error) {
+                    console.error('[cargarLogsPartida] ❌ Error al llamar al endpoint:', error);
+                }
+            },
+
+            // ACCIONES — SINCRONIZACIÓN CON BACKEND
+
+            /**
+             * Recupera el estado completo de la partida desde el endpoint REST.
+             * Endpoint: GET /v1/partidas/{partida_id}/estado
+             *
+             * Se usa para:
+             *   - Recargar estado tras reconexión WebSocket.
+             *   - Recuperar partida tras F5 (recarga de página).
+             *   - Resolver inconsistencias entre UI y servidor.
+             * 
+             * @param {number|string} [overrideId] - ID Forzado para recuperar partida tras recarga.
+             */
+            sincronizarEstadoPartida: async (overrideId?: number | string) => {
+                const idToSync = overrideId || get().salaActiva?.id;
+                if (!idToSync) return;
+
+                // Si es una reconexión por F5, aseguramos que el ID se guarde en el store
+                if (overrideId && get().salaActiva?.id !== overrideId) {
+                    set((state) => ({
+                        salaActiva: { ...state.salaActiva, id: Number(overrideId) }
+                    }));
+                }
+
+                try {
+                    const data = await fetchApi(`/v1/partidas/${idToSync}/estado`);
+                    get().setEstadoDinamico(data);
+                    console.log('[sincronizarEstadoPartida] Estado sincronizado con éxito.');
+                } catch (error) {
+                    console.error('[sincronizarEstadoPartida] Error al sincronizar:', error);
+                }
+            },
+
+            setEstadoDinamico: (payload: any) => {
+                const { tropas, propietarios, estadosBloqueo, estadosAlterados } = payload.mapa
+                    ? parsearMapa(payload.mapa)
+                    : { tropas: get().tropas, propietarios: get().propietarios, estadosBloqueo: get().estadosBloqueo, estadosAlterados: get().estadosAlterados };
+
+                const {
+                    coloresJugadores,
+                    tropasReservaLocal: _,
+                    tropasReservaActivo,
+                    jugadorLocalId,
+                    monedasLocal,
+                    tecnologiasLocal,
+                    armasCompradasLocal,
+                    territorioTrabajandoLocal,
+                    territorioInvestigandoLocal,
+                    ramaInvestigandoLocal,
+                    haLanzadoEspecialLocal
+                } = payload.jugadores
+                        ? parsearJugadores(payload.jugadores, get().jugadorLocal, payload.turno_de ?? get().turnoActual)
+                        : {
+                            coloresJugadores: get().coloresJugadores,
+                            tropasReservaLocal: null,
+                            tropasReservaActivo: null,
+                            jugadorLocalId: get().jugadorLocal,
+                            monedasLocal: null,
+                            tecnologiasLocal: null,
+                            armasCompradasLocal: null,
+                            territorioTrabajandoLocal: null,
+                            territorioInvestigandoLocal: null,
+                            ramaInvestigandoLocal: null,
+                            haLanzadoEspecialLocal: null,
+                        };
+
+                const nuevaFase = payload.fase_actual ? normalizarFase(payload.fase_actual) : get().faseActual;
+                const nuevoTurno = payload.turno_de ?? payload.jugador_activo ?? payload.turno_actual ?? get().turnoActual;
+
+                set((state) => {
+                    const cambioTurno = state.turnoActual !== nuevoTurno;
+
+                    // Fusionamos el diccionario de jugadores asegurándonos de no perder propiedades locales (avatar, desconexión)
+                    let nuevoDiccionarioJugadores = { ...state.diccionarioJugadores };
+
+                    if (payload.jugadores) {
+                        for (const username of Object.keys(payload.jugadores)) {
+                            nuevoDiccionarioJugadores[username] = {
+                                ...nuevoDiccionarioJugadores[username],
+                                ...payload.jugadores[username]
+                            };
+                        }
+                    }
+
+                    if (payload.avatares) {
+                        for (const [username, avatarPath] of Object.entries(payload.avatares)) {
+                            nuevoDiccionarioJugadores[username] = {
+                                ...nuevoDiccionarioJugadores[username],
+                                avatar: avatarPath
+                            };
+                        }
+                    }
+
+                    return {
+                        faseActual: nuevaFase,
+                        haUsadoAtaqueEspecial: haLanzadoEspecialLocal ?? (cambioTurno ? false : state.haUsadoAtaqueEspecial),
+                        finFaseUtc: payload.fin_fase_utc ?? state.finFaseUtc,
+                        turnoActual: nuevoTurno,
+                        ...(payload.mapa && { tropas, propietarios, estadosBloqueo, estadosAlterados }),
+                        coloresJugadores: {
+                            ...state.coloresJugadores,
+                            ...coloresJugadores,
+                        },
+                        ...(tropasReservaActivo !== null && {
+                            tropasDisponibles: tropasReservaActivo,
+                        }),
+                        jugadorLocal: jugadorLocalId ?? state.jugadorLocal,
+                        diccionarioJugadores: nuevoDiccionarioJugadores,
+                        jugadores: payload.jugadores
+                            ? Object.keys(payload.jugadores)
+                            : state.jugadores,
+                        monedas: monedasLocal ?? (typeof payload.monedas === 'number' ? payload.monedas : (payload.recursos?.monedas ?? state.monedas)),
+                        tecnologiasDesbloqueadas: (tecnologiasLocal ?? payload.tecnologias_predesbloqueadas ?? state.tecnologiasDesbloqueadas).map((t: string) => t.toLowerCase()),
+                        armasCompradas: (armasCompradasLocal ?? payload.tecnologias_compradas ?? state.armasCompradas).map((t: string) => t.toLowerCase()),
+                        territorioTrabajando: territorioTrabajandoLocal ?? payload.territorio_trabajando ?? state.territorioTrabajando,
+                        territorioInvestigando: territorioInvestigandoLocal ?? payload.territorio_investigando ?? state.territorioInvestigando,
+                        ramaInvestigando: ramaInvestigandoLocal ?? payload.rama_investigando ?? state.ramaInvestigando,
+                    };
+                });
+            },
+
+            setEstadoPartidaLocal: (nuevoEstado: any) => set({ estadoPartidaLocal: nuevoEstado }),
+
+            // ACCIONES — UI
+
+            toggleModoVista: () =>
+                set((state) => ({
+                    modoVista: state.modoVista === 'COMARCAS' ? 'REGIONES' : 'COMARCAS',
+                    // Limpiar todas las selecciones al cambiar de modo visual
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null,
+                    comarcasResaltadas: [],
+                    popupCoords: null,
+                    preparandoAtaque: false,
+                    preparandoFortificacion: false,
+                    comarcaRefuerzo: null,
+                })),
+
+            toggleArbolTecnologico: () =>
+                set((state) => ({
+                    isArbolTecnologicoOpen: !state.isArbolTecnologicoOpen,
+                })),
+
+            setTecnologiasDesbloqueadas: (techs: string[]) =>
+                set({ tecnologiasDesbloqueadas: techs }),
+
+            investigarBackend: async (tecnologiaId: string, territorioId?: string) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                // Usar el territorio pasado directamente, o el que se guardó al abrir el árbol
+                const territorio = territorioId || estado.territorioInvestigandoPendiente;
+                if (!territorio) {
+                    console.warn('[investigarBackend] No hay territorio asignado para investigar.');
+                    return;
+                }
+                try {
+                    await gameApi.investigarTecnologia(estado.salaActiva.id, territorio, tecnologiaId);
+                    // Update optimista: marcar el territorio como 'investigando' localmente
+                    // y notificar a los rivales para que sincronicen
+                    set((state) => ({
+                        territorioInvestigando: territorio,
+                        territorioInvestigandoPendiente: null,
+                        estadosBloqueo: {
+                            ...state.estadosBloqueo,
+                            [territorio]: `investigando:${tecnologiaId}`,
+                        },
+                    }));
+                    await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales en tiempo real
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
+                } catch (error) {
+                    console.error('[investigarBackend] Error al investigar tecnología:', error);
+                    alert("No se pudo investigar. Asegúrate de ser tu turno.");
+                }
+            },
+
+            trabajarBackend: async (territorioId: string) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                try {
+                    await gameApi.trabajarTerritorio(estado.salaActiva.id, territorioId);
+                    // Update optimista: marcar el territorio como 'trabajando' localmente
+                    // y notificar a los rivales para que sincronicen
+                    set((state) => ({
+                        territorioTrabajando: territorioId,
+                        estadosBloqueo: {
+                            ...state.estadosBloqueo,
+                            [territorioId]: 'trabajando',
+                        },
+                    }));
+                    await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales en tiempo real
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
+                } catch (error) {
+                    console.error('[trabajarBackend] Error al ordenar trabajo:', error);
+                    alert("El territorio no puede trabajar en este momento.");
+                }
+            },
+
+            setRegionHover: (regionId: string | null) => set({ regionHover: regionId }),
+
+            limpiarSeleccion: () =>
+                set({
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null,
+                    comarcasResaltadas: [],
+                    popupCoords: null,
+                    preparandoAtaque: false,
+                    preparandoFortificacion: false,
+                    preparandoAtaqueEspecial: null,
+                }),
+
+            cerrarAnimacionRefuerzos: () => set({ mostrarAnimacionRefuerzos: false }),
+
+            setFase: (nuevaFase: FaseJuego) =>
+                set({
+                    faseActual: nuevaFase,
+                    haUsadoAtaqueEspecial: false,
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null,
+                    comarcasResaltadas: [],
+                    popupCoords: null,
+                }),
+
+            setTropas: (nuevasTropas: Record<string, number>) => set({ tropas: nuevasTropas }),
+
+            setEstadoMundo: (
+                nuevosPropietarios: Record<string, string>,
+                nuevosColores: Record<string, string>
+            ) => set({ propietarios: nuevosPropietarios, coloresJugadores: nuevosColores }),
+
+            // ACCIONES — REFUERZO (colocación de tropas)
+
+            /**
+             * Ajusta cuántas tropas se pre-asignarán en la comarca seleccionada.
+             * Valida que la cantidad esté en el rango [0, tropasDisponibles].
+             */
+            setTropasAAsignar: (cantidad: number) => {
+                set((state) => {
+                    const disponibles = state.tropasDisponibles ?? 0;
+                    if (cantidad < 1 || cantidad > disponibles) return state;
+                    return { tropasAAsignar: cantidad };
+                });
+            },
+
+            /**
+             * Ejecuta la orden de refuerzo enviando la petición al backend.
+             * @returns {Promise<void>}
+             */
+            confirmarRefuerzo: async () => {
+                const estado = get();
+
+                if (!estado.comarcaRefuerzo || !estado.salaActiva?.id) {
+                    console.warn('[confirmarRefuerzo] Falta comarca o sala activa.');
+                    return;
+                }
+                if (estado.tropasAAsignar < 1) {
+                    console.warn('[confirmarRefuerzo] Tropas a asignar deben ser >= 1.');
+                    return;
+                }
+                if (!esMismoJugador(estado.turnoActual, estado.jugadorLocal)) {
+                    console.warn('[confirmarRefuerzo] No es el turno del jugador local.');
+                    return;
+                }
+                if ((estado.tropasDisponibles ?? 0) <= 0) {
+                    console.warn('[confirmarRefuerzo] Sin tropas en reserva.');
                     return;
                 }
 
-                if (estado.comarcasResaltadas.includes(comarcaId)) {
-                    set({ destinoSeleccionado: comarcaId, preparandoAtaque: true });
+                const comarca = estado.comarcaRefuerzo;
+                const cantidad = estado.tropasAAsignar;
+
+                // ¿Se está reclamando un territorio vacío (0 tropas y no propio)?
+                // Si es así, actualizamos propietarios optimistamente para que el color
+                // cambie INMEDIATAMENTE en el mapa del jugador local.
+                const tropasActualesComarca = estado.tropas[comarca] ?? 0;
+                const propActualComarca = estado.propietarios[comarca];
+                const esMioComarca = String(propActualComarca ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                const estamosReclamandoVacio = tropasActualesComarca === 0 && !esMioComarca;
+
+                // Actualización optimista completa: el jugador ve INMEDIATAMENTE el incremento de tropas
+                // en el territorio Y la disminución en la reserva sin esperar al round-trip de red.
+                // Si hay error, revertimos ambos cambios. TROPAS_COLOCADAS simplemente confirma lo que
+                // el usuario ya vio, por lo que es idempotente.
+                set((state) => ({
+                    tropas: {
+                        ...state.tropas,
+                        [comarca]: (state.tropas[comarca] ?? 0) + cantidad,
+                    },
+                    // Si estamos reclamando un territorio vacío, asignamos el propietario optimistamente
+                    ...(estamosReclamandoVacio && estado.jugadorLocal && {
+                        propietarios: {
+                            ...state.propietarios,
+                            [comarca]: estado.jugadorLocal,
+                        }
+                    }),
+                    tropasDisponibles: (state.tropasDisponibles ?? 0) - cantidad,
+                    comarcaRefuerzo: null,
+                    tropasAAsignar: 0,
+                    popupCoords: null,
+                }));
+
+                try {
+                    await gameApi.colocarTropas(estado.salaActiva.id, comarca, cantidad);
+                    await get().sincronizarEstadoPartida();
+                    // Notificar a los rivales para que sincronicen el estado completo.
+                    // Esto es necesario porque el evento TROPAS_COLOCADAS puede no incluir
+                    // el cambio de propietario cuando se conquista un territorio vacío.
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
+                } catch (error) {
+                    console.error('[confirmarRefuerzo] Error al colocar tropas:', error);
+                    set((state) => ({
+                        tropas: {
+                            ...state.tropas,
+                            [comarca]: (state.tropas[comarca] ?? 0) - cantidad,
+                        },
+                        // Revertir también el propietario si habíamos hecho el update optimista
+                        ...(estamosReclamandoVacio && {
+                            propietarios: {
+                                ...state.propietarios,
+                                [comarca]: propActualComarca ?? undefined,
+                            }
+                        }),
+                        tropasDisponibles: (state.tropasDisponibles ?? 0) + cantidad,
+                        comarcaRefuerzo: comarca,
+                        tropasAAsignar: cantidad,
+                    }));
+                }
+            },
+
+            // ACCIONES — ARSENAL DE ATAQUES ESPECIALES
+
+            /**
+             * Descarga el catálogo de tecnologías de la partida activa y lo almacena en el store.
+             * Endpoint: GET /v1/partidas/{partida_id}/tecnologias
+             * Acepta un overrideId para casos donde salaActiva.id aún no esté en el store
+             * (p.ej. primera carga antes de que Zustand haya hidratado el estado).
+             */
+            cargarCatalogoTecnologias: async (overrideId?: number | string) => {
+                const partidaId = overrideId ?? get().salaActiva?.id;
+                if (!partidaId) {
+                    console.warn('[cargarCatalogoTecnologias] No hay partida activa, no se puede cargar el catálogo.');
                     return;
                 }
+                try {
+                    const data = await gameApi.getTecnologias(partidaId);
+                    set({ catalogoTecnologias: data });
+                    console.log('[cargarCatalogoTecnologias] Catálogo cargado para partida', partidaId);
+                } catch (error) {
+                    console.error('[cargarCatalogoTecnologias] Error al cargar catálogo:', error);
+                }
+            },
+
+            /**
+             * Compra una habilidad (la añade a armasCompradas) restando el oro en backend.
+             */
+            comprarTecnologiaBackend: async (tecnologiaId: string) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                try {
+                    const res = await gameApi.comprarTecnologia(estado.salaActiva.id, tecnologiaId);
+                    console.log('[comprarTecnologiaBackend] Arma comprada:', tecnologiaId);
+                    // El backend envía el nuevo estado completo por WebSocket (o podemos sincronizar)
+                    await get().sincronizarEstadoPartida();
+                    return res;
+                } catch (error) {
+                    console.error('[comprarTecnologiaBackend] Error:', error);
+                    throw error;
+                }
+            },
+
+            /**
+             * Activa el modo de selección de objetivo para un arma que ya tenemos comprada.
+             */
+            prepararArmaEspecial: (tecnologiaId: string) => {
+                set({
+                    armaEspecialSeleccionada: tecnologiaId,
+                    comarcasResaltadas: [], // Se calcularán en manejarClickComarca según el rango
+                    popupCoords: null,
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null
+                });
+            },
+
+            /**
+             * Compra una habilidad tecnológica y activa inmediatamente el modo de
+             * selección de objetivo en el mapa (combina comprar + prepararArmaEspecial).
+             */
+            comprarYPrepararAtaque: async (tecnologiaId: string) => {
+                await get().comprarTecnologiaBackend(tecnologiaId);
+                get().prepararArmaEspecial(tecnologiaId);
+            },
+
+            /**
+             * Cancela el modo de selección de objetivo del ataque especial sin ejecutarlo.
+             */
+            cancelarAtaqueEspecial: () => {
+                set({
+                    armaEspecialSeleccionada: null,
+                    comarcasResaltadas: [],
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null,
+                    popupCoords: null,
+                });
+            },
+
+            /**
+             * Ejecuta el ataque especial sobre el territorio destino seleccionado.
+             * Limpia todo el estado del arsenal trás la ejecución (exitosa o no).
+             */
+            ejecutarAtaqueEspecialBackend: async (destinoId: string, tipoAtaque: string, origenId: string | null = null) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+
+                // Limpiar estado UI inmediatamente (feedback rápido)
+                set({
+                    armaEspecialSeleccionada: null,
+                    comarcasResaltadas: [],
+                    origenSeleccionado: null,
+                    destinoSeleccionado: null,
+                    popupCoords: null,
+                    haUsadoAtaqueEspecial: true, // Optimistic update
+                });
+
+                try {
+                    await gameApi.ejecutarAtaqueEspecial(estado.salaActiva.id, tipoAtaque, destinoId, origenId);
+                    console.log('[ejecutarAtaqueEspecialBackend] Ataque especial ejecutado:', tipoAtaque, '->', destinoId);
+                    await get().sincronizarEstadoPartida();
+                } catch (error) {
+                    console.error('[ejecutarAtaqueEspecialBackend] Error:', error);
+                    set({ haUsadoAtaqueEspecial: false }); // Revertir en caso de error
+                    alert('El ataque especial no pudo ejecutarse. Inténtalo de nuevo.');
+                }
+            },
+
+
+            /**
+             * Solicita al servidor el avance de fase.
+             * NO predice la nueva fase localmente: espera CAMBIO_FASE por WebSocket.
+             * Sí limpia la UI inmediatamente para feedback visual rápido.
+             */
+            pasarFaseBackend: async () => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
 
                 set({
                     origenSeleccionado: null,
                     destinoSeleccionado: null,
                     comarcasResaltadas: [],
+                    comarcaRefuerzo: null,
+                    tropasAAsignar: 0,
+                    popupCoords: null,
                 });
-                break;
-            }
 
-            case 'FORTIFICACION': {
-                const RANGO_MOVIMIENTO = 1;
-
-                if (estado.preparandoFortificacion) return;
-
-                if (!estado.origenSeleccionado) {
-                    if (
-                        estado.propietarios[comarcaId] !== estado.jugadorLocal ||
-                        (estado.tropas[comarcaId] ?? 0) <= 1
-                    )
-                        return;
-
-                    if (!estado.grafoGlobal) return;
-
-                    // BFS: Buscamos todas las comarcas conectadas que también sean nuestras
-                    const alcanzables = calcularComarcasEnRango(
-                        estado.grafoGlobal,
-                        comarcaId,
-                        Infinity, // Rango infinito para buscar por todo el mapa conectado
-                        (id) => estado.propietarios[id] === estado.jugadorLocal
-                    );
-
-                    set({
-                        origenSeleccionado: comarcaId,
-                        comarcasResaltadas: Array.from(alcanzables),
-                    });
-                    return;
+                try {
+                    await gameApi.pasarFase(estado.salaActiva.id);
+                    await get().sincronizarEstadoPartida();
+                    socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_PHASE@@' });
+                } catch (error) {
+                    console.error('[pasarFaseBackend] Error:', error);
                 }
+            },
 
-                if (estado.origenSeleccionado === comarcaId) {
-                    set({ origenSeleccionado: null, comarcasResaltadas: [] });
-                    return;
+            /**
+             * Ejecuta una acción de ataque entre dos territorios.
+             * @param {string} origen - ID comarca atacante.
+             * @param {string} destino - ID comarca defensora.
+             * @param {number} tropas - Unidades enviadas.
+             * @returns {Promise<any>} Resultado del combate.
+             */
+            ejecutarAtaque: async (origen: string, destino: string, tropas: number) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                try {
+                    const result = await gameApi.atacarTerritorio(estado.salaActiva.id, origen, destino, tropas);
+                    await get().sincronizarEstadoPartida();
+                    return result;
+                } catch (error) {
+                    console.error('[ejecutarAtaque] Error:', error);
+                    throw error;
                 }
+            },
 
-                if (estado.comarcasResaltadas.includes(comarcaId)) {
-                    set({ destinoSeleccionado: comarcaId, preparandoFortificacion: true });
-                } else {
+            moverTropasConquista: async (tropas: number) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                try {
+                    await gameApi.moverConquista(estado.salaActiva.id, tropas);
+                    await get().sincronizarEstadoPartida();
+                } catch (error) {
+                    console.error('[moverTropasConquista] Error:', error);
+                    throw error;
+                }
+            },
+
+            prepararTrasladoConquista: (origen: string, destino: string) => {
+                set({
+                    movimientoConquistaPendiente: true,
+                    origenConquista: origen,
+                    destinoConquista: destino,
+                    origenSeleccionado: origen,
+                    destinoSeleccionado: destino,
+                    popupCoords: null,
+                });
+            },
+
+            /**
+             * Ejecuta una fortificación entre dos comarcas propias.
+             * @param {string} origen - Comarca de salida.
+             * @param {string} destino - Comarca de llegada.
+             * @param {number} tropas - Unidades a mover.
+             * @returns {Promise<void>}
+             */
+            fortificarBackend: async (origen: string, destino: string, tropas: number) => {
+                const estado = get();
+                if (!estado.salaActiva?.id) return;
+                try {
+                    await gameApi.fortificar(estado.salaActiva.id, origen, destino, tropas);
+                    await get().sincronizarEstadoPartida();
+                    // Si el destino es un territorio vacío (reclamado), notificar a rivales
+                    const tropasDestino = estado.tropas[destino] ?? 0;
+                    const propDestino = estado.propietarios[destino];
+                    const esPropioDestino = String(propDestino ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                    if (tropasDestino === 0 && !esPropioDestino) {
+                        socketService.sendRaw({ accion: 'CHAT', mensaje: '@@SYS_SYNC_TROOP@@' });
+                    }
                     set({
+                        preparandoFortificacion: false,
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
+                        popupCoords: null,
                         comarcasResaltadas: [],
+                        movimientoRealizadoEnTurno: true,
                     });
+
+                    // AUTO-AVANCE DE FASE TRAS FORTIFICACIÓN (QoL)
+                    // Solo se permite un movimiento, así que tras 800ms pasamos el turno automáticamente.
+                    setTimeout(() => {
+                        const store = useGameStore.getState();
+                        // Verificamos que sigamos en FORTIFICACION y sea nuestro turno antes de saltar
+                        if (store.faseActual === 'FORTIFICACION' && store.movimientoRealizadoEnTurno) {
+                            store.mostrarAlerta("Fin de turno automático.", "info");
+                            store.pasarFaseBackend();
+                        }
+                    }, 800);
+                } catch (error) {
+                    console.error('[fortificarBackend] Error:', error);
+                    throw error;
                 }
-                break;
-            }
+            },
 
-            default:
-                console.warn(
-                    `[manejarClickComarca] Fase no manejada: ${estado.faseActual}`
-                );
-        }
-    },
+            /**
+             * Enrutador central de interacciones tácticas sobre el mapa.
+             * @param {string} comarcaId - Identificador de la comarca pulsada.
+             * @param {{x: number, y: number}} [coords] - Posición en la pantalla.
+             */
+            manejarClickComarca: (comarcaId: string, coords?: { x: number, y: number }) => {
+                const estado = get();
 
-    /**
-     * Calcula estadísticas de control territorial.
-     * @param {string} jugadorId - Username del jugador.
-     * @returns {{ territorios: number, tropas: number }}
-     */
-    getEstadisticasJugador: (jugadorId: string) => {
-        const estado = get();
-        let territorios = 0;
-        let tropas = 0;
-        for (const [comarcaId, propietario] of Object.entries(estado.propietarios)) {
-            if (propietario === jugadorId) {
-                territorios++;
-                tropas += estado.tropas[comarcaId] ?? 0;
-            }
-        }
-        return { territorios, tropas };
-    },
+                if (estado.estadoPartidaLocal === 'ESPECTANDO') {
+                    console.log('[manejarClickComarca] Estás en modo espectador.');
+                    return;
+                }
 
-    /**
-     * Actualiza el estado de la conexión del WebSocket.
-     * @param {boolean} status - True si está conectado.
-     */
-    setSocketConnection: (status: boolean) => set({ isSocketConnected: status }),
+                if (String(estado.turnoActual).toLowerCase() !== String(estado.jugadorLocal).toLowerCase()) {
+                    estado.mostrarAlerta('No puedes realizar acciones fuera de tu turno.');
+                    return;
+                }
 
-    /**
-     * Inyecta el evento del WebSocket directamente en Zustand.
-     */
-    actualizarDesdeSocket: (mensaje: any) => {
-        console.log('%c🔄 Tablero actualizado por otro jugador', 'color: cyan; font-weight: bold;');
-        console.log('📡 [WS RECIBIDO]:', mensaje);
+                // BLOQUEO ESTRICTO: Si el territorio propio está ocupado con una tarea, no se puede interactuar con él
+                const estadoBloqueo = estado.estadosBloqueo?.[comarcaId];
+                if (estadoBloqueo && estado.propietarios[comarcaId] === estado.jugadorLocal) {
+                    const nombreFase = estado.faseActual === 'ATAQUE_CONVENCIONAL' ? 'Ataque' :
+                        estado.faseActual === 'FORTIFICACION' ? 'Fortificación' :
+                            estado.faseActual === 'REFUERZO' ? 'Refuerzo' : 'Gestión';
+                    const nombreEstado = estadoBloqueo.startsWith('investigando') ? 'investigando' : 'trabajando';
 
-        if (mensaje.estado_partida) {
-            get().setEstadoDinamico(mensaje.estado_partida);
-            return;
-        }
+                    estado.mostrarAlerta(`Este territorio no puede usarse en la fase de ${nombreFase} porque está ${nombreEstado}.`);
+                    return;
+                }
 
-        const tipo = mensaje.tipo_evento ?? mensaje.type ?? mensaje.tipo ?? '';
+                switch (estado.faseActual) {
 
-        // Soporte para alias y recarga forzada si el mensaje es parcial
-        if (tipo === 'ESTADO_ACTUALIZADO' || tipo === 'ACTUALIZACION_MAPA') {
-            get().setEstadoDinamico(mensaje.data ?? mensaje.payload ?? mensaje);
-            return;
-        }
+                    case 'ATAQUE_ESPECIAL': {
+                        if (estado.haUsadoAtaqueEspecial) {
+                            estado.mostrarAlerta('Solo se puede hacer un ataque especial por ronda.');
+                            return;
+                        }
 
+                        const armaId = estado.armaEspecialSeleccionada;
+                        if (!armaId) {
+                            estado.mostrarAlerta('Debes seleccionar un ataque especial.');
+                            return;
+                        }
 
-        switch (tipo) {
+                        const catalogo = estado.catalogoTecnologias || {};
 
-            //  Lobby: jugador se une 
-            case 'NUEVO_JUGADOR':
-            case 'JUGADOR_UNIDO': {
-                const nuevo = mensaje.data ?? mensaje.payload ?? mensaje;
-                const id = nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '';
-                const displayName = nuevo.username ?? nuevo.jugador ?? id;
+                        // Helper interno para buscar el rango
+                        let rango = null;
+                        const idLower = armaId.toLowerCase();
+                        if (catalogo[armaId]) {
+                            rango = catalogo[armaId].rango;
+                        } else if (catalogo[idLower]) {
+                            rango = catalogo[idLower].rango;
+                        } else if (catalogo.ramas) {
+                            for (const habilidades of Object.values(catalogo.ramas)) {
+                                const encontrada = (habilidades as any[]).find(h => h.id?.toLowerCase() === idLower);
+                                if (encontrada) {
+                                    rango = encontrada.rango;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // EXCEPCIÓN: Habilidades dirigidas a JUGADORES RIVALES en lugar de territorios
+                        if (idLower === 'propaganda_subversiva' || idLower === 'sanciones_internacionales') {
+                            const propietario = estado.propietarios[comarcaId];
+                            if (!propietario || String(propietario).toLowerCase() === String(estado.jugadorLocal).toLowerCase()) {
+                                estado.mostrarAlerta('No puedes aplicar esta habilidad sobre ti mismo o un territorio vacío.');
+                                return;
+                            }
+                            // Se envía el ID del jugador rival como destino, en lugar del ID del territorio
+                            get().ejecutarAtaqueEspecialBackend(String(propietario), armaId, null);
+                            return;
+                        }
+
+                        // Caso A: Rango null -> no requiere origen, se ejecuta directo sobre el destino
+                        if (rango === null || rango === undefined) {
+                            // Clic destino: ejecutar sin validar bandos, el backend decide.
+                            get().ejecutarAtaqueEspecialBackend(comarcaId, armaId, null);
+                            return;
+                        }
+
+                        // Caso B: Rango numérico -> requiere origen
+                        // Las armas de rango exacto (ej: mortero_tactico) solo permiten disparar
+                        // a exactamente `rango` saltos; el resto permiten hasta `rango` saltos.
+                        const ARMAS_RANGO_EXACTO = ['mortero_tactico'];
+                        const esRangoExacto = ARMAS_RANGO_EXACTO.includes(idLower);
+
+                        if (!estado.origenSeleccionado) {
+                            // Seleccionar origen
+                            if (estado.propietarios[comarcaId] === estado.jugadorLocal) {
+                                if (!estado.grafoGlobal) return;
+
+                                const alcanzables = esRangoExacto
+                                    ? calcularComarcasADistanciaExacta(estado.grafoGlobal, comarcaId, rango)
+                                    : calcularComarcasEnRango(estado.grafoGlobal, comarcaId, rango);
+
+                                const enemigosAlcanzables = Array.from(alcanzables).filter(
+                                    id => estado.propietarios[id] !== estado.jugadorLocal
+                                );
+
+                                if (enemigosAlcanzables.length === 0) {
+                                    estado.mostrarAlerta('Ningún objetivo enemigo a rango.');
+                                    return;
+                                }
+                                set({
+                                    origenSeleccionado: comarcaId,
+                                    comarcasResaltadas: enemigosAlcanzables
+                                });
+                            }
+                        } else {
+                            // Seleccionar destino
+                            if (estado.origenSeleccionado === comarcaId) {
+                                set({ origenSeleccionado: null, comarcasResaltadas: [] });
+                                return;
+                            }
+
+                            if (estado.comarcasResaltadas.includes(comarcaId)) {
+                                get().ejecutarAtaqueEspecialBackend(comarcaId, armaId, estado.origenSeleccionado);
+                            } else {
+                                estado.mostrarAlerta('Objetivo fuera de rango.');
+                                set({ origenSeleccionado: null, comarcasResaltadas: [] });
+                            }
+                        }
+                        break;
+                    }
+
+                    case 'REFUERZO': {
+                        const tropasComarca = estado.tropas[comarcaId] ?? 0;
+                        const propietarioComarca = estado.propietarios[comarcaId];
+                        const esMio = String(propietarioComarca ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+
+                        // Un territorio con 0 tropas es reclamable pacíficamente (sea neutral o
+                        // haya perdido todas sus tropas). Solo bloqueamos si tiene tropas enemigas.
+                        const esVacioReclamable = tropasComarca === 0 && !esMio;
+
+                        if (!esMio && !esVacioReclamable) {
+                            estado.mostrarAlerta('No puedes reforzar territorios enemigos.');
+                            return;
+                        }
+
+                        // Territorio vacío sin tropas: comprobar adyacencia estricta (distancia 1) con al menos uno propio
+                        if (esVacioReclamable) {
+                            const nodoGrafo = estado.grafoGlobal?.get(comarcaId);
+                            const esAdyacenteAMio = nodoGrafo?.adyacentes.some(
+                                adj => String(estado.propietarios[adj] ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase()
+                            ) ?? false;
+                            if (!esAdyacenteAMio) {
+                                estado.mostrarAlerta('Solo puedes reclamar territorios vacíos adyacentes a los tuyos.');
+                                return;
+                            }
+                        }
+
+                        if ((estado.tropasDisponibles ?? 0) <= 0) {
+                            estado.mostrarAlerta('Todos los refuerzos ya han sido desplegados.');
+                            return;
+                        }
+
+                        if (estado.comarcaRefuerzo === comarcaId) {
+                            set({ comarcaRefuerzo: null, popupCoords: null });
+                        } else {
+                            set({ comarcaRefuerzo: comarcaId, tropasAAsignar: Math.max(1, estado.tropasDisponibles ?? 0), popupCoords: coords || null });
+                        }
+                        break;
+                    }
+
+                    case 'ATAQUE_CONVENCIONAL': {
+                        const RANGO_ATAQUE = 1;
+
+                        if (estado.preparandoAtaque || estado.movimientoConquistaPendiente) return;
+
+                        if (estado.origenSeleccionado && String(estado.origenSeleccionado) === String(comarcaId)) {
+                            set({
+                                origenSeleccionado: null,
+                                destinoSeleccionado: null,
+                                comarcasResaltadas: [],
+                                popupCoords: null,
+                            });
+                            return;
+                        }
+
+                        if (estado.destinoSeleccionado && String(estado.destinoSeleccionado) === String(comarcaId)) {
+                            set({ destinoSeleccionado: null, popupCoords: null });
+                            if (estado.grafoGlobal && estado.origenSeleccionado) {
+                                const alcanzables = calcularComarcasEnRango(
+                                    estado.grafoGlobal,
+                                    estado.origenSeleccionado,
+                                    RANGO_ATAQUE
+                                );
+                                const propietarioOrigen =
+                                    estado.propietarios[estado.origenSeleccionado];
+                                set({
+                                    comarcasResaltadas: Array.from(alcanzables).filter(
+                                        (id) => estado.propietarios[id] !== propietarioOrigen
+                                    ),
+                                });
+                            }
+                            return;
+                        }
+
+                        if (!estado.origenSeleccionado) {
+                            if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                                estado.mostrarAlerta('Solamente puedes realizar ataques desde tus territorios.');
+                                return;
+                            }
+                            if ((estado.tropas[comarcaId] ?? 0) <= 1) {
+                                estado.mostrarAlerta('No puedes atacar con una sola tropa.');
+                                return;
+                            }
+                            if (!estado.grafoGlobal) return;
+
+                            const alcanzables = calcularComarcasEnRango(
+                                estado.grafoGlobal,
+                                comarcaId,
+                                RANGO_ATAQUE
+                            );
+                            const propietarioOrigen = estado.propietarios[comarcaId];
+                            const enemigosAlcanzables = Array.from(alcanzables).filter(
+                                (id) => estado.propietarios[id] !== propietarioOrigen
+                            );
+
+                            if (enemigosAlcanzables.length === 0) {
+                                estado.mostrarAlerta('No tienes acceso a territorios enemigos desde aquí.');
+                                return;
+                            }
+
+                            set({
+                                origenSeleccionado: comarcaId,
+                                comarcasResaltadas: enemigosAlcanzables,
+                                popupCoords: coords || null,
+                            });
+                            return;
+                        }
+
+                        const strResaltadas = estado.comarcasResaltadas.map(String);
+                        if (strResaltadas.includes(String(comarcaId))) {
+                            set({ destinoSeleccionado: comarcaId, preparandoAtaque: true, popupCoords: coords || null });
+                            return;
+                        }
+
+                        set({
+                            origenSeleccionado: null,
+                            destinoSeleccionado: null,
+                            comarcasResaltadas: [],
+                            popupCoords: null,
+                        });
+                        break;
+                    }
+
+                    case 'FORTIFICACION': {
+                        if (estado.preparandoFortificacion) return;
+
+                        if (!estado.origenSeleccionado) {
+                            if (estado.movimientoRealizadoEnTurno) {
+                                estado.mostrarAlerta('Solamente se puede fortificar una vez por fase.');
+                                return;
+                            }
+                            if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                                estado.mostrarAlerta('No puedes fortificar territorios enemigos.');
+                                return;
+                            }
+                            if ((estado.tropas[comarcaId] ?? 0) <= 1) {
+                                estado.mostrarAlerta('No puedes fortificar con una sola tropa.');
+                                return;
+                            }
+                            if (estado.estadosBloqueo?.[comarcaId]) {
+                                estado.mostrarAlerta('No puedes fortificar desde un territorio que está trabajando o investigando.');
+                                return;
+                            }
+
+                            if (!estado.grafoGlobal) return;
+
+                            // BFS: aliados conectados + territorios vacíos adyacentes directos al origen
+                            const alcanzables = calcularComarcasEnRango(
+                                estado.grafoGlobal,
+                                comarcaId,
+                                Infinity,
+                                (id) => estado.propietarios[id] === estado.jugadorLocal
+                            );
+
+                            // Añadir territorios vacíos (0 tropas, no propios) adyacentes directos al origen
+                            // Nota: usamos la misma condición robusta que en el REFUERZO:
+                            // tropas === 0 y no es nuestro (independientemente de si tiene dueño registrado)
+                            const nodoOrigen = estado.grafoGlobal.get(comarcaId);
+                            if (nodoOrigen) {
+                                for (const adj of nodoOrigen.adyacentes) {
+                                    const tropasAdj = estado.tropas[adj] ?? 0;
+                                    const propAdj = estado.propietarios[adj];
+                                    const esPropioAdj = String(propAdj ?? '').toLowerCase() === String(estado.jugadorLocal ?? '').toLowerCase();
+                                    if (tropasAdj === 0 && !esPropioAdj && !estado.estadosBloqueo?.[adj]) {
+                                        alcanzables.add(adj);
+                                    }
+                                }
+                            }
+
+                            if (alcanzables.size === 0) {
+                                estado.mostrarAlerta('Un territorio aislado no puede fortificarse.');
+                                return;
+                            }
+
+                            set({
+                                origenSeleccionado: comarcaId,
+                                comarcasResaltadas: Array.from(alcanzables).filter(id => !estado.estadosBloqueo?.[id]),
+                                popupCoords: coords || null,
+                            });
+                            return;
+                        }
+
+                        if (estado.origenSeleccionado && String(estado.origenSeleccionado) === String(comarcaId)) {
+                            set({ origenSeleccionado: null, comarcasResaltadas: [], popupCoords: null });
+                            return;
+                        }
+
+                        const strResaltadas = estado.comarcasResaltadas.map(String);
+                        if (strResaltadas.includes(String(comarcaId))) {
+                            set({ destinoSeleccionado: comarcaId, preparandoFortificacion: true, popupCoords: coords || null });
+                        } else {
+                            set({
+                                origenSeleccionado: null,
+                                destinoSeleccionado: null,
+                                comarcasResaltadas: [],
+                                popupCoords: null,
+                            });
+                        }
+                        break;
+                    }
+
+                    case 'GESTION': {
+                        if (estado.propietarios[comarcaId] !== estado.jugadorLocal) {
+                            estado.mostrarAlerta('No puedes gestionar territorios enemigos.');
+                            return;
+                        }
+
+                        // Comprobar si ya se han agotado las acciones de gestión
+                        const hayTrabajo = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e === 'trabajando' && estado.propietarios[id] === estado.jugadorLocal);
+                        const hayInvestigacion = Object.entries(estado.estadosBloqueo || {}).some(([id, e]) => e && e.startsWith('investigando') && estado.propietarios[id] === estado.jugadorLocal);
+
+                        if (hayTrabajo && hayInvestigacion) {
+                            estado.mostrarAlerta('Ya has ordenado trabajar e investigar. No puedes hacer más tareas esta fase.');
+                            return;
+                        }
+
+                        // Toggle selección
+                        if (estado.origenSeleccionado === comarcaId) {
+                            set({ origenSeleccionado: null, popupCoords: null });
+                        } else {
+                            set({ origenSeleccionado: comarcaId, popupCoords: coords || null });
+                        }
+                        break;
+                    }
+
+                    default:
+                        console.warn(
+                            `[manejarClickComarca] Fase no manejada: ${estado.faseActual}`
+                        );
+                }
+            },
+
+            /**
+             * Calcula estadísticas de control territorial.
+             * @param {string} jugadorId - Username del jugador.
+             * @returns {{ territorios: number, tropas: number }}
+             */
+            getEstadisticasJugador: (jugadorId: string) => {
+                const estado = get();
+                let territorios = 0;
+                let tropas = 0;
+                for (const [comarcaId, propietario] of Object.entries(estado.propietarios)) {
+                    if (propietario === jugadorId) {
+                        territorios++;
+                        tropas += estado.tropas[comarcaId] ?? 0;
+                    }
+                }
+                return { territorios, tropas };
+            },
+
+            /**
+             * Recibe un mensaje de chat y lo programa para desaparecer tras 10 segundos.
+             */
+            recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => {
+                const now = Date.now();
                 set((state) => {
-                    const yaExiste = state.jugadoresLobby.some(
-                        (j) => j.id === id || j.id === displayName
-                    );
-                    if (yaExiste) return state;
-                    return {
+                    const mensajes = { ...state.mensajesActivos };
+                    if (mensajes[emisor]?.timeoutId) {
+                        clearTimeout(mensajes[emisor].timeoutId);
+                    }
+
+                    const timeoutId = setTimeout(() => {
+                        set((s) => {
+                            const newMensajes = { ...s.mensajesActivos };
+                            // Solo borrar si sigue siendo el mismo mensaje
+                            if (newMensajes[emisor]?.timestamp === now) {
+                                delete newMensajes[emisor];
+                            }
+                            return { mensajesActivos: newMensajes };
+                        });
+                    }, 10000);
+
+                    mensajes[emisor] = { tipo, contenido, timestamp: now, timeoutId };
+                    return { mensajesActivos: mensajes };
+                });
+            },
+
+            /**
+             * Actualiza el estado de la conexión del WebSocket.
+             * @param {boolean} status - True si está conectado.
+             */
+            setSocketConnection: (status: boolean) => set({ isSocketConnected: status }),
+
+            /**
+             * Inyecta el evento del WebSocket directamente en Zustand.
+             */
+            actualizarDesdeSocket: (mensaje: any) => {
+                console.log('[DEBUG SOCKET] mensaje recibido:', mensaje);
+                const tipo = mensaje.tipo_evento ?? mensaje.type ?? mensaje.tipo ?? '';
+                console.log('[DEBUG SOCKET] tipo detectado:', tipo);
+
+                if (tipo === 'ESTADO_ACTUALIZADO' || tipo === 'ACTUALIZACION_MAPA' || tipo === 'SYNC_INICIAL_PAUSADA') {
+                    const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                    get().setEstadoDinamico(payload);
+                    
+                    const onlineList = (payload.jugadores_online || []).map((u: any) => String(u).toLowerCase());
+                    
+                    if (onlineList.length > 0 || tipo === 'SYNC_INICIAL_PAUSADA') {
+                        set((state) => ({
+                            jugadoresLobby: state.jugadoresLobby.map(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                const match = onlineList.includes(jId) || onlineList.includes(jUser);
+                                return match ? { ...j, online: true } : j;
+                            })
+                        }));
+                    }
+                    return;
+                }
+
+                switch (tipo) {
+                    case 'CHAT': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const emisor = payload.emisor || payload.jugador;
+                        const tipoChat = payload.tipo_chat || 'mensaje';
+                        const contenido = payload.contenido || payload.mensaje;
+                        if (emisor && contenido) {
+                            get().recibirMensajeChat(emisor, tipoChat, contenido);
+                        }
+                        break;
+                    }
+
+                    case 'JUGADORES_ONLINE_SALA': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const onlineList = (payload.jugadores || []).map((u: any) => String(u).toLowerCase());
+                        
+                        set((state) => {
+                            const nuevosLobby = state.jugadoresLobby.map(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                const match = onlineList.includes(jId) || onlineList.includes(jUser);
+                                
+                                return match ? { ...j, online: true } : j;
+                            });
+                            return { jugadoresLobby: nuevosLobby };
+                        });
+                        break;
+                    }
+
+                    case 'NUEVO_JUGADOR':
+                    case 'JUGADOR_UNIDO': {
+                        const nuevo = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const id = String(nuevo.jugador ?? nuevo.usuario_id ?? nuevo.id ?? '').toLowerCase();
+                        const displayName = nuevo.username ?? nuevo.jugador ?? id;
+                        
+                        set((state) => {
+                            const yaExisteIndex = state.jugadoresLobby.findIndex(j => {
+                                const jId = String(j.id || '').toLowerCase();
+                                const jUser = String(j.username || '').toLowerCase();
+                                return jId === id || jUser === id || jId === String(displayName).toLowerCase() || jUser === String(displayName).toLowerCase();
+                            });
+                            
+                            if (yaExisteIndex !== -1) {
+                                const nuevosJugadores = [...state.jugadoresLobby];
+                                nuevosJugadores[yaExisteIndex] = {
+                                    ...nuevosJugadores[yaExisteIndex],
+                                    online: true
+                                };
+                                return { jugadoresLobby: nuevosJugadores };
+                            }
+                            
+                            return {
+                                jugadoresLobby: [
+                                    ...state.jugadoresLobby,
+                                    {
+                                        id: nuevo.usuario_id ?? nuevo.id ?? nuevo.jugador ?? id,
+                                        username: displayName,
+                                        numeroJugador: state.jugadoresLobby.length + 1,
+                                        esCreador: false,
+                                        online: true
+                                    },
+                                ],
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'DESCONEXION':
+                    case 'JUGADOR_SALIO': {
+                        const saliente = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const idSaliente =
+                            saliente.jugador ?? saliente.username ?? saliente.usuario_id ?? saliente.id ?? '';
+
+                        set((state) => {
+                            const nuevoDiccionario = { ...state.diccionarioJugadores };
+                            if (nuevoDiccionario[idSaliente]) {
+                                nuevoDiccionario[idSaliente] = {
+                                    ...nuevoDiccionario[idSaliente],
+                                    esta_desconectado: true
+                                };
+                            }
+
+                            return {
+                                jugadoresLobby: state.salaActiva?.estado === 'pausada'
+                                    ? state.jugadoresLobby.map(j =>
+                                        j.id?.toLowerCase() === idSaliente.toLowerCase() || j.username?.toLowerCase() === idSaliente.toLowerCase()
+                                            ? { ...j, online: false }
+                                            : j
+                                    )
+                                    : state.jugadoresLobby.filter(
+                                        (j) => j.id?.toLowerCase() !== idSaliente.toLowerCase() && j.username?.toLowerCase() !== idSaliente.toLowerCase()
+                                    ),
+                                diccionarioJugadores: nuevoDiccionario
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'JUGADOR_ELIMINADO': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
+
+                        if (eliminadoId) {
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'JUGADOR_ELIMINADO',
+                                datos: { eliminado: eliminadoId },
+                                user: 'Sistema'
+                            };
+                            get().agregarMensajeLog(logEntry);
+                        }
+
+                        set((state) => {
+                            if (!eliminadoId) return state;
+
+                            const nuevoDiccionario = { ...state.diccionarioJugadores };
+
+                            if (nuevoDiccionario[eliminadoId]) {
+                                nuevoDiccionario[eliminadoId] = {
+                                    ...nuevoDiccionario[eliminadoId],
+                                    es_muerto: true,
+                                    estado_jugador: 'muerto'
+                                };
+                            }
+
+                            if (eliminadoId === state.jugadorLocal) {
+                                return {
+                                    diccionarioJugadores: nuevoDiccionario,
+                                    estadoPartidaLocal: 'DERROTA'
+                                };
+                            }
+
+                            return {
+                                diccionarioJugadores: nuevoDiccionario
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'PARTIDA_FINALIZADA': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const ganador = data.ganador;
+                        
+                        set((state) => {
+                            // Si estaba espectando, el juego ha terminado: pasar a estado FINALIZADA_ESPECTANDO
+                            if (state.estadoPartidaLocal === 'ESPECTANDO') {
+                                return {
+                                    ganadorFinal: ganador,
+                                    estadoPartidaLocal: 'FINALIZADA_ESPECTANDO'
+                                };
+                            }
+                            return {
+                                ganadorFinal: ganador,
+                                estadoPartidaLocal: ganador === state.jugadorLocal ? 'VICTORIA' : 'DERROTA',
+                            };
+                        });
+                        
+                        get().agregarMensajeLog({
+                            id: 'ws_final_' + Date.now(),
+                            tipo_evento: 'PARTIDA_FINALIZADA',
+                            user: 'Sistema',
+                            datos: { ganador }
+                        });
+                        break;
+                    }
+
+                    case 'PARTIDA_INICIADA': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        get().setEstadoDinamico(payload);
+                        set((state) => ({
+                            salaActiva: { ...state.salaActiva, estado: 'activa' },
+                        }));
+                        break;
+                    }
+
+                    case 'PARTIDA_REANUDADA': {
+                        set((state) => ({
+                            salaActiva: { ...state.salaActiva, estado: 'activa' },
+                            jugadoresLobby: mensaje.jugadores ? Object.values(mensaje.jugadores).map((j: any) => ({
+                                id: j.username || j.nombre,
+                                username: j.username || j.nombre,
+                                numeroJugador: j.numeroJugador || 2,
+                                esCreador: false
+                            })) : state.jugadoresLobby
+                        }));
+                        break;
+                    }
+
+                    case 'SALA_CERRADA': {
+                        const payload = mensaje.data ?? mensaje.payload ?? mensaje;
+                        window.dispatchEvent(new CustomEvent('sala_cerrada', { detail: payload }));
+
+                        set({
+                            salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+                            jugadoresLobby: [],
+                            esCreadorSala: false
+                        });
+                        socketService.disconnect();
+                        break;
+                    }
+
+                    case 'FASE_CAMBIADA':
+                    case 'CAMBIO_FASE': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const faseRaw = data.nueva_fase ?? data.fase_actual;
+                        const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
+                        const tropasRecibidas: number = data.tropas_recibidas ?? 0;
+
+                        if (jugadorRaw) {
+                            const faseDisplay = faseRaw || '?';
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'CAMBIO_FASE',
+                                user: jugadorRaw,
+                                datos: {
+                                    turno_de: jugadorRaw,
+                                    fase_nueva: faseDisplay,
+                                    tropas_recibidas: tropasRecibidas
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
+                        }
+
+                        set((state) => {
+                            const nuevaFase = faseRaw ? normalizarFase(faseRaw) : state.faseActual;
+                            const jugadorActivo = jugadorRaw || state.turnoActual;
+                            const esRefuerzo = nuevaFase === 'REFUERZO';
+                            const esMiTurno = jugadorActivo === state.jugadorLocal;
+                            const esEntrandoAGestion = nuevaFase === 'GESTION';
+
+                            const cambioTurno = jugadorActivo !== state.turnoActual;
+
+                            return {
+                                faseActual: nuevaFase,
+                                finFaseUtc: data.fin_fase_utc ?? null,
+                                turnoActual: jugadorActivo,
+
+                                ...((cambioTurno || esEntrandoAGestion) && {
+                                    territorioTrabajando: null,
+                                    territorioInvestigando: null
+                                }),
+
+                                preparandoAtaqueEspecial: null,
+
+                                tropasDisponibles:
+                                    esRefuerzo && tropasRecibidas > 0
+                                        ? (state.tropasDisponibles ?? 0) + tropasRecibidas
+                                        : state.tropasDisponibles,
+
+                                mostrarAnimacionRefuerzos:
+                                    esRefuerzo && esMiTurno && tropasRecibidas > 0,
+                                refuerzosRecibidos:
+                                    esRefuerzo ? tropasRecibidas : state.refuerzosRecibidos,
+
+                                origenSeleccionado: null,
+                                destinoSeleccionado: null,
+                                comarcasResaltadas: [],
+                                comarcaRefuerzo: null,
+                                tropasAAsignar: 0,
+                                popupCoords: null,
+                                preparandoAtaque: false,
+                                preparandoFortificacion: false,
+                                movimientoConquistaPendiente: false,
+                                movimientoRealizadoEnTurno: false,
+                            };
+                        });
+
+                        setTimeout(() => {
+                            get().sincronizarEstadoPartida().then(() => {
+                                get().cargarCatalogoTecnologias();
+                            });
+                        }, 800);
+
+                        break;
+                    }
+
+                    case 'TROPAS_COLOCADAS': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const jugadorQueColoca = data.jugador || get().turnoActual;
+
+                        if (data.territorio) {
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'TROPAS_COLOCADAS',
+                                user: jugadorQueColoca,
+                                datos: {
+                                    territorio: data.territorio,
+                                    cantidad: data.tropas_añadidas ?? data.cantidad ?? Math.max(0, data.tropas_totales_ahora - (get().tropas[data.territorio] ?? 0))
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
+                        }
+
+                        set((state) => {
+                            const tropasPrevias = state.tropas[data.territorio] ?? 0;
+                            const cantidadColocada = Math.max(0, data.tropas_totales_ahora - tropasPrevias);
+                            const esMiAccion = esMismoJugador(jugadorQueColoca, state.jugadorLocal);
+                            const eraVacio = tropasPrevias === 0;
+                            const nuevoPropietario =
+                                data.nuevo_propietario ??
+                                data.owner_id ??
+                                (eraVacio && jugadorQueColoca ? jugadorQueColoca : null);
+
+                            const nuevosPropietarios = nuevoPropietario
+                                ? { ...state.propietarios, [data.territorio]: nuevoPropietario }
+                                : state.propietarios;
+
+                            return {
+                                tropas: {
+                                    ...state.tropas,
+                                    [data.territorio]: data.tropas_totales_ahora,
+                                },
+                                propietarios: nuevosPropietarios,
+                                ...(!esMiAccion && {
+                                    tropasDisponibles: Math.max(0, (state.tropasDisponibles ?? 0) - cantidadColocada)
+                                })
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'ATAQUE_RESULTADO': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const atacante = get().propietarios[data.origen] || 'Alguien';
+
+                        if (data.destino) {
+                            const logEntry = mensaje.log || {
+                                id: 'ws_' + Date.now() + Math.random(),
+                                tipo_evento: 'ATAQUE_RESULTADO',
+                                user: atacante,
+                                datos: {
+                                    origen: data.origen,
+                                    destino: data.destino,
+                                    bajas_atacante: data.bajas_atacante,
+                                    bajas_defensor: data.bajas_defensor,
+                                    victoria: data.victoria
+                                }
+                            };
+                            get().agregarMensajeLog(logEntry);
+                        }
+                        set((state) => {
+                            const nuevasTropas = { ...state.tropas };
+                            nuevasTropas[data.origen] =
+                                (nuevasTropas[data.origen] ?? 0) - data.bajas_atacante;
+                            nuevasTropas[data.destino] =
+                                (nuevasTropas[data.destino] ?? 0) - data.bajas_defensor;
+
+                            const nuevosPropietarios = { ...state.propietarios };
+                            if (data.victoria) {
+                                nuevosPropietarios[data.destino] =
+                                    state.propietarios[data.origen];
+                            }
+
+                            let nuevosEstadosBloqueo = state.estadosBloqueo;
+                            if (data.victoria && data.destino && state.estadosBloqueo?.[data.destino]) {
+                                nuevosEstadosBloqueo = { ...state.estadosBloqueo };
+                                delete nuevosEstadosBloqueo[data.destino];
+                            }
+
+                            const territorioConquistado = data.destino;
+                            const limpiarTrabajando = state.territorioTrabajando === territorioConquistado;
+                            const limpiarInvestigando = state.territorioInvestigando === territorioConquistado;
+
+                            return {
+                                tropas: nuevasTropas,
+                                propietarios: nuevosPropietarios,
+                                estadosBloqueo: nuevosEstadosBloqueo,
+                                ...(limpiarTrabajando && { territorioTrabajando: null }),
+                                ...(limpiarInvestigando && { territorioInvestigando: null }),
+                                preparandoAtaque: false,
+                                comarcasResaltadas: [],
+                                popupCoords: null,
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'MOVIMIENTO_CONQUISTA': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        set((state) => {
+                            const nuevasTropas = { ...state.tropas };
+                            nuevasTropas[data.origen] =
+                                (nuevasTropas[data.origen] ?? 0) - data.tropas;
+                            nuevasTropas[data.destino] =
+                                (nuevasTropas[data.destino] ?? 0) + data.tropas;
+                            return {
+                                tropas: nuevasTropas,
+                                movimientoConquistaPendiente: false,
+                                origenConquista: null,
+                                destinoConquista: null,
+                                origenSeleccionado: null,
+                                destinoSeleccionado: null,
+                                popupCoords: null,
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'TERRITORIO_ACTUALIZADO': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const tId = data.territorio_id || data.territorio;
+                        const d = data.detalles || data;
+
+                        if (!tId) break;
+
+                        set((state) => {
+                            const nuevasTropas = { ...state.tropas };
+                            if (d.units !== undefined) nuevasTropas[tId] = d.units;
+
+                            const nuevosPropietarios = { ...state.propietarios };
+                            if (d.owner_id) nuevosPropietarios[tId] = d.owner_id;
+
+                            let nuevosEstadosBloqueo = state.estadosBloqueo || {};
+                            if (d.estado_bloqueo !== undefined) {
+                                nuevosEstadosBloqueo = { ...nuevosEstadosBloqueo };
+                                if (d.estado_bloqueo === null) {
+                                    delete nuevosEstadosBloqueo[tId];
+                                } else {
+                                    nuevosEstadosBloqueo[tId] = d.estado_bloqueo;
+                                }
+                            }
+
+                            return {
+                                tropas: nuevasTropas,
+                                propietarios: nuevosPropietarios,
+                                estadosBloqueo: nuevosEstadosBloqueo
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'ATAQUE_ESPECIAL':
+                    case 'ataque_especial': {
+                        const data = mensaje.data ?? mensaje.payload ?? mensaje;
+                        const afectados = data.resultado?.afectados || [];
+
+                        // Registrar en el log de partida
+                        get().agregarMensajeLog({
+                            id: 'ws_ataque_especial_' + Date.now(),
+                            tipo_evento: 'ataque_especial',
+                            user: data.atacante || data.jugador || data.user || 'Alguien',
+                            datos: {
+                                tipo: data.tipo || data.tipo_ataque,
+                                destino: data.destino,
+                                origen: data.origen,
+                            }
+                        });
+
+                        set((state) => {
+                            const nuevasTropas = { ...state.tropas };
+                            const nuevosEstadosAlterados = { ...state.estadosAlterados };
+
+                            afectados.forEach((afectado: any) => {
+                                const id = afectado.territorio_id;
+                                if (!id) return;
+                                if (afectado.bajas || afectado.bajas_iniciales) {
+                                    const bajas = afectado.bajas || afectado.bajas_iniciales;
+                                    nuevasTropas[id] = Math.max(0, (nuevasTropas[id] ?? 0) - bajas);
+                                }
+                                if (afectado.efecto_añadido) {
+                                    const actuales = nuevosEstadosAlterados[id] || [];
+                                    if (!actuales.includes(afectado.efecto_añadido)) {
+                                        nuevosEstadosAlterados[id] = [...actuales, afectado.efecto_añadido];
+                                    }
+                                }
+                            });
+
+                            return {
+                                tropas: nuevasTropas,
+                                estadosAlterados: nuevosEstadosAlterados
+                            };
+                        });
+                        break;
+                    }
+
+                    case 'SOLICITUD_PAUSA': {
+                        const data = mensaje.data || mensaje.payload || mensaje;
+                        const solicitante = data.jugador_solicitante || data.solicitante || data.jugador || data.usuario_id || data.username;
+
+                        if (!esMismoJugador(solicitante, get().jugadorLocal)) {
+                            set({
+                                faseVotacionPausa: 'votando',
+                                jugadorSolicitantePausa: solicitante
+                            });
+                        } else {
+                            set({ faseVotacionPausa: 'esperando', jugadorSolicitantePausa: solicitante });
+                        }
+                        break;
+                    }
+
+                    case 'PAUSA_RECHAZADA': {
+                        set({ faseVotacionPausa: 'rechazada', jugadorSolicitantePausa: null });
+                        break;
+                    }
+
+                    case 'PARTIDA_PAUSADA': {
+                        set({ faseVotacionPausa: 'pausada' });
+                        break;
+                    }
+
+                    default:
+                        console.warn(`[WS] Tipo de evento desconocido: "${tipo}"`);
+                        break;
+                }
+            },
+
+            // Acciones de Sala / Lobby
+            /**
+             * Crea una nueva partida en el backend.
+             * @param {any} config - Configuración de la sala.
+             * @returns {Promise<any>} Datos de la sala creada.
+             */
+            crearPartidaBackend: async (config = {}) => {
+                const payload = {
+                    config_max_players: (config as any).config_max_players ?? 4,
+                    config_visibility: (config as any).config_visibility ?? 'publica',
+                    config_timer_seconds: (config as any).config_timer_seconds ?? 60,
+                };
+
+                try {
+                    const data = await fetchApi('/v1/partidas', {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                    });
+
+                    const authUser = useAuthStore.getState().user;
+                    const creadorId =
+                        authUser?.username ??
+                        authUser?.nombre_usuario ??
+                        authUser?.nombre ??
+                        'unknown';
+
+                    set({
+                        salaActiva: {
+                            id: data.id,
+                            codigoInvitacion: data.codigo_invitacion,
+                            estado: data.estado,
+                            config_max_players: data.config_max_players,
+                        },
                         jugadoresLobby: [
-                            ...state.jugadoresLobby,
                             {
-                                id,
-                                username: displayName,
-                                numeroJugador: state.jugadoresLobby.length + 1,
-                                esCreador: false,
+                                id: creadorId,
+                                username: creadorId,
+                                numeroJugador: 1,
+                                esCreador: true,
                             },
                         ],
-                    };
-                });
-                break;
-            }
+                        jugadorLocal: creadorId,
+                        esCreadorSala: true,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null,
+                        estadoPartidaLocal: 'JUGANDO',
+                    });
 
-            //  Lobby: jugador sale 
-            case 'DESCONEXION':
-            case 'JUGADOR_SALIO': {
-                const saliente = mensaje.data ?? mensaje.payload ?? mensaje;
-                const idSaliente =
-                    saliente.jugador ?? saliente.username ?? saliente.usuario_id ?? saliente.id ?? '';
+                    return data;
+                } catch (error) {
+                    console.error('[crearPartidaBackend] Error:', error);
+                    throw error;
+                }
+            },
 
-                set((state) => {
-                    const nuevoDiccionario = { ...state.diccionarioJugadores };
-                    if (nuevoDiccionario[idSaliente]) {
-                        nuevoDiccionario[idSaliente] = {
-                            ...nuevoDiccionario[idSaliente],
-                            esta_desconectado: true
-                        };
+            /**
+             * Une al usuario a una sala existente mediante código.
+             * @param {string} codigo - Código de invitación.
+             * @returns {Promise<any>} Respuesta del servidor.
+             */
+            unirsePartidaBackend: async (codigo: string) => {
+                try {
+                    const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
+                        method: 'POST',
+                    });
+
+                    console.log('[DEBUG unirse] Respuesta completa:', JSON.stringify(data));
+
+                    const authUser = useAuthStore.getState().user;
+                    const jugadorLocal =
+                        authUser?.username ??
+                        authUser?.nombre_usuario ??
+                        authUser?.nombre ??
+                        data.usuario_id;
+
+                    // ✅ NUEVA LÓGICA DE EXTRACCIÓN DE ID:
+                    // 1. Miramos si viene en la raíz (por si el backend lo arregla en el futuro)
+                    let realPartidaId = data.id || data.partida_id;
+
+                    // 2. Si no está en la raíz, ¡lo robamos de la lista de jugadores!
+                    if (!realPartidaId && data.jugadores_en_sala && data.jugadores_en_sala.length > 0) {
+                        realPartidaId = data.jugadores_en_sala[0].partida_id;
                     }
 
-                    return {
-                        jugadoresLobby: state.jugadoresLobby.filter(
-                            (j) => j.id !== idSaliente && j.username !== idSaliente
-                        ),
-                        diccionarioJugadores: nuevoDiccionario
-                    };
-                });
-                break;
-            }
+                    let configMaxPlayers = data.config_max_players;
 
-            case 'JUGADOR_ELIMINADO': {
-                const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                // Soportar tanto "jugador" como "username"
-                const eliminadoId = data.jugador ?? data.username ?? data.usuario_id;
-
-                set((state) => {
-                    if (!eliminadoId) return state;
-
-                    const nuevoDiccionario = { ...state.diccionarioJugadores };
-
-                    if (nuevoDiccionario[eliminadoId]) {
-                        nuevoDiccionario[eliminadoId] = {
-                            ...nuevoDiccionario[eliminadoId],
-                            es_muerto: true,
-                            estado_jugador: 'muerto'
-                        };
+                    // 3. Truco: buscar config_max_players en listas de partidas
+                    if (!realPartidaId || !configMaxPlayers) {
+                        try {
+                            const listaPartidas = await fetchApi('/v1/partidas');
+                            const miPartida = listaPartidas.find(
+                                (p: any) => p.codigo_invitacion === codigo
+                            );
+                            if (miPartida) {
+                                configMaxPlayers = configMaxPlayers || miPartida.config_max_players;
+                                if (!realPartidaId) realPartidaId = miPartida.id;
+                            }
+                        } catch (_) {
+                            // Fallo silencioso
+                        }
                     }
 
-                    if (eliminadoId === state.jugadorLocal) {
-                        return {
-                            diccionarioJugadores: nuevoDiccionario,
-                            estadoPartidaLocal: 'DERROTA'
-                        };
+                    // 4. Si sigue sin config (partida privada), intentar lista de pausadas
+                    if (!configMaxPlayers) {
+                        try {
+                            const listaPausadas = await fetchApi('/v1/partidas/pausadas');
+                            const miPausada = listaPausadas.find(
+                                (p: any) => p.codigo_invitacion === codigo
+                            );
+                            if (miPausada) {
+                                configMaxPlayers = miPausada.config_max_players;
+                                if (!realPartidaId) realPartidaId = miPausada.id;
+                            }
+                        } catch (_) {
+                            // Fallo silencioso
+                        }
                     }
 
-                    const propietariosRestantes = new Set(Object.values(state.propietarios));
+                    // 5. Último recurso: mi-partida activa (incluye privadas)
+                    if (!configMaxPlayers) {
+                        try {
+                            const miPartida = await fetchApi('/v1/partidas/mi-partida');
+                            if (miPartida?.tiene_partida_activa) {
+                                // Recuperar config de la lista pública/pausada usando el ID
+                                const partidaId = miPartida.partida_id;
+                                if (!realPartidaId && partidaId) realPartidaId = partidaId;
+                                // Intentar extraer de la lista completa (pública + pausada)
+                                if (partidaId && !configMaxPlayers) {
+                                    try {
+                                        const [pub, pau] = await Promise.all([
+                                            fetchApi('/v1/partidas').catch(() => []),
+                                            fetchApi('/v1/partidas/pausadas').catch(() => [])
+                                        ]);
+                                        const todas = [...(pub || []), ...(pau || [])];
+                                        const found = todas.find((p: any) => p.id === partidaId);
+                                        if (found) configMaxPlayers = found.config_max_players;
+                                    } catch (_) {}
+                                }
+                            }
+                        } catch (_) {
+                            // Fallo silencioso
+                        }
+                    }
 
-                    // Eliminamos al jugador que sale de la lista de propietarios.
-                    // Convertimos a string por seguridad tipográfica.
-                    propietariosRestantes.delete(String(eliminadoId));
+                    // 6. Si nada funciona, contar los jugadores que el backend mandó
+                    if (!configMaxPlayers && data.jugadores_en_sala) {
+                        // El backend ya envía todos los jugadores en sala, 
+                        // así que si la sala está llena esto coincide con el máximo
+                        // Para una sala recién creada con 2 de 3, esto no es perfecto
+                        // pero es mejor que siempre poner 4
+                    }
 
-                    const esVictoria =
-                        !!state.jugadorLocal &&
-                        propietariosRestantes.size === 1 &&
-                        propietariosRestantes.has(state.jugadorLocal);
+                    configMaxPlayers = configMaxPlayers || 4;
 
-                    return {
-                        diccionarioJugadores: nuevoDiccionario,
-                        ...(esVictoria && { estadoPartidaLocal: 'VICTORIA' }),
-                    };
-                });
-                break;
-            }
+                    console.log('[DEBUG unirse] configMaxPlayers final:', configMaxPlayers, 'realPartidaId:', realPartidaId);
 
-            case 'PARTIDA_INICIADA': {
-                const payload = mensaje.data ?? mensaje.payload ?? mensaje;
-                get().setEstadoDinamico(payload);
+                    if (!realPartidaId) {
+                        throw new Error(
+                            'No se pudo localizar el ID de la sala para conectarse. Revisa la respuesta del servidor.'
+                        );
+                    }
+
+                    const jugadoresLobby = (data.jugadores_en_sala || []).map(
+                        (j: any, index: number) => ({
+                            id: j.usuario_id,
+                            username: j.usuario_id,
+                            numeroJugador: index + 1,
+                            esCreador: j.usuario_id === data.creador,
+                        })
+                    );
+
+                    set((state) => ({
+                        salaActiva: {
+                            ...state.salaActiva,
+                            id: realPartidaId,
+                            config_max_players: configMaxPlayers,
+                            codigoInvitacion: codigo,
+                            estado: null, // ← limpiar estado persistido para evitar navegación prematura
+                        },
+                        jugadoresLobby,
+                        jugadorLocal,
+                        esCreadorSala: false,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null,
+                        estadoPartidaLocal: 'JUGANDO',
+                    }));
+
+                    return data;
+                } catch (error) {
+                    console.error('[unirsePartidaBackend] Error:', error);
+                    throw error;
+                }
+            },
+
+            /**
+             * 1. INFILTRACIÓN: Mete al jugador en el Lobby localmente y conecta 
+             * el WebSocket SIN llamar al endpoint /unirse (que da error 400).
+             */
+            prepararSalaPausada: async (partida: any) => {
+                const user = useAuthStore.getState().user;
+                const miUsuario = user?.username || user?.nombre_usuario || 'unknown';
+
+                let todosLosJugadores: any[] = [];
+                try {
+                    const estadoReq = await fetchApi(`/v1/partidas/${partida.id}/estado`);
+                    if (estadoReq && estadoReq.jugadores) {
+                        const nombresJugadores = Object.keys(estadoReq.jugadores);
+                        console.log('[DEBUG LOBBY] prepararSalaPausada: nombres del backend:', nombresJugadores, 'miUsuario:', miUsuario);
+                        todosLosJugadores = nombresJugadores.map((nombre, index) => {
+                            const isHost = partida.creador === nombre || partida.creador_id === nombre;
+                            return {
+                                id: nombre,
+                                username: nombre,
+                                numeroJugador: index + 1,
+                                esCreador: isHost,
+                                online: true // Marcamos a todos como presentes
+                            };
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error obteniendo estado de la partida pausada", err);
+                }
+
+                if (todosLosJugadores.length === 0) {
+                    const creadorReal = partida.creador || partida.nombreCreador || partida.host || partida.creador_id;
+                    const isHost = creadorReal === miUsuario || miUsuario === 'unknown';
+                    todosLosJugadores = [
+                        {
+                            id: miUsuario,
+                            username: miUsuario,
+                            numeroJugador: isHost ? 1 : 2,
+                            esCreador: isHost,
+                            online: true
+                        }
+                    ];
+                }
+
                 set((state) => ({
-                    salaActiva: { ...state.salaActiva, estado: 'activa' },
+                    salaActiva: {
+                        ...state.salaActiva,
+                        id: partida.id,
+                        codigoInvitacion: partida.codigo_invitacion,
+                        estado: 'pausada',
+                        config_max_players: partida.config_max_players || 4,
+                    },
+                    jugadorLocal: miUsuario,
+                    esCreadorSala: partida.creador === miUsuario || partida.creador_id === miUsuario,
+                    jugadoresLobby: todosLosJugadores,
+                    faseVotacionPausa: 'ninguna',
                 }));
-                break;
-            }
 
-            case 'FASE_CAMBIADA':
-            case 'CAMBIO_FASE': {
-                const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                const faseRaw = data.nueva_fase ?? data.fase_actual;
-                const jugadorRaw = data.jugador_activo ?? data.turno_de ?? '';
-                const tropasRecibidas: number = data.tropas_recibidas ?? 0;
+                try {
+                    await get().sincronizarEstadoPartida();
+                } catch (e) {
+                    console.warn("Aviso: Sincronización inicial omitida", e);
+                }
+            },
+            /**
+             * 2. REANUDAR REAL: El anfitrión llama a esto desde el Lobby cuando 
+             * todos los jugadores han entrado silenciosamente (2/2 listos).
+             */
+            ejecutarReanudarPartida: async () => {
+                const codigo = get().salaActiva?.codigoInvitacion;
+                if (!codigo) return;
+                try {
+                    await fetchApi(`/v1/partidas/${codigo}/reanudar`, { method: 'POST' });
+                    console.log("¡Orden de reanudación enviada al Cuartel General!");
+                } catch (error) {
+                    console.error('[ejecutarReanudarPartida] Error:', error);
+                    throw error;
+                }
+            },
 
-                set((state) => {
-                    const nuevaFase = faseRaw ? normalizarFase(faseRaw) : state.faseActual;
-                    const jugadorActivo = jugadorRaw || state.turnoActual;
-                    const esRefuerzo = nuevaFase === 'REFUERZO';
-                    const esMiTurno = jugadorActivo === state.jugadorLocal;
-
-                    return {
-                        faseActual: nuevaFase,
-                        turnoActual: jugadorActivo,
-
-                        // Sincronización de tropas disponibles: ahora se actualiza para todos
-                        // para que el rival vea cuántas tropas tiene el activo.
-                        tropasDisponibles:
-                            esRefuerzo && tropasRecibidas > 0
-                                ? (state.tropasDisponibles ?? 0) + tropasRecibidas
-                                : state.tropasDisponibles,
-
-                        mostrarAnimacionRefuerzos:
-                            esRefuerzo && esMiTurno && tropasRecibidas > 0,
-                        refuerzosRecibidos:
-                            esRefuerzo ? tropasRecibidas : state.refuerzosRecibidos,
-
-                        // LIMPIEZA CRÍTICA: Limpiar selecciones locales para que la UI 
-                        // se refresque (botones se oculten, comarcas se de-resalten)
+            abandonarSoberania: async () => {
+                const { salaActiva } = get();
+                try {
+                    if (salaActiva?.id) {
+                        await gameApi.abandonarPartida(salaActiva.id);
+                    }
+                } catch (error) {
+                    console.error('[abandonarSoberania] Error al notificar al servidor:', error);
+                } finally {
+                    socketService.disconnect();
+                    set({
+                        salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
+                        jugadoresLobby: [],
+                        faseActual: null,
+                        tropas: {},
+                        propietarios: {},
+                        coloresJugadores: {},
+                        jugadorLocal: null,
+                        turnoActual: null,
+                        jugadores: [],
+                        diccionarioJugadores: {},
                         origenSeleccionado: null,
                         destinoSeleccionado: null,
                         comarcasResaltadas: [],
                         comarcaRefuerzo: null,
                         tropasAAsignar: 0,
+                        mostrarAnimacionRefuerzos: false,
+                        refuerzosRecibidos: 0,
                         preparandoAtaque: false,
+                        movimientoConquistaPendiente: false,
                         preparandoFortificacion: false,
-                        movimientoConquistaPendiente: false,
-                    };
-                });
-
-                break;
-            }
-
-            case 'TROPAS_COLOCADAS': {
-                const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                const jugadorQueColoca = data.jugador || get().turnoActual;
-
-                set((state) => {
-                    // Calculamos cuántas se han puesto comparando con el estado actual
-                    const tropasPrevias = state.tropas[data.territorio] ?? 0;
-                    const cantidadColocada = Math.max(0, data.tropas_totales_ahora - tropasPrevias);
-
-                    const esMiAccion =
-                        state.jugadorLocal &&
-                        jugadorQueColoca &&
-                        String(jugadorQueColoca).toLowerCase() === String(state.jugadorLocal).toLowerCase();
-
-                    return {
-                        tropas: {
-                            ...state.tropas,
-                            [data.territorio]: data.tropas_totales_ahora,
-                        },
-                        // Si NO soy yo quien las puso (o si queremos ser deterministas con el socket),
-                        // restamos de la reserva global. 
-                        // Nota: El local ya restó optimísticamente en confirmarRefuerzo.
-                        ...(!esMiAccion && {
-                            tropasDisponibles: Math.max(0, (state.tropasDisponibles ?? 0) - cantidadColocada)
-                        })
-                    };
-                });
-                break;
-            }
-
-            case 'ATAQUE_RESULTADO': {
-                const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                set((state) => {
-                    const nuevasTropas = { ...state.tropas };
-                    nuevasTropas[data.origen] =
-                        (nuevasTropas[data.origen] ?? 0) - data.bajas_atacante;
-                    nuevasTropas[data.destino] =
-                        (nuevasTropas[data.destino] ?? 0) - data.bajas_defensor;
-
-                    const nuevosPropietarios = { ...state.propietarios };
-                    if (data.victoria) {
-                        nuevosPropietarios[data.destino] =
-                            state.propietarios[data.origen];
-                    }
-
-                    return {
-                        tropas: nuevasTropas,
-                        propietarios: nuevosPropietarios,
-                        preparandoAtaque: false,
-                        // El trigger de movimientoConquistaPendiente se quita de aquí
-                        // para que sea el jugador atacante quien lo dispare manualmente
-                        // tras cerrar el resumen de batalla.
-                        comarcasResaltadas: [],
-                    };
-                });
-                break;
-            }
-
-            case 'MOVIMIENTO_CONQUISTA': {
-                const data = mensaje.data ?? mensaje.payload ?? mensaje;
-                set((state) => {
-                    const nuevasTropas = { ...state.tropas };
-                    nuevasTropas[data.origen] =
-                        (nuevasTropas[data.origen] ?? 0) - data.tropas;
-                    nuevasTropas[data.destino] =
-                        (nuevasTropas[data.destino] ?? 0) + data.tropas;
-                    return {
-                        tropas: nuevasTropas,
-                        movimientoConquistaPendiente: false,
-                        origenConquista: null,
-                        destinoConquista: null,
-                        origenSeleccionado: null,
-                        destinoSeleccionado: null,
-                    };
-                });
-                break;
-            }
-
-            case 'ACTUALIZACION_MAPA': {
-                const payload = mensaje.data ?? mensaje.payload ?? mensaje;
-                get().setEstadoDinamico(payload);
-                break;
-            }
-
-            default:
-                console.warn(`[WS] Tipo de evento desconocido: "${tipo}"`);
-                break;
-        }
-    },
-
-    // Acciones de Sala / Lobby
-    /**
-     * Crea una nueva partida en el backend.
-     * @param {any} config - Configuración de la sala.
-     * @returns {Promise<any>} Datos de la sala creada.
-     */
-    crearPartidaBackend: async (config = {}) => {
-        const payload = {
-            config_max_players: (config as any).config_max_players ?? 4,
-            config_visibility: (config as any).config_visibility ?? 'publica',
-            config_timer_seconds: (config as any).config_timer_seconds ?? 60,
-        };
-
-        try {
-            const data = await fetchApi('/v1/partidas', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-
-            const authUser = useAuthStore.getState().user;
-            const creadorId =
-                authUser?.username ??
-                authUser?.nombre_usuario ??
-                authUser?.nombre ??
-                'unknown';
-
-            set({
-                salaActiva: {
-                    id: data.id,
-                    codigoInvitacion: data.codigo_invitacion,
-                    estado: data.estado,
-                    config_max_players: data.config_max_players,
-                },
-                jugadoresLobby: [
-                    {
-                        id: creadorId,
-                        username: creadorId,
-                        numeroJugador: 1,
-                        esCreador: true,
-                    },
-                ],
-                jugadorLocal: creadorId,
-                esCreadorSala: true,
-            });
-
-            return data;
-        } catch (error) {
-            console.error('[crearPartidaBackend] Error:', error);
-            throw error;
-        }
-    },
-
-    /**
-     * Une al usuario a una sala existente mediante código.
-     * @param {string} codigo - Código de invitación.
-     * @returns {Promise<any>} Respuesta del servidor.
-     */
-    unirsePartidaBackend: async (codigo: string) => {
-        try {
-            const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
-                method: 'POST',
-            });
-            const authUser = useAuthStore.getState().user;
-            const jugadorLocal =
-                authUser?.username ??
-                authUser?.nombre_usuario ??
-                authUser?.nombre ??
-                data.usuario_id;
-
-            // ✅ NUEVA LÓGICA DE EXTRACCIÓN DE ID:
-            // 1. Miramos si viene en la raíz (por si el backend lo arregla en el futuro)
-            let realPartidaId = data.id || data.partida_id;
-
-            // 2. Si no está en la raíz, ¡lo robamos de la lista de jugadores!
-            if (!realPartidaId && data.jugadores_en_sala && data.jugadores_en_sala.length > 0) {
-                realPartidaId = data.jugadores_en_sala[0].partida_id;
-            }
-
-            let configMaxPlayers = data.config_max_players || 4;
-
-            // 3. El truco de la lista pública solo como ultimísimo recurso
-            if (!realPartidaId) {
-                try {
-                    const listaPartidas = await fetchApi('/v1/partidas');
-                    const miPartida = listaPartidas.find(
-                        (p: any) => p.codigo_invitacion === codigo
-                    );
-                    if (miPartida) {
-                        configMaxPlayers = miPartida.config_max_players;
-                        realPartidaId = miPartida.id;
-                    }
-                } catch (_) {
-                    // Fallo silencioso
+                        preparandoAtaqueEspecial: null,
+                        catalogoTecnologias: null,
+                        esCreadorSala: false,
+                        // Reset de variables de votación para evitar caching entre salas
+                        faseVotacionPausa: 'ninguna',
+                        jugadorSolicitantePausa: null
+                    });
                 }
-            }
+            },
 
-            if (!realPartidaId) {
-                throw new Error(
-                    'No se pudo localizar el ID de la sala para conectarse. Revisa la respuesta del servidor.'
-                );
-            }
+            // ACCIONES — VOTACIÓN PAUSA
 
-            const jugadoresLobby = (data.jugadores_en_sala || []).map(
-                (j: any, index: number) => ({
-                    id: j.usuario_id,
-                    username: j.usuario_id,
-                    numeroJugador: index + 1,
-                    esCreador: j.usuario_id === data.creador,
-                })
-            );
+            /**
+             * Cambia la fase local de la votación de pausa.
+            
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => {
+                set({ faseVotacionPausa: fase });
+            },
+            */
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => set({ faseVotacionPausa: fase }),
 
-            set((state) => ({
-                salaActiva: {
-                    ...state.salaActiva,
-                    id: realPartidaId,
-                    config_max_players: configMaxPlayers,
-                    codigoInvitacion: codigo,
-                },
-                jugadoresLobby,
-                jugadorLocal,
-                esCreadorSala: false,
-            }));
+            /**
+             * El jugador local inicia una solicitud de pausa por consenso mediante API REST.
+             * Y automáticamente emite su voto a favor.
+             */
+            iniciarSolicitudPausa: async () => {
+                const estado = get();
+                // El endpoint requiere el código único de la partida
+                const codigo = estado.salaActiva?.codigoInvitacion;
 
-            return data;
-        } catch (error) {
-            console.error('[unirsePartidaBackend] Error:', error);
-            throw error;
+                if (!codigo) {
+                    console.error("No se encontró el código de la partida activa.");
+                    return;
+                }
+
+                set({ faseVotacionPausa: 'esperando' });
+
+                try {
+                    //Abrimos la votación en el servidor
+                    await fetchApi(`/v1/partidas/${codigo}/pausa/solicitar`, {
+                        method: 'POST'
+                    });
+                    console.log("🚀 [REST] Petición de pausa enviada al servidor");
+
+                    //Votamos que SÍ automáticamente ya que somos los proponentes
+                    await fetchApi(`/v1/partidas/${codigo}/pausa/votar`, {
+                        method: 'POST',
+                        body: JSON.stringify({ voto_a_favor: true })
+                    });
+                    console.log("🚀 [REST] Auto-voto a favor enviado al servidor");
+
+                } catch (error) {
+                    console.error('[iniciarSolicitudPausa] Error:', error);
+                    set({ faseVotacionPausa: 'ninguna' });
+                    estado.mostrarAlerta("No se pudo solicitar la pausa al servidor.");
+                }
+            },
+
+            /**
+             * El jugador local emite su voto (a favor / en contra) sobre la pausa.
+             * @param {boolean} voto - true = acepta pausar, false = rechaza.
+             */
+            enviarVotoPausa: async (voto: boolean) => {
+                const estado = get();
+                const codigo = estado.salaActiva?.codigoInvitacion;
+
+                if (!codigo) return;
+
+                set({ faseVotacionPausa: 'esperando' });
+
+                try {
+                    await fetchApi(`/v1/partidas/${codigo}/pausa/votar`, {
+                        method: 'POST',
+                        body: JSON.stringify({ voto_a_favor: voto })
+                    });
+                    console.log(`🚀 [REST] Voto de pausa (${voto}) enviado al servidor`);
+                } catch (error) {
+                    console.error('[enviarVotoPausa] Error:', error);
+                    estado.mostrarAlerta("Error al registrar tu voto.");
+                }
+            },
+        }),
+        {
+            name: 'soberania-session-storage', // Clave en localStorage
+            storage: createJSONStorage(() => localStorage),
+            // IMPORTANTE: Aquí decides qué sobrevive al F5
+            partialize: (state) => ({
+                faseVotacionPausa: state.faseVotacionPausa,
+                jugadorSolicitantePausa: state.jugadorSolicitantePausa,
+                salaActiva: state.salaActiva,
+                jugadorLocal: state.jugadorLocal,
+                estadoPartidaLocal: state.estadoPartidaLocal,
+            }),
         }
-    },
-
-    abandonarSoberania: async () => {
-        const { salaActiva } = get();
-        try {
-            if (salaActiva?.id) {
-                await gameApi.abandonarPartida(salaActiva.id);
-            }
-        } catch (error) {
-            console.error('[abandonarSoberania] Error al notificar al servidor:', error);
-        } finally {
-            socketService.disconnect();
-            set({
-                salaActiva: { id: null, codigoInvitacion: null, estado: null, config_max_players: null },
-                jugadoresLobby: [],
-                faseActual: null,
-                tropas: {},
-                propietarios: {},
-                coloresJugadores: {},
-                jugadorLocal: null,
-                turnoActual: null,
-                jugadores: [],
-                diccionarioJugadores: {},
-                origenSeleccionado: null,
-                destinoSeleccionado: null,
-                comarcasResaltadas: [],
-                comarcaRefuerzo: null,
-                tropasAAsignar: 0,
-                mostrarAnimacionRefuerzos: false,
-                refuerzosRecibidos: 0,
-                preparandoAtaque: false,
-                movimientoConquistaPendiente: false,
-                preparandoFortificacion: false,
-            });
-        }
-    },
-}));
+    )
+);

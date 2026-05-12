@@ -109,3 +109,47 @@ export function calcularComarcasEnRango(
 
   return visitados;
 }
+
+/**
+ * BFS que devuelve SOLO los nodos que están a una distancia EXACTA del origen.
+ * Útil para armas como el Mortero Táctico, que solo pueden disparar a exactamente N saltos.
+ *
+ * @param {GrafoSoberania} grafo - Mapa estructurado de nodos y aristas.
+ * @param {string} origenId - Nodo de partida.
+ * @param {number} distanciaExacta - Única distancia válida para los objetivos.
+ * @returns {Set<string>} Conjunto de nodos que están exactamente a `distanciaExacta` saltos.
+ */
+export function calcularComarcasADistanciaExacta(
+  grafo: GrafoSoberania,
+  origenId: string,
+  distanciaExacta: number
+): Set<string> {
+  if (!grafo.has(origenId)) {
+    throw new Error(`El origen (${origenId}) no existe en el grafo.`);
+  }
+
+  // BFS registrando la distancia real a cada nodo
+  const distancias = new Map<string, number>();
+  distancias.set(origenId, 0);
+  const cola: [string, number][] = [[origenId, 0]];
+
+  while (cola.length > 0) {
+    const [idActual, dist] = cola.shift()!;
+    if (dist >= distanciaExacta) continue; // No expandir más allá
+
+    const nodo = grafo.get(idActual)!;
+    for (const vecinoId of nodo.adyacentes) {
+      if (!distancias.has(vecinoId)) {
+        distancias.set(vecinoId, dist + 1);
+        cola.push([vecinoId, dist + 1]);
+      }
+    }
+  }
+
+  // Filtrar solo los que están EXACTAMENTE a la distancia pedida
+  const resultado = new Set<string>();
+  for (const [id, dist] of distancias) {
+    if (dist === distanciaExacta) resultado.add(id);
+  }
+  return resultado;
+}

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useTurno } from '../../hooks/useTurno';
 import { useNavigate } from 'react-router-dom';
+import BarraTiempoFase from './BarraTiempoFase';
+import ChatPanel from './ChatPanel';
 import '../../styles/CabeceraJuego.css';
 
 /**
@@ -15,7 +17,9 @@ const formatearFase = (fase) => {
   const fasesMap = {
     'REFUERZO': 'Fase de Refuerzo',
     'ATAQUE_CONVENCIONAL': 'Fase de Ataque',
-    'FORTIFICACION': 'Fase de Fortificación'
+    'FORTIFICACION': 'Fase de Fortificación',
+    'GESTION': 'Fase de Gestión',
+    'ATAQUE_ESPECIAL': 'Ataque Especial'
   };
   return fasesMap[fase] || fase;
 };
@@ -29,7 +33,7 @@ const formatearFase = (fase) => {
  */
 const CabeceraJuego = () => {
   const {
-    dinero,
+    monedas,
     tropasDisponibles,
     faseActual,
     pasarFaseBackend,
@@ -38,7 +42,9 @@ const CabeceraJuego = () => {
     coloresJugadores,
     turnoActual,
     jugadorLocal,
-    abandonarSoberania
+    abandonarSoberania,
+    setFaseVotacionPausa,
+    estadoPartidaLocal
   } = useGameStore();
 
   const navigate = useNavigate();
@@ -56,37 +62,42 @@ const CabeceraJuego = () => {
 
   const { esMiTurno } = useTurno();
   const isFaseRefuerzo = faseActual === 'REFUERZO';
-  const isUltimaFase = faseActual === 'FORTIFICACION';
+  const isUltimaFase = faseActual === 'ATAQUE_ESPECIAL';
 
   // Bloqueamos el paso de turno si todavía tiene tropas sin colocar o si no es su turno
   const isSiguienteBloqueado = !esMiTurno || (isFaseRefuerzo && (tropasDisponibles ?? 0) > 0);
+
+  const movimientoRealizadoEnTurno = useGameStore((state) => state.movimientoRealizadoEnTurno);
+
+  const estadosBloqueo = useGameStore((state) => state.estadosBloqueo) || {};
+  const hayTrabajo = Object.entries(estadosBloqueo).some(([id, e]) => e === 'trabajando' && propietarios[id] === jugadorLocal);
+  const hayInvestigacion = Object.entries(estadosBloqueo).some(([id, e]) => e && e.startsWith('investigando') && propietarios[id] === jugadorLocal);
+  const gestionCompletada = hayTrabajo && hayInvestigacion;
+
+  let debeBrillar = false;
+  if (!isSiguienteBloqueado && esMiTurno) {
+    if (isFaseRefuerzo && (tropasDisponibles ?? 0) === 0) debeBrillar = true;
+    if (isUltimaFase && movimientoRealizadoEnTurno) debeBrillar = true;
+    if (faseActual === 'GESTION' && gestionCompletada) debeBrillar = true;
+    if (faseActual === 'FORTIFICACION' && movimientoRealizadoEnTurno) debeBrillar = true;
+  }
 
   // Leer el jugador en turno actual real para sacar su color
   const turnPlayerColor = coloresJugadores && turnoActual && coloresJugadores[turnoActual]
     ? coloresJugadores[turnoActual]
     : 'var(--color-border-gold)';
 
-  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [chatAbierto, setChatAbierto] = useState(false);
 
-  const toggleMenu = () => {
-    setMenuAbierto(!menuAbierto);
+  const toggleChat = () => {
+    setChatAbierto(!chatAbierto);
   };
 
-  const handleRendirse = async () => {
-    const confirmar = window.confirm('¿Estás seguro de que deseas rendirte? Perderás todos tus territorios y tropas.');
-    if (confirmar) {
-      await abandonarSoberania();
-      setMenuAbierto(false);
-      navigate('/lobby');
-    }
-  };
-
-  const handleVolverSala = async () => {
-    const confirmar = window.confirm('¿Deseas salir al Centro de Mando? Se considerará un abandono de la partida actual.');
-    if (confirmar) {
-      await abandonarSoberania();
-      setMenuAbierto(false);
-      navigate('/lobby');
+  const handlePausar = () => {
+    if (estadoPartidaLocal === 'ESPECTANDO') {
+      setFaseVotacionPausa('confirmar_abandono_espectador');
+    } else {
+      setFaseVotacionPausa('confirmando_local');
     }
   };
 
@@ -111,9 +122,10 @@ const CabeceraJuego = () => {
   let textoSiguiente = 'AVANZAR';
   if (!esMiTurno) {
     textoSiguiente = 'ESPERANDO...';
-  } else if (isUltimaFase) {
+  } else if (faseActual === 'FORTIFICACION') {
     textoSiguiente = 'NUEVO TURNO';
   }
+  // ATAQUE_ESPECIAL mantiene el texto genérico 'AVANZAR' (ya está por defecto)
 
   return (
     <header className="cabecera-juego">
@@ -131,46 +143,61 @@ const CabeceraJuego = () => {
         >
           <div className="fase-poligono">
             <span className="fase-texto" style={{ color: turnPlayerColor }}>{formatearFase(faseActual || 'CARGANDO...')}</span>
-            <button
-              className={clasesBotonSiguiente}
-              onClick={pasarFaseBackend}
-              disabled={isSiguienteBloqueado}
-              title={titleSiguiente}
-            >
-              {textoSiguiente}
-            </button>
+            {esMiTurno ? (
+              <button
+                className={clasesBotonSiguiente}
+                onClick={pasarFaseBackend}
+                disabled={isSiguienteBloqueado}
+                title={titleSiguiente}
+                style={{
+                  backgroundColor: debeBrillar ? turnPlayerColor : undefined,
+                  border: debeBrillar ? `2px solid ${turnPlayerColor}` : undefined,
+                  animation: debeBrillar ? 'pulse 1.5s infinite alternate' : 'none'
+                }}
+              >
+                {textoSiguiente}
+              </button>
+            ) : (
+              <span style={{ color: 'var(--color-ui-bg-primary)', fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', textShadow: 'none', backgroundColor: turnPlayerColor, padding: '4px 12px', borderRadius: '4px' }}>
+                Turno de: {turnoActual}
+              </span>
+            )}
           </div>
         </div>
+        <BarraTiempoFase />
       </div>
 
       <div className="zona-derecha">
-        <button
-          className="btn-menu"
-          onClick={toggleMenu}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px',
-            backgroundColor: 'var(--color-ui-panel-overlay)',
-            border: '2px solid var(--color-border-gold)',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            padding: '10px',
-            marginRight: '3rem'
-          }}
-        >
-          ≡
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginRight: '3rem' }}>
+          <button
+            className="btn-menu"
+            onClick={handlePausar}
+            title={estadoPartidaLocal === 'ESPECTANDO' ? "Dejar de Espectar" : "Pausar Partida"}
+          >
+            {estadoPartidaLocal === 'ESPECTANDO' ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+                <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+            )}
+          </button>
+          
+          <button
+            className="btn-menu"
+            onClick={toggleChat}
+            title="Mensajes y Reacciones"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--color-border-gold)">
+              <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+          </button>
+        </div>
 
-        {menuAbierto && (
-          <div className="menu-desplegable">
-            <button className="btn-menu-item btn-rendirse" onClick={handleRendirse}>
-              Rendirse
-            </button>
-            <button className="btn-menu-item" onClick={handleVolverSala}>
-              Volver a la Sala
-            </button>
-          </div>
+        {chatAbierto && (
+          <ChatPanel onClose={() => setChatAbierto(false)} />
         )}
       </div>
     </header>

@@ -14,8 +14,8 @@ export const useTurno = () => {
 
     const esMiTurno = Boolean(
         turnoDe && (
-            String(turnoDe) === String(miId) ||
-            String(turnoDe) === String(miUsername)
+            String(turnoDe).toLowerCase() === String(miId).toLowerCase() ||
+            String(turnoDe).toLowerCase() === String(miUsername).toLowerCase()
         )
     );
 
@@ -23,7 +23,8 @@ export const useTurno = () => {
         turnoDe: String(turnoDe), 
         miId: String(miId), 
         miUsername: String(miUsername), 
-        esMiTurno 
+        esMiTurno,
+        matchCaseInsensitive: true
     });
 
     return {

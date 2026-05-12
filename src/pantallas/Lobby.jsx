@@ -1,5 +1,5 @@
 // src/pantallas/Lobby.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/gameStore';
@@ -8,6 +8,8 @@ import MenuCrearPartida from '../components/lobby/MenuCrearPartida';
 import SalaLobby from '../components/lobby/SalaLobby';
 import MenuUnirsePartida from '../components/lobby/MenuUnirsePartida';
 import PanelInteligencia from '../components/lobby/PanelInteligencia';
+import PanelAlianzas from '../components/lobby/PanelAlianzas';
+import MenuInicialSoberania from '../components/lobby/MenuInicialSoberania';
 import '../styles/Lobby.css';
 
 /**
@@ -24,6 +26,17 @@ const Lobby = () => {
   const [vistaActual, setVistaActual] = useState('mando');
   const [cargandoRapida, setCargandoRapida] = useState(false);
   const [errorRapida, setErrorRapida] = useState(null);
+  const [popupSalaCerrada, setPopupSalaCerrada] = useState(null);
+
+  useEffect(() => {
+    const handleSalaCerrada = (e) => {
+      setVistaActual('mando');
+      setPopupSalaCerrada(e.detail?.mensaje || "El host ha abandonado la sala y la partida ha sido cancelada.");
+    };
+    window.addEventListener('sala_cerrada', handleSalaCerrada);
+    return () => window.removeEventListener('sala_cerrada', handleSalaCerrada);
+  }, []);
+
 
   // Datos mock de partidas de amigos (se sustituirán por llamada real)
   const [partidas] = useState([
@@ -43,7 +56,7 @@ const Lobby = () => {
       const salaDisponible = listaPublicas.find((p) => p.estado === 'creando');
       const resultado = salaDisponible
         ? await unirsePartidaBackend(salaDisponible.codigo_invitacion)
-        : await crearPartidaBackend({ config_max_players: 4, config_visibility: 'publica', config_timer_seconds: 1200 });
+        : await crearPartidaBackend({ config_max_players: 4, config_visibility: 'publica', config_timer_seconds: 60 });
 
       if (resultado) {
         setVistaActual('sala');
@@ -54,26 +67,6 @@ const Lobby = () => {
     } finally {
       setCargandoRapida(false);
     }
-  };
-
-  const estiloBotonMesa = {
-    background: 'var(--color-ui-bg-secondary)',
-    color: 'var(--color-border-gold)',
-    border: '2px solid var(--color-border-bronze)',
-    padding: '1rem',
-    fontFamily: 'var(--font-family-title)',
-    fontSize: '1.2vw',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-    transition: 'all 0.3s ease',
-    backdropFilter: 'blur(3px)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    height: '6vw'
   };
 
   const estiloTarjeta = {
@@ -100,45 +93,19 @@ const Lobby = () => {
         position: 'relative',
         width: '100%',
         height: '100%',
-        backgroundImage: 'url(/mesa-mando.png)',
+        backgroundImage: 'url(/fondoLobby.png)',
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center top',
         overflow: 'hidden'
       }}>
 
         {vistaActual === 'mando' && (
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-
-            {/* IZQUIERDA: Archivos de Inteligencia */}
-            <button
-              onClick={() => setVistaActual('inteligencia')}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '15%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Archivos de Inteligencia
-            </button>
-
-            {/* CENTRO: Operaciones */}
-            <button
-              onClick={() => { setVistaActual('operaciones'); setErrorRapida(null); }}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', left: '41%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Operaciones
-            </button>
-
-            {/* DERECHA: Alianzas */}
-            <button
-              onClick={() => setVistaActual('amigos')}
-              style={{ ...estiloBotonMesa, position: 'absolute', top: '55%', right: '15%', width: '18%' }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'var(--color-ui-panel-overlay)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--color-ui-bg-secondary)'; }}
-            >
-              Alianzas
-            </button>
-
+            <MenuInicialSoberania
+              onAbrirPerfil={() => setVistaActual('inteligencia')}
+              onAbrirOperaciones={() => { setVistaActual('operaciones'); setErrorRapida(null); }}
+              onAbrirAmigos={() => setVistaActual('amigos')}
+            />
           </div>
         )}
 
@@ -194,8 +161,8 @@ const Lobby = () => {
                   onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
                   onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Unirse con Código</h3>
-                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Introduce el código de operaciones que te ha facilitado el comandante que fundó la sala.</p>
+                  <h3 style={{ margin: '0 0 1rem 0', borderBottom: '1px solid var(--color-border-bronze)', paddingBottom: '0.5rem', width: '100%' }}>Unirse a una Partida</h3>
+                  <p style={{ flex: 1, fontSize: '0.9vw' }}>Explora el listado de salas públicas disponibles o introduce un código de invitación directo.</p>
                   <button style={{ padding: '0.5rem 1rem', background: 'var(--color-ui-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>INFILTRARSE ➔</button>
                 </div>
 
@@ -229,45 +196,45 @@ const Lobby = () => {
           />
         )}
 
-        {/* ALIANZAS (partidas de amigos — mock) */}
+        {/* ALIANZAS Y AMIGOS */}
         {vistaActual === 'amigos' && (
-          <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-            <button
-              onClick={() => setVistaActual('mando')}
-              style={{ position: 'absolute', top: '2%', right: '2%', padding: '0.6rem 1.2rem', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-bronze)', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9vw' }}
-            >
-              ⬅ Volver a la Mesa
-            </button>
-
-            <div style={{ width: '40%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <h2 style={{ color: 'var(--color-ui-bg-primary)', textAlign: 'center', fontFamily: 'var(--font-family-title)', borderBottom: '2px solid var(--color-ui-bg-primary)', paddingBottom: '0.5rem', margin: 0 }}>
-                Alianzas — Partidas de Amigos
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                {partidas.map((p) => {
-                  const llena = p.jugadores === p.maxJugadores;
-                  return (
-                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-ui-bg-secondary)', paddingBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '1.1vw', color: 'var(--color-ui-bg-primary)', fontFamily: 'var(--font-family-title)' }}>{p.nombre}</span>
-                        <span style={{ fontSize: '0.75vw', color: 'var(--color-ui-bg-secondary)', fontStyle: 'italic' }}>{p.jugadores}/{p.maxJugadores} — {p.estado}</span>
-                      </div>
-                      <button
-                        disabled={llena}
-                        onClick={() => navigate(`/partida/${p.id}`)}
-                        style={{ padding: '0.4rem 1rem', background: llena ? 'transparent' : 'var(--color-state-danger)', color: llena ? 'var(--color-state-disabled)' : 'var(--color-text-primary)', border: llena ? '1px solid var(--color-state-disabled)' : 'none', cursor: llena ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8vw' }}
-                      >
-                        {llena ? 'CERRADA' : 'UNIRSE'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <PanelAlianzas onCerrar={() => setVistaActual('mando')} />
         )}
 
       </div>
+
+      {/* POPUP: SALA CERRADA */}
+      {popupSalaCerrada && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--color-ui-bg-secondary)', border: '2px solid var(--color-border-bronze)',
+            padding: '2rem', borderRadius: '12px', textAlign: 'center', maxWidth: '400px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8)'
+          }}>
+            <h3 style={{ color: 'var(--color-state-danger)', marginTop: 0 }}>Sala Cerrada</h3>
+            <p style={{ color: '#ccc', marginBottom: '1.5rem', lineHeight: 1.4 }}>
+              {popupSalaCerrada}
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setPopupSalaCerrada(null)}
+                style={{
+                  flex: 1, padding: '0.6rem', background: 'var(--color-state-danger)',
+                  border: '1px solid transparent', color: 'white', borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer', fontWeight: 'bold', fontSize: 'var(--font-size-sm)', textTransform: 'uppercase'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

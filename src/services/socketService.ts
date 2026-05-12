@@ -1,7 +1,7 @@
 // src/services/socketService.ts
 import { useGameStore } from '../store/gameStore';
 
-const WS_BASE_URL: string = (import.meta as any).env?.VITE_WS_URL ?? 'ws://localhost:8000';
+const WS_BASE_URL: string = (import.meta as any).env?.VITE_WS_URL ?? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8000`;
 
 class SocketService {
     private socket: WebSocket | null = null;
@@ -12,11 +12,57 @@ class SocketService {
     private retryCount = 0;
     private baseDelay = 1000;
 
+    // ── WebSocket global de presencia (independiente del de partida) ──────────
+    private globalSocket: WebSocket | null = null;
+
+    /**
+     * Abre la conexión de presencia global tras el login.
+     * El backend detecta el `onopen` y marca al usuario como CONECTADO,
+     * y el `onclose` lo marca como DESCONECTADO.
+     * URL: ws://<host>/ws/global/<username>
+     */
+    public connectToGlobal(username: string, token?: string) {
+        if (this.globalSocket && this.globalSocket.readyState === WebSocket.OPEN) return;
+
+        // Intentamos primero sin token (igual que connectToPartida).
+        // Si el backend lo requiere como header en el handshake, esto lo deberá configurar el backend.
+        const url = `${WS_BASE_URL}/api/v1/global/${username}`;
+        console.log(`[WS Global] Conectando presencia: ${url}`);
+        this.globalSocket = new WebSocket(url);
+
+        this.globalSocket.onopen = () => {
+            console.log('[WS Global] ✅ Presencia online establecida.');
+        };
+
+        this.globalSocket.onclose = (event) => {
+            if (event.code !== 1000) {
+                console.warn('[WS Global] Presencia cerrada inesperadamente. Código:', event.code,
+                    '— ¿Está el endpoint /ws/global/{username} activo en el backend?');
+            }
+            this.globalSocket = null;
+        };
+
+        this.globalSocket.onerror = () => {
+            // Silenciamos el error de red — el backend aún no tiene el endpoint activo
+            console.warn('[WS Global] No se pudo conectar la presencia. El endpoint puede no estar disponible todavía.');
+        };
+    }
+
+    /** Cierra la conexión de presencia global (al hacer logout). */
+    public disconnectGlobal() {
+        if (this.globalSocket) {
+            console.log('[WS Global] Cerrando presencia...');
+            this.globalSocket.onclose = null;
+            this.globalSocket.close(1000, 'Logout');
+            this.globalSocket = null;
+        }
+    }
+
     /** Conecta al WS global de la partida activa. */
     public connect(url?: string) {
         const targetUrl = url || `${WS_BASE_URL}/ws`;
 
-        // Idempotencia absoluta: si ya hay un socket vivo, se ignora todo. 
+        // Idempotencia absoluta: si ya hay un socket vivo, se ignora todo.
         // Esto previene que Strict Mode cierre e intente abrir de 0 muy rápido
         if (this.socket) return;
 
@@ -54,6 +100,9 @@ class SocketService {
             console.log('[WebSocket] Conectado con éxito.');
             this.retryCount = 0;
             useGameStore.getState().setSocketConnection(true);
+
+            // Sincronizar estado al reconectar para recuperar cambios perdidos durante el downtime
+            useGameStore.getState().sincronizarEstadoPartida();
         };
 
         this.socket.onmessage = (event) => {
@@ -113,6 +162,23 @@ class SocketService {
             this.socket.send(JSON.stringify({ type, payload }));
         } else {
             console.error('[WebSocket] Socket no disponible. Tipo:', type);
+        }
+    }
+
+    /** Helper para enviar un mensaje de chat o reaccion */
+    public enviarChat(tipo_chat: string, contenido: string) {
+        this.sendRaw({
+            accion: "CHAT",
+            tipo_chat,
+            contenido
+        });
+    }
+
+    public sendRaw(data: any) {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify(data));
+        } else {
+            console.error('[WebSocket] Socket no disponible');
         }
     }
 }

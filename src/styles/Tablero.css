@@ -1,0 +1,47 @@
+/* Animación de pulso: deshabilitada */
+/* Anteriormente usaba drop-shadow que causaba efecto de difuminado blanco
+@keyframes regionDominada {
+  0% {
+    filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 2px currentColor);
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 6px currentColor);
+    opacity: 0.9;
+  }
+  100% {
+    filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 2px currentColor);
+    opacity: 1;
+  }
+}
+*/
+
+/* Aplicar animación a los contornos de regiones dominadas */
+.continente-dominado {
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Estilos para el tooltip de información de región (opcional) */
+.info-region {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+  border: 1px solid var(--color-border-gold);
+}
+
+/* Animación suave para transiciones de estado */
+.mapa-svg {
+  position: relative;
+}
+
+.mapa-svg path {
+  transition: stroke 0.5s ease, stroke-width 0.5s ease, filter 0.5s ease;
+}
