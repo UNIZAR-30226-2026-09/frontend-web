@@ -39,7 +39,10 @@ export interface EstadoJuego {
     faseActual: FaseJuego | null;
     finFaseUtc: string | null;       // ISO 8601 timestamp del fin de fase enviado por el backend
     modoVista: ModoVista;
-    estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO';
+    estadoPartidaLocal: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO' | 'FINALIZADA_ESPECTANDO';
+
+    /** Username del ganador de la partida (null si aún no ha terminado). */
+    ganadorFinal: string | null;
 
     monedas: number;
     tropasDisponibles: number | null;
@@ -148,7 +151,7 @@ export interface EstadoJuego {
     /**
      * Añade un mensaje al log en tiempo real de la partida.
      */
-    agregarMensajeLog: (mensaje: string) => void;
+    agregarMensajeLog: (mensaje: string | object) => void;
 
     /**
      * Carga el historial de logs desde el backend (para reconexiones y recarga de página).
@@ -313,7 +316,7 @@ export interface EstadoJuego {
     /**
      * Define el estado local de la partida (victoria, derrota, espectador).
      */
-    setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO') => void;
+    setEstadoPartidaLocal: (estado: 'JUGANDO' | 'DERROTA' | 'VICTORIA' | 'ESPECTANDO' | 'FINALIZADA_ESPECTANDO') => void;
 
     /**
      * Alterna la visibilidad del panel del árbol tecnológico.
@@ -379,7 +382,7 @@ export interface EstadoJuego {
 
     // Votación Pausa
     /** Fase actual del flujo de pausa por consenso. */
-    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada';
+    faseVotacionPausa: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador';
     /** Username del jugador que ha iniciado la solicitud de pausa (null si ninguno). */
     jugadorSolicitantePausa: string | null;
     
@@ -390,7 +393,7 @@ export interface EstadoJuego {
     recibirMensajeChat: (emisor: string, tipo: string, contenido: string) => void;
 
     /** Cambia la fase local de la votación de pausa. */
-    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => void;
+    setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => void;
 
     /** Inicia el flujo de solicitud de pausa y lo emite por WebSocket. */
     iniciarSolicitudPausa: () => void;

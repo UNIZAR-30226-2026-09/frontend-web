@@ -14,6 +14,7 @@ const PanelAlianzas = ({ onCerrar }) => {
     const [cargandoSolicitudes, setCargandoSolicitudes] = useState(false);
     const [notificacion, setNotificacion] = useState(null);
     const [perfilViendo, setPerfilViendo] = useState(null); // { username, avatar }
+    const [confirmandoEliminar, setConfirmandoEliminar] = useState(null); // username del amigo a eliminar
 
     const mostrarNotificacion = (msg, isError = false) => {
         setNotificacion({ msg, isError });
@@ -25,8 +26,41 @@ const PanelAlianzas = ({ onCerrar }) => {
 
         const cargarAmigos = async () => {
             try {
-                const data = await socialApi.obtenerAmigosActivos();
-                setAmigos(data && data.length > 0 ? data : []);
+                // Necesitamos AMBAS listas:
+                // - obtenerAmigos devuelve {id, user_1, user_2} (necesario para DELETE)
+                // - obtenerAmigosActivos devuelve {username, estado_conexion, avatar}
+                const [listaBase, listaActivos] = await Promise.all([
+                    socialApi.obtenerAmigos(),
+                    socialApi.obtenerAmigosActivos()
+                ]);
+
+                console.log('[DEBUG Alianzas] listaBase (obtenerAmigos):', JSON.stringify(listaBase));
+                console.log('[DEBUG Alianzas] listaActivos (obtenerAmigosActivos):', JSON.stringify(listaActivos));
+
+                const userDataStr = localStorage.getItem('soberania_user');
+                const miUsuario = userDataStr ? (JSON.parse(userDataStr).nombre_usuario || JSON.parse(userDataStr).username || '').trim().toLowerCase() : '';
+
+                // Indexar activos por username para lookup rápido
+                const activosMap = {};
+                (listaActivos || []).forEach(a => {
+                    activosMap[(a.username || '').toLowerCase()] = a;
+                });
+
+                // Fusionar: de listaBase sacamos el id, de activosMap el estado y avatar
+                const fusionados = (listaBase || []).map(amistad => {
+                    const u1 = (amistad.user_1 || '').trim().toLowerCase();
+                    const nombreAmigo = u1 === miUsuario ? amistad.user_2 : amistad.user_1;
+                    const activo = activosMap[(nombreAmigo || '').toLowerCase()] || {};
+                    return {
+                        amigo_id: amistad.id,
+                        username: nombreAmigo,
+                        estado_conexion: activo.estado_conexion || 'DESCONECTADO',
+                        avatar: activo.avatar || null,
+                    };
+                });
+
+                console.log('[DEBUG Alianzas] fusionados:', JSON.stringify(fusionados));
+                setAmigos(fusionados);
             } catch (error) {
                 console.error("Error al cargar amigos:", error);
                 setAmigos([]);
@@ -83,17 +117,22 @@ const PanelAlianzas = ({ onCerrar }) => {
         }
     };
 
-    const handleCortarAmistad = async (username) => {
+    const handleCortarAmistad = async (amigoId, username) => {
+        console.log('[DEBUG Alianzas] Intentando eliminar amigoId:', amigoId, 'tipo:', typeof amigoId, 'username:', username);
+        if (!amigoId || typeof amigoId !== 'number') {
+            mostrarNotificacion(`Error: No se encontró el ID de amistad para ${username}.`, true);
+            return;
+        }
         try {
-            await socialApi.eliminarAmistad(username);
-            setAmigos(prev => prev.filter(a => {
-                const n = a.username || a.user_1 || a.user_2;
-                return n !== username;
-            }));
+            await socialApi.eliminarAmistad(amigoId);
+            setAmigos(prev => prev.filter(a => a.amigo_id !== amigoId));
             mostrarNotificacion(`Alianza con ${username} revocada.`, false);
             setPerfilViendo(null);
         } catch (error) {
-            mostrarNotificacion(`Error al cortar alianza: ${error.message || 'Error desconocido'}`, true);
+            const msg = typeof error === 'string' ? error
+                : error?.message && typeof error.message === 'string' ? error.message
+                : error?.detail || 'Error desconocido';
+            mostrarNotificacion(`Error al cortar alianza: ${msg}`, true);
         }
     };
 
@@ -145,44 +184,74 @@ const PanelAlianzas = ({ onCerrar }) => {
                     {tabActiva === 'lista' && amigos.map((amigo, idx) => {
                         const estadoUI = amigo.estado_conexion || 'DESCONECTADO';
                         const config = getEstadoConfig(estadoUI);
-                        const userDataStr = localStorage.getItem('soberania_user');
-                        const miUsuario = userDataStr ? (JSON.parse(userDataStr).nombre_usuario || '').trim().toLowerCase() : '';
-                        let nombreAmigo = amigo.username;
-                        if (!nombreAmigo) {
-                            const u1 = (amigo.user_1 || '').trim().toLowerCase();
-                            nombreAmigo = (u1 === miUsuario) ? amigo.user_2 : amigo.user_1;
-                        }
-                        nombreAmigo = nombreAmigo || 'Desconocido';
+                        const nombreAmigo = amigo.username || 'Desconocido';
                         return (
-                            <div
-                                key={idx}
-                                className={`alianzas-card ${config.claseCard}`}
-                                style={{ cursor: 'pointer' }}
-                                onClick={(e) => {
-                                    if (!e.target.closest('.alianzas-acciones')) {
-                                        setPerfilViendo({ username: nombreAmigo, avatar: amigo.avatar });
-                                    }
-                                }}
-                            >
-                                <div className="alianzas-info">
-                                    <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
-                                        <img
-                                            src={`${BASE_URL}${amigo.avatar || '/static/perfiles/default.png'}`}
-                                            alt={nombreAmigo}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                                            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = nombreAmigo.charAt(0).toUpperCase(); }}
-                                        />
+                            <div key={amigo.amigo_id || idx} className="alianzas-card-wrapper">
+                                <div
+                                    className={`alianzas-card ${config.claseCard}`}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                        if (!e.target.closest('.alianzas-acciones')) {
+                                            setPerfilViendo({ username: nombreAmigo, avatar: amigo.avatar });
+                                        }
+                                    }}
+                                >
+                                    <div className="alianzas-info">
+                                        <div className="alianzas-avatar" style={{ overflow: 'hidden', background: 'var(--color-ui-bg-primary)', padding: 0 }}>
+                                            <img
+                                                src={`${BASE_URL}${amigo.avatar || '/static/perfiles/default.png'}`}
+                                                alt={nombreAmigo}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.textContent = nombreAmigo.charAt(0).toUpperCase(); }}
+                                            />
+                                        </div>
+                                        <div className="alianzas-detalles">
+                                            <span className="alianzas-nombre">{nombreAmigo}</span>
+                                            <span className="alianzas-estado">
+                                                <span className={`estado-dot ${config.claseDot}`}></span>
+                                                {config.texto}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="alianzas-detalles">
-                                        <span className="alianzas-nombre">{nombreAmigo}</span>
-                                        <span className="alianzas-estado">
-                                            <span className={`estado-dot ${config.claseDot}`}></span>
-                                            {config.texto}
+                                    <div className="alianzas-acciones">
+                                        <button
+                                            className="btn-eliminar-amigo"
+                                            title="Eliminar alianza"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setConfirmandoEliminar(
+                                                    confirmandoEliminar === nombreAmigo ? null : nombreAmigo
+                                                );
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                                {confirmandoEliminar === nombreAmigo && (
+                                    <div className="alianzas-confirm-dropdown">
+                                        <span className="alianzas-confirm-text">
+                                            ¿Revocar alianza con <strong>{nombreAmigo}</strong>?
                                         </span>
+                                        <div className="alianzas-confirm-btns">
+                                            <button
+                                                className="btn-accion"
+                                                onClick={() => setConfirmandoEliminar(null)}
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                className="btn-accion btn-accion-danger"
+                                                onClick={() => {
+                                                    handleCortarAmistad(amigo.amigo_id, nombreAmigo);
+                                                    setConfirmandoEliminar(null);
+                                                }}
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="alianzas-acciones">
-                                </div>
+                                )}
                             </div>
                         );
                     })}
@@ -262,8 +331,6 @@ const PanelAlianzas = ({ onCerrar }) => {
                     username={perfilViendo?.username || perfilViendo}
                     avatarProp={perfilViendo?.avatar}
                     onCerrar={() => setPerfilViendo(null)}
-                    esAmigo={true}
-                    onCortarAmistad={handleCortarAmistad}
                 />,
                 document.getElementById('root') || document.body
             )}

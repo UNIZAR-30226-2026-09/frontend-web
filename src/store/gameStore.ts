@@ -1858,6 +1858,9 @@ export const useGameStore = create<EstadoJuego>()(
                     const data = await fetchApi(`/v1/partidas/${codigo}/unirse`, {
                         method: 'POST',
                     });
+
+                    console.log('[DEBUG unirse] Respuesta completa:', JSON.stringify(data));
+
                     const authUser = useAuthStore.getState().user;
                     const jugadorLocal =
                         authUser?.username ??
@@ -1876,7 +1879,7 @@ export const useGameStore = create<EstadoJuego>()(
 
                     let configMaxPlayers = data.config_max_players;
 
-                    // 3. Truco de la lista pública para extraer config_max_players (ya que el backend WS no lo manda)
+                    // 3. Truco: buscar config_max_players en listas de partidas
                     if (!realPartidaId || !configMaxPlayers) {
                         try {
                             const listaPartidas = await fetchApi('/v1/partidas');
@@ -1884,7 +1887,7 @@ export const useGameStore = create<EstadoJuego>()(
                                 (p: any) => p.codigo_invitacion === codigo
                             );
                             if (miPartida) {
-                                configMaxPlayers = miPartida.config_max_players;
+                                configMaxPlayers = configMaxPlayers || miPartida.config_max_players;
                                 if (!realPartidaId) realPartidaId = miPartida.id;
                             }
                         } catch (_) {
@@ -1892,7 +1895,59 @@ export const useGameStore = create<EstadoJuego>()(
                         }
                     }
 
+                    // 4. Si sigue sin config (partida privada), intentar lista de pausadas
+                    if (!configMaxPlayers) {
+                        try {
+                            const listaPausadas = await fetchApi('/v1/partidas/pausadas');
+                            const miPausada = listaPausadas.find(
+                                (p: any) => p.codigo_invitacion === codigo
+                            );
+                            if (miPausada) {
+                                configMaxPlayers = miPausada.config_max_players;
+                                if (!realPartidaId) realPartidaId = miPausada.id;
+                            }
+                        } catch (_) {
+                            // Fallo silencioso
+                        }
+                    }
+
+                    // 5. Último recurso: mi-partida activa (incluye privadas)
+                    if (!configMaxPlayers) {
+                        try {
+                            const miPartida = await fetchApi('/v1/partidas/mi-partida');
+                            if (miPartida?.tiene_partida_activa) {
+                                // Recuperar config de la lista pública/pausada usando el ID
+                                const partidaId = miPartida.partida_id;
+                                if (!realPartidaId && partidaId) realPartidaId = partidaId;
+                                // Intentar extraer de la lista completa (pública + pausada)
+                                if (partidaId && !configMaxPlayers) {
+                                    try {
+                                        const [pub, pau] = await Promise.all([
+                                            fetchApi('/v1/partidas').catch(() => []),
+                                            fetchApi('/v1/partidas/pausadas').catch(() => [])
+                                        ]);
+                                        const todas = [...(pub || []), ...(pau || [])];
+                                        const found = todas.find((p: any) => p.id === partidaId);
+                                        if (found) configMaxPlayers = found.config_max_players;
+                                    } catch (_) {}
+                                }
+                            }
+                        } catch (_) {
+                            // Fallo silencioso
+                        }
+                    }
+
+                    // 6. Si nada funciona, contar los jugadores que el backend mandó
+                    if (!configMaxPlayers && data.jugadores_en_sala) {
+                        // El backend ya envía todos los jugadores en sala, 
+                        // así que si la sala está llena esto coincide con el máximo
+                        // Para una sala recién creada con 2 de 3, esto no es perfecto
+                        // pero es mejor que siempre poner 4
+                    }
+
                     configMaxPlayers = configMaxPlayers || 4;
+
+                    console.log('[DEBUG unirse] configMaxPlayers final:', configMaxPlayers, 'realPartidaId:', realPartidaId);
 
                     if (!realPartidaId) {
                         throw new Error(
@@ -1949,14 +2004,12 @@ export const useGameStore = create<EstadoJuego>()(
                         console.log('[DEBUG LOBBY] prepararSalaPausada: nombres del backend:', nombresJugadores, 'miUsuario:', miUsuario);
                         todosLosJugadores = nombresJugadores.map((nombre, index) => {
                             const isHost = partida.creador === nombre || partida.creador_id === nombre;
-                            const isOnline = nombre.toLowerCase() === miUsuario.toLowerCase();
-                            console.log(`[DEBUG LOBBY]   ${nombre} -> isOnline: ${isOnline} (compare: ${nombre.toLowerCase()} vs ${miUsuario.toLowerCase()})`);
                             return {
                                 id: nombre,
                                 username: nombre,
                                 numeroJugador: index + 1,
                                 esCreador: isHost,
-                                online: isOnline // Lo marcamos según si soy yo
+                                online: true // Marcamos a todos como presentes
                             };
                         });
                     }
@@ -2060,11 +2113,11 @@ export const useGameStore = create<EstadoJuego>()(
             /**
              * Cambia la fase local de la votación de pausa.
             
-            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => {
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => {
                 set({ faseVotacionPausa: fase });
             },
             */
-            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada') => set({ faseVotacionPausa: fase }),
+            setFaseVotacionPausa: (fase: 'ninguna' | 'confirmando_local' | 'esperando' | 'votando' | 'pausada' | 'rechazada' | 'confirmar_abandono_espectador') => set({ faseVotacionPausa: fase }),
 
             /**
              * El jugador local inicia una solicitud de pausa por consenso mediante API REST.

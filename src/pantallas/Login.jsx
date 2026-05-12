@@ -13,7 +13,7 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
-  const [confirmEmail, setConfirmEmail] = useState('');
+
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -48,10 +48,7 @@ const Login = () => {
         setError("La contraseña debe tener al menos 6 caracteres.");
         return;
       }
-      if (email !== confirmEmail) {
-        setError("Los correos electrónicos no coinciden.");
-        return;
-      }
+
       if (password !== confirmPassword) {
         setError("Las contraseñas no coinciden.");
         return;
@@ -112,7 +109,6 @@ const Login = () => {
   const toggleAuthMode = () => {
     setIsRegistering(!isRegistering);
     setEmail('');
-    setConfirmEmail('');
     setConfirmPassword('');
     setError(null);
     setExito(null);
@@ -122,7 +118,6 @@ const Login = () => {
     setIsRegistering(modoRegistro);
     setMostrarFormulario(true);
     setEmail('');
-    setConfirmEmail('');
     setConfirmPassword('');
     setError(null);
     setExito(null);
@@ -193,30 +188,17 @@ const Login = () => {
           </div>
 
           {isRegistering && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Correo Electrónico</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="tu@correo.com"
-                  style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border-bronze)', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)' }}
-                />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Confirmar Correo</label>
-                <input
-                  type="email"
-                  value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
-                  required
-                  placeholder="Repite tu correo"
-                  style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border-bronze)', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)' }}
-                />
-              </div>
-            </>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>Correo Electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="tu@correo.com"
+                style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid var(--color-border-bronze)', background: 'var(--color-ui-bg-secondary)', color: 'var(--color-text-primary)' }}
+              />
+            </div>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

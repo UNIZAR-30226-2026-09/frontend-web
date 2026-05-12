@@ -175,8 +175,8 @@ const MenuUnirsePartida = ({ onUnido, onCancelar }) => {
                     {partidasPausadas.map(p => (
                       <div key={p.id} style={{ background: 'var(--color-ui-bg-secondary)', border: '1px solid var(--color-border-gold)', borderLeft: '4px solid var(--color-border-gold)', borderRadius: '4px', padding: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ color: '#fff', fontWeight: 'bold' }}>Partida #{p.id}</span>
-                          <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Acceso: {p.codigo_invitacion}</span>
+                          <span style={{ color: '#fff', fontWeight: 'bold' }}>Partida {p.codigo_invitacion}</span>
+                          <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Creador: {p.creador || 'Desconocido'}</span>
                         </div>
                         <button onClick={() => handleReanudar(p)} disabled={cargando} style={{ background: 'var(--color-border-gold)', color: '#1A1200', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: cargando ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
                           REANUDAR

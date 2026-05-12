@@ -29,7 +29,7 @@ export const fetchApi = async (endpoint, options = {}) => {
     const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
-        if (response.status === 401) {
+        if (response.status === 401 && !endpoint.includes('/login') && !endpoint.includes('/registro')) {
             // El token es inválido o ha caducado
             localStorage.removeItem('soberania_token');
             localStorage.removeItem('soberania_user');
@@ -37,8 +37,16 @@ export const fetchApi = async (endpoint, options = {}) => {
         }
 
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || `Error HTTP: ${response.status}`);
+        const detail = errorData.detail;
+        const mensaje = typeof detail === 'string' ? detail
+            : Array.isArray(detail) ? detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+            : detail ? JSON.stringify(detail)
+            : errorData.message || `Error HTTP: ${response.status}`;
+        throw new Error(mensaje);
     }
+
+    // 204 No Content (ej: DELETE exitoso) no tiene cuerpo
+    if (response.status === 204) return null;
 
     return response.json();
 };

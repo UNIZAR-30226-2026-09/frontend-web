@@ -269,3 +269,84 @@
 .btn-accion-principal:hover {
     background-color: rgba(140, 115, 34, 0.2);
 }
+
+/* Wrapper para card + dropdown de confirmación */
+.alianzas-card-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Botón ✕ para eliminar amigo */
+.btn-eliminar-amigo {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(211, 47, 47, 0.4);
+    border-radius: 50%;
+    color: rgba(211, 47, 47, 0.6);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-eliminar-amigo:hover {
+    background: rgba(211, 47, 47, 0.15);
+    border-color: #d32f2f;
+    color: #d32f2f;
+}
+
+/* Dropdown de confirmación inline */
+.alianzas-confirm-dropdown {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 15px;
+    background: rgba(211, 47, 47, 0.08);
+    border-left: 3px solid #d32f2f;
+    animation: slideDown 0.2s ease;
+}
+
+.alianzas-confirm-text {
+    font-size: 0.8rem;
+    color: #ccc;
+}
+
+.alianzas-confirm-text strong {
+    color: var(--color-border-gold, #b89947);
+}
+
+.alianzas-confirm-btns {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-accion-danger {
+    border-color: #d32f2f !important;
+    color: #d32f2f !important;
+}
+
+.btn-accion-danger:hover {
+    background: rgba(211, 47, 47, 0.2) !important;
+    color: #ff5252 !important;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 60px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+}
